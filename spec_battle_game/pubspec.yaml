@@ -1,0 +1,30 @@
+name: spec_battle_game
+description: デバイスのスペックでキャラクターを生成し対戦するモバイルゲーム
+
+publish_to: 'none'
+
+version: 0.1.0+1
+
+environment:
+  sdk: ">=2.7.0 <3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.0
+  device_info: ^2.0.3
+  battery: ^2.0.3
+  shared_preferences: ^0.5.12+4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/characters/heads/
+    - assets/characters/bodies/
+    - assets/characters/arms/
+    - assets/characters/legs/
