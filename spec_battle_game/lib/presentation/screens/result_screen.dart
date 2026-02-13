@@ -1,0 +1,204 @@
+import 'package:flutter/material.dart';
+import '../../domain/models/character.dart';
+import '../../domain/services/battle_engine.dart';
+import '../widgets/pixel_character.dart';
+
+/// バトルリザルト画面
+class ResultScreen extends StatefulWidget {
+  final BattleResult result;
+  final Character player;
+  final Character enemy;
+
+  const ResultScreen({
+    Key key,
+    this.result,
+    this.player,
+    this.enemy,
+  }) : super(key: key);
+
+  @override
+  _ResultScreenState createState() => _ResultScreenState();
+}
+
+class _ResultScreenState extends State<ResultScreen>
+    with SingleTickerProviderStateMixin {
+  AnimationController _controller;
+  Animation<double> _scaleAnimation;
+  Animation<double> _opacityAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
+    );
+    _opacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeIn),
+    );
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final won = widget.result.playerWon;
+    return Scaffold(
+      backgroundColor: Color(0xFF0D1B2A),
+      body: SafeArea(
+        child: Center(
+          child: AnimatedBuilder(
+            animation: _controller,
+            builder: (context, child) {
+              return Opacity(
+                opacity: _opacityAnimation.value,
+                child: Transform.scale(
+                  scale: _scaleAnimation.value,
+                  child: _buildContent(context, won),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context, bool won) {
+    return Padding(
+      padding: EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // 勝敗アイコン
+          Icon(
+            won ? Icons.emoji_events : Icons.sentiment_dissatisfied,
+            size: 80,
+            color: won ? Color(0xFFFFD700) : Color(0xFF636E72),
+          ),
+          SizedBox(height: 16),
+          // 勝敗テキスト
+          Text(
+            won ? '🎉 勝利！' : '💀 敗北…',
+            style: TextStyle(
+              fontSize: 36,
+              fontWeight: FontWeight.bold,
+              color: won ? Color(0xFFFFD700) : Color(0xFFE17055),
+            ),
+          ),
+          SizedBox(height: 32),
+
+          // バトルサマリーカード
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Color(0xFF1B2838),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: won
+                    ? Color(0xFFFFD700).withOpacity(0.3)
+                    : Colors.white10,
+              ),
+            ),
+            child: Column(
+              children: [
+                // キャラクター対決表示
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    Column(
+                      children: [
+                        PixelCharacter(
+                            character: widget.player, size: 60),
+                        SizedBox(height: 8),
+                        Text(widget.player.name ?? '',
+                            style: TextStyle(
+                                color: Colors.white, fontSize: 12)),
+                      ],
+                    ),
+                    Text('VS',
+                        style: TextStyle(
+                          color: Colors.white38,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        )),
+                    Column(
+                      children: [
+                        PixelCharacter(
+                            character: widget.enemy,
+                            size: 60,
+                            flipHorizontal: true),
+                        SizedBox(height: 8),
+                        Text(widget.enemy.name ?? '',
+                            style: TextStyle(
+                                color: Colors.white, fontSize: 12)),
+                      ],
+                    ),
+                  ],
+                ),
+                SizedBox(height: 20),
+                Divider(color: Colors.white10),
+                SizedBox(height: 12),
+                _infoRow('ターン数', '${widget.result.turnsPlayed}'),
+                _infoRow('獲得経験値', '+${widget.result.expGained} EXP'),
+              ],
+            ),
+          ),
+
+          SizedBox(height: 32),
+          // ホームに戻るボタン
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                // ホーム画面まで戻る
+                Navigator.of(context).popUntil((route) => route.isFirst);
+              },
+              style: ElevatedButton.styleFrom(
+                primary: won ? Color(0xFF00B894) : Color(0xFF2D3748),
+                padding: EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+              child: Text(
+                'ホームに戻る',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(color: Colors.white54, fontSize: 14)),
+          Text(value,
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+}

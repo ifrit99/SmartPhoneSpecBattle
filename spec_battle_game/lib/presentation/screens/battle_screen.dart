@@ -1,0 +1,338 @@
+import 'package:flutter/material.dart';
+import '../../domain/models/character.dart';
+import '../../domain/enums/element_type.dart';
+import '../../domain/services/battle_engine.dart';
+import '../widgets/pixel_character.dart';
+import '../widgets/stat_bar.dart';
+import 'result_screen.dart';
+
+/// バトル画面 — 自動バトルのアニメーション表示
+class BattleScreen extends StatefulWidget {
+  final Character player;
+  final Character enemy;
+
+  const BattleScreen({Key key, this.player, this.enemy}) : super(key: key);
+
+  @override
+  _BattleScreenState createState() => _BattleScreenState();
+}
+
+class _BattleScreenState extends State<BattleScreen>
+    with TickerProviderStateMixin {
+  BattleResult _result;
+  List<BattleLogEntry> _displayedLog = [];
+  int _currentLogIndex = 0;
+  bool _battleComplete = false;
+
+  Character _currentPlayer;
+  Character _currentEnemy;
+
+  // アニメーション
+  AnimationController _shakeController;
+  AnimationController _flashController;
+  Animation<double> _shakeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentPlayer = widget.player;
+    _currentEnemy = widget.enemy;
+
+    _shakeController = AnimationController(
+      duration: Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _shakeAnimation = Tween<double>(begin: 0, end: 8).animate(
+      CurvedAnimation(parent: _shakeController, curve: Curves.elasticIn),
+    );
+
+    _flashController = AnimationController(
+      duration: Duration(milliseconds: 200),
+      vsync: this,
+    );
+
+    // バトル実行
+    _runBattle();
+  }
+
+  @override
+  void dispose() {
+    _shakeController.dispose();
+    _flashController.dispose();
+    super.dispose();
+  }
+
+  void _runBattle() {
+    final engine = BattleEngine();
+    _result = engine.executeBattle(widget.player, widget.enemy);
+
+    // ログを順次表示するアニメーション
+    _showNextLog();
+  }
+
+  void _showNextLog() {
+    if (_currentLogIndex >= _result.log.length) {
+      setState(() {
+        _battleComplete = true;
+      });
+      return;
+    }
+
+    Future.delayed(Duration(milliseconds: 800), () {
+      if (!mounted) return;
+
+      final entry = _result.log[_currentLogIndex];
+      setState(() {
+        _displayedLog.add(entry);
+
+        // ダメージ演出
+        if (entry.damage > 0) {
+          _shakeController.forward().then((_) => _shakeController.reverse());
+          _flashController.forward().then((_) => _flashController.reverse());
+
+          // HPバーの更新
+          if (entry.actorName == widget.player.name ||
+              entry.actorName == _currentPlayer.name) {
+            final newHp = _currentEnemy.currentStats.hp - entry.damage;
+            _currentEnemy = _currentEnemy.withHp(newHp);
+          } else {
+            final newHp = _currentPlayer.currentStats.hp - entry.damage;
+            _currentPlayer = _currentPlayer.withHp(newHp);
+          }
+        }
+      });
+
+      _currentLogIndex++;
+      _showNextLog();
+    });
+  }
+
+  void _skipToEnd() {
+    setState(() {
+      _displayedLog = List.from(_result.log);
+      _currentLogIndex = _result.log.length;
+      _battleComplete = true;
+
+      // 最終HP状態を反映
+      if (_result.playerWon) {
+        _currentEnemy = _currentEnemy.withHp(0);
+      } else {
+        _currentPlayer = _currentPlayer.withHp(0);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Color(0xFF0D1B2A),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // バトルフィールド上部
+            _buildBattleField(),
+            // バトルログ
+            Expanded(child: _buildBattleLog()),
+            // ボタン
+            _buildActionButtons(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBattleField() {
+    return Container(
+      height: 280,
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFF1B2838),
+            Color(0xFF0D1B2A),
+          ],
+        ),
+      ),
+      child: Column(
+        children: [
+          // 上部: 敵キャラクター
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _buildCharacterInfo(_currentEnemy, false)),
+              AnimatedBuilder(
+                animation: _shakeAnimation,
+                builder: (context, child) {
+                  final isEnemyHit = _displayedLog.isNotEmpty &&
+                      _displayedLog.last.damage > 0 &&
+                      (_displayedLog.last.actorName == _currentPlayer.name ||
+                       _displayedLog.last.actorName == widget.player.name);
+                  return Transform.translate(
+                    offset: Offset(isEnemyHit ? _shakeAnimation.value : 0, 0),
+                    child: PixelCharacter(
+                        character: _currentEnemy,
+                        size: 80,
+                        flipHorizontal: true),
+                  );
+                },
+              ),
+            ],
+          ),
+          Spacer(),
+          // 下部: プレイヤーキャラクター
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              AnimatedBuilder(
+                animation: _shakeAnimation,
+                builder: (context, child) {
+                  final isPlayerHit = _displayedLog.isNotEmpty &&
+                      _displayedLog.last.damage > 0 &&
+                      _displayedLog.last.actorName != _currentPlayer.name &&
+                      _displayedLog.last.actorName != widget.player.name;
+                  return Transform.translate(
+                    offset: Offset(isPlayerHit ? -_shakeAnimation.value : 0, 0),
+                    child: PixelCharacter(
+                        character: _currentPlayer, size: 80),
+                  );
+                },
+              ),
+              Expanded(child: _buildCharacterInfo(_currentPlayer, true)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCharacterInfo(Character char, bool isPlayer) {
+    final stats = char.currentStats;
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 8),
+      child: Column(
+        crossAxisAlignment:
+            isPlayer ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          Text(
+            char.name ?? '',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Lv.${char.level}  ${elementName(char.element)}',
+            style: TextStyle(color: Colors.white54, fontSize: 11),
+          ),
+          SizedBox(height: 6),
+          StatBar(
+            label: 'HP',
+            value: stats.hpPercentage,
+            color: stats.hpPercentage > 0.5
+                ? Colors.greenAccent
+                : stats.hpPercentage > 0.2
+                    ? Colors.orangeAccent
+                    : Colors.redAccent,
+            trailingText: '${stats.hp}/${stats.maxHp}',
+            height: 10,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBattleLog() {
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Color(0xFF1B2838).withOpacity(0.8),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: ListView.builder(
+        reverse: true,
+        itemCount: _displayedLog.length,
+        itemBuilder: (context, index) {
+          final entry = _displayedLog[_displayedLog.length - 1 - index];
+          return Padding(
+            padding: EdgeInsets.symmetric(vertical: 2),
+            child: Text(
+              entry.message,
+              style: TextStyle(
+                color: entry.damage > 0
+                    ? Colors.redAccent[100]
+                    : entry.healing > 0
+                        ? Colors.greenAccent[100]
+                        : Colors.white70,
+                fontSize: 13,
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Container(
+      padding: EdgeInsets.all(16),
+      child: Row(
+        children: [
+          if (!_battleComplete)
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _skipToEnd,
+                style: ElevatedButton.styleFrom(
+                  primary: Color(0xFF2D3748),
+                  padding: EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text('スキップ ▶▶',
+                    style: TextStyle(color: Colors.white70)),
+              ),
+            ),
+          if (_battleComplete)
+            Expanded(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pushReplacement(
+                    MaterialPageRoute(
+                      builder: (context) => ResultScreen(
+                        result: _result,
+                        player: widget.player,
+                        enemy: widget.enemy,
+                      ),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  primary: _result.playerWon
+                      ? Color(0xFF00B894)
+                      : Color(0xFFE17055),
+                  padding: EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Text(
+                  'リザルトへ',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
