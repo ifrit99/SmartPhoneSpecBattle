@@ -18,7 +18,7 @@ class CharacterGenerator {
   }
 
   /// スペックからキャラクターを生成
-  static Character generate(DeviceSpecs specs, {Experience experience}) {
+  static Character generate(DeviceSpecs specs, {Experience? experience}) {
     final seed = generateSeed(specs);
     final random = Random(seed);
 
@@ -144,7 +144,7 @@ class CharacterGenerator {
     final suffixes = ['ナイト', 'ガーディアン', 'ウォリアー', 'メイジ',
                       'スピリット', 'ファントム', 'チャンプ', 'キング'];
 
-    final pList = prefixes[element];
+    final pList = prefixes[element]!;
     final prefix = pList[seed.abs() % pList.length];
     final suffix = suffixes[(seed.abs() ~/ 10) % suffixes.length];
 

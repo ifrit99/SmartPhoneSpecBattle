@@ -10,18 +10,18 @@ class PixelCharacter extends StatelessWidget {
   final bool flipHorizontal;
 
   const PixelCharacter({
-    Key key,
-    this.character,
+    super.key,
+    required this.character,
     this.size = 120,
     this.flipHorizontal = false,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
     return Transform(
       alignment: Alignment.center,
       transform: flipHorizontal
-          ? (Matrix4.identity()..scale(-1.0, 1.0))
+          ? (Matrix4.identity()..setEntry(0, 0, -1.0))
           : Matrix4.identity(),
       child: CustomPaint(
         size: Size(size, size),
@@ -36,12 +36,12 @@ class PixelCharacter extends StatelessWidget {
 /// キャラクターのカラーパレット
 List<Color> _getPalette(int index) {
   final palettes = [
-    [Color(0xFFFF6B6B), Color(0xFFFF8E8E), Color(0xFFCC5555)], // 赤系
-    [Color(0xFF4ECDC4), Color(0xFF7EDDD7), Color(0xFF3BA99E)], // 青緑系
-    [Color(0xFFFFD93D), Color(0xFFFFE46D), Color(0xFFCCAD30)], // 黄系
-    [Color(0xFF6C5CE7), Color(0xFF8F84ED), Color(0xFF5647BA)], // 紫系
-    [Color(0xFF00B894), Color(0xFF33C9A8), Color(0xFF009577)], // 緑系
-    [Color(0xFFFD79A8), Color(0xFFFE97BB), Color(0xFFCA6186)], // ピンク系
+    [const Color(0xFFFF6B6B), const Color(0xFFFF8E8E), const Color(0xFFCC5555)], // 赤系
+    [const Color(0xFF4ECDC4), const Color(0xFF7EDDD7), const Color(0xFF3BA99E)], // 青緑系
+    [const Color(0xFFFFD93D), const Color(0xFFFFE46D), const Color(0xFFCCAD30)], // 黄系
+    [const Color(0xFF6C5CE7), const Color(0xFF8F84ED), const Color(0xFF5647BA)], // 紫系
+    [const Color(0xFF00B894), const Color(0xFF33C9A8), const Color(0xFF009577)], // 緑系
+    [const Color(0xFFFD79A8), const Color(0xFFFE97BB), const Color(0xFFCA6186)], // ピンク系
   ];
   return palettes[index % palettes.length];
 }
@@ -50,30 +50,27 @@ List<Color> _getPalette(int index) {
 Color _elementColor(ElementType element) {
   switch (element) {
     case ElementType.fire:
-      return Color(0xFFFF6B6B);
+      return const Color(0xFFFF6B6B);
     case ElementType.water:
-      return Color(0xFF74B9FF);
+      return const Color(0xFF74B9FF);
     case ElementType.earth:
-      return Color(0xFFFDCB6E);
+      return const Color(0xFFFDCB6E);
     case ElementType.wind:
-      return Color(0xFF55EFC4);
+      return const Color(0xFF55EFC4);
     case ElementType.light:
-      return Color(0xFFFFF176);
+      return const Color(0xFFFFF176);
     case ElementType.dark:
-      return Color(0xFFAB47BC);
+      return const Color(0xFFAB47BC);
   }
-  return Colors.white;
 }
 
 class _PixelCharacterPainter extends CustomPainter {
   final Character character;
 
-  _PixelCharacterPainter({this.character});
+  _PixelCharacterPainter({required this.character});
 
   @override
   void paint(Canvas canvas, Size size) {
-    if (character == null) return;
-
     final palette = _getPalette(character.colorPaletteIndex);
     final pixelSize = size.width / 12;
     final elemColor = _elementColor(character.element);
@@ -83,7 +80,7 @@ class _PixelCharacterPainter extends CustomPainter {
     final accentPaint = Paint()..color = palette[1];
     final shadowPaint = Paint()..color = palette[2];
     final eyePaint = Paint()..color = Colors.white;
-    final pupilPaint = Paint()..color = Color(0xFF2D3436);
+    final pupilPaint = Paint()..color = const Color(0xFF2D3436);
 
     // --- 頭の描画 (headIndex で形状を変える) ---
     final headShape = character.headIndex % 4;

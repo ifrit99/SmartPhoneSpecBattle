@@ -17,10 +17,10 @@ class Skill {
   final int cooldown;       // クールダウンターン数
 
   const Skill({
-    this.name,
-    this.description,
-    this.element,
-    this.category,
+    required this.name,
+    required this.description,
+    required this.element,
+    required this.category,
     this.multiplier = 1.0,
     this.cooldown = 0,
   });
@@ -147,5 +147,4 @@ List<Skill> getSkillsForElement(ElementType element) {
         ),
       ];
   }
-  return [];
 }

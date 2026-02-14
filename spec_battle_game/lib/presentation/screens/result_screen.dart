@@ -10,27 +10,27 @@ class ResultScreen extends StatefulWidget {
   final Character enemy;
 
   const ResultScreen({
-    Key key,
-    this.result,
-    this.player,
-    this.enemy,
-  }) : super(key: key);
+    super.key,
+    required this.result,
+    required this.player,
+    required this.enemy,
+  });
 
   @override
-  _ResultScreenState createState() => _ResultScreenState();
+  State<ResultScreen> createState() => _ResultScreenState();
 }
 
 class _ResultScreenState extends State<ResultScreen>
     with SingleTickerProviderStateMixin {
-  AnimationController _controller;
-  Animation<double> _scaleAnimation;
-  Animation<double> _opacityAnimation;
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _opacityAnimation;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 800),
       vsync: this,
     );
     _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
@@ -52,7 +52,7 @@ class _ResultScreenState extends State<ResultScreen>
   Widget build(BuildContext context) {
     final won = widget.result.playerWon;
     return Scaffold(
-      backgroundColor: Color(0xFF0D1B2A),
+      backgroundColor: const Color(0xFF0D1B2A),
       body: SafeArea(
         child: Center(
           child: AnimatedBuilder(
@@ -74,7 +74,7 @@ class _ResultScreenState extends State<ResultScreen>
 
   Widget _buildContent(BuildContext context, bool won) {
     return Padding(
-      padding: EdgeInsets.all(24),
+      padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -82,30 +82,30 @@ class _ResultScreenState extends State<ResultScreen>
           Icon(
             won ? Icons.emoji_events : Icons.sentiment_dissatisfied,
             size: 80,
-            color: won ? Color(0xFFFFD700) : Color(0xFF636E72),
+            color: won ? const Color(0xFFFFD700) : const Color(0xFF636E72),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           // 勝敗テキスト
           Text(
             won ? '🎉 勝利！' : '💀 敗北…',
             style: TextStyle(
               fontSize: 36,
               fontWeight: FontWeight.bold,
-              color: won ? Color(0xFFFFD700) : Color(0xFFE17055),
+              color: won ? const Color(0xFFFFD700) : const Color(0xFFE17055),
             ),
           ),
-          SizedBox(height: 32),
+          const SizedBox(height: 32),
 
           // バトルサマリーカード
           Container(
             width: double.infinity,
-            padding: EdgeInsets.all(20),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: Color(0xFF1B2838),
+              color: const Color(0xFF1B2838),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: won
-                    ? Color(0xFFFFD700).withOpacity(0.3)
+                    ? const Color(0xFFFFD700).withValues(alpha: 0.3)
                     : Colors.white10,
               ),
             ),
@@ -119,13 +119,13 @@ class _ResultScreenState extends State<ResultScreen>
                       children: [
                         PixelCharacter(
                             character: widget.player, size: 60),
-                        SizedBox(height: 8),
-                        Text(widget.player.name ?? '',
-                            style: TextStyle(
+                        const SizedBox(height: 8),
+                        Text(widget.player.name,
+                            style: const TextStyle(
                                 color: Colors.white, fontSize: 12)),
                       ],
                     ),
-                    Text('VS',
+                    const Text('VS',
                         style: TextStyle(
                           color: Colors.white38,
                           fontSize: 20,
@@ -137,24 +137,24 @@ class _ResultScreenState extends State<ResultScreen>
                             character: widget.enemy,
                             size: 60,
                             flipHorizontal: true),
-                        SizedBox(height: 8),
-                        Text(widget.enemy.name ?? '',
-                            style: TextStyle(
+                        const SizedBox(height: 8),
+                        Text(widget.enemy.name,
+                            style: const TextStyle(
                                 color: Colors.white, fontSize: 12)),
                       ],
                     ),
                   ],
                 ),
-                SizedBox(height: 20),
-                Divider(color: Colors.white10),
-                SizedBox(height: 12),
+                const SizedBox(height: 20),
+                const Divider(color: Colors.white10),
+                const SizedBox(height: 12),
                 _infoRow('ターン数', '${widget.result.turnsPlayed}'),
                 _infoRow('獲得経験値', '+${widget.result.expGained} EXP'),
               ],
             ),
           ),
 
-          SizedBox(height: 32),
+          const SizedBox(height: 32),
           // ホームに戻るボタン
           SizedBox(
             width: double.infinity,
@@ -164,13 +164,13 @@ class _ResultScreenState extends State<ResultScreen>
                 Navigator.of(context).popUntil((route) => route.isFirst);
               },
               style: ElevatedButton.styleFrom(
-                primary: won ? Color(0xFF00B894) : Color(0xFF2D3748),
-                padding: EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: won ? const Color(0xFF00B894) : const Color(0xFF2D3748),
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
-              child: Text(
+              child: const Text(
                 'ホームに戻る',
                 style: TextStyle(
                   fontSize: 16,
@@ -191,9 +191,9 @@ class _ResultScreenState extends State<ResultScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.white54, fontSize: 14)),
+          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 14)),
           Text(value,
-              style: TextStyle(
+              style: const TextStyle(
                   color: Colors.white,
                   fontSize: 14,
                   fontWeight: FontWeight.w600)),

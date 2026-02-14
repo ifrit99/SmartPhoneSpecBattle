@@ -11,14 +11,14 @@ class StatBar extends StatelessWidget {
   final double height;
 
   const StatBar({
-    Key key,
+    super.key,
     this.label = '',
     this.value = 1.0,
     this.color = Colors.green,
     this.backgroundColor = Colors.grey,
     this.trailingText = '',
     this.height = 16.0,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +31,7 @@ class StatBar extends StatelessWidget {
               width: 40,
               child: Text(
                 label,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                   color: Colors.white70,
@@ -44,7 +44,7 @@ class StatBar extends StatelessWidget {
                 Container(
                   height: height,
                   decoration: BoxDecoration(
-                    color: backgroundColor.withOpacity(0.3),
+                    color: backgroundColor.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(height / 2),
                   ),
                 ),
@@ -54,14 +54,14 @@ class StatBar extends StatelessWidget {
                     height: height,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [color, color.withOpacity(0.7)],
+                        colors: [color, color.withValues(alpha: 0.7)],
                       ),
                       borderRadius: BorderRadius.circular(height / 2),
                       boxShadow: [
                         BoxShadow(
-                          color: color.withOpacity(0.4),
+                          color: color.withValues(alpha: 0.4),
                           blurRadius: 4,
-                          offset: Offset(0, 2),
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
@@ -75,7 +75,7 @@ class StatBar extends StatelessWidget {
               padding: const EdgeInsets.only(left: 8.0),
               child: Text(
                 trailingText,
-                style: TextStyle(
+                style: const TextStyle(
                   fontSize: 11,
                   color: Colors.white70,
                 ),

@@ -8,7 +8,7 @@ class LocalStorageService {
   static const String _keyBattleCount = 'battle_count';
   static const String _keyWinCount = 'win_count';
 
-  SharedPreferences _prefs;
+  late SharedPreferences _prefs;
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();

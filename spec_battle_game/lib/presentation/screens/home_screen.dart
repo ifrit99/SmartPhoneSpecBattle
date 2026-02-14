@@ -12,24 +12,26 @@ import 'battle_screen.dart';
 
 /// ホーム画面
 class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
-  Character _playerCharacter;
+  Character? _playerCharacter;
   bool _loading = true;
-  LocalStorageService _storage;
-  ExperienceService _expService;
+  late LocalStorageService _storage;
+  late ExperienceService _expService;
 
-  AnimationController _pulseController;
-  Animation<double> _pulseAnimation;
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
     super.initState();
     _pulseController = AnimationController(
-      duration: Duration(seconds: 2),
+      duration: const Duration(seconds: 2),
       vsync: this,
     )..repeat(reverse: true);
     _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
@@ -63,14 +65,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   void _startBattle() {
-    if (_playerCharacter == null) return;
+    final player = _playerCharacter;
+    if (player == null) return;
 
-    final enemy = CharacterGenerator.generateOpponent(_playerCharacter.level);
+    final enemy = CharacterGenerator.generateOpponent(player.level);
 
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => BattleScreen(
-          player: _playerCharacter,
+          player: player,
           enemy: enemy,
         ),
       ),
@@ -82,31 +85,33 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   void _reloadData() {
     final experience = _expService.loadExperience();
-    if (_playerCharacter != null) {
+    final player = _playerCharacter;
+    if (player != null) {
       setState(() {
         _playerCharacter = Character(
-          name: _playerCharacter.name,
-          element: _playerCharacter.element,
-          baseStats: _playerCharacter.baseStats,
-          currentStats: _playerCharacter.baseStats.levelUp(experience.level),
-          skills: _playerCharacter.skills,
+          name: player.name,
+          element: player.element,
+          baseStats: player.baseStats,
+          currentStats: player.baseStats.levelUp(experience.level),
+          skills: player.skills,
           experience: experience,
-          seed: _playerCharacter.seed,
-          headIndex: _playerCharacter.headIndex,
-          bodyIndex: _playerCharacter.bodyIndex,
-          armIndex: _playerCharacter.armIndex,
-          legIndex: _playerCharacter.legIndex,
-          colorPaletteIndex: _playerCharacter.colorPaletteIndex,
+          seed: player.seed,
+          headIndex: player.headIndex,
+          bodyIndex: player.bodyIndex,
+          armIndex: player.armIndex,
+          legIndex: player.legIndex,
+          colorPaletteIndex: player.colorPaletteIndex,
         );
       });
     }
   }
 
   void _openCharacterDetail() {
-    if (_playerCharacter == null) return;
+    final player = _playerCharacter;
+    if (player == null) return;
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => CharacterScreen(character: _playerCharacter),
+        builder: (context) => CharacterScreen(character: player),
       ),
     );
   }
@@ -114,7 +119,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF0D1B2A),
+      backgroundColor: const Color(0xFF0D1B2A),
       body: SafeArea(
         child: _loading ? _buildLoading() : _buildContent(),
       ),
@@ -127,10 +132,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6C5CE7)),
+            valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFF6C5CE7)),
           ),
-          SizedBox(height: 16),
-          Text(
+          const SizedBox(height: 16),
+          const Text(
             'スペック読み取り中...',
             style: TextStyle(color: Colors.white54),
           ),
@@ -140,13 +145,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildContent() {
+    final player = _playerCharacter!;
     final record = _expService.getBattleRecord();
 
     return SingleChildScrollView(
-      padding: EdgeInsets.all(20),
+      padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           // タイトル
           Text(
             'SPEC BATTLE',
@@ -157,13 +163,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               letterSpacing: 4,
               shadows: [
                 Shadow(
-                  color: Color(0xFF6C5CE7).withOpacity(0.5),
+                  color: const Color(0xFF6C5CE7).withValues(alpha: 0.5),
                   blurRadius: 20,
                 ),
               ],
             ),
           ),
-          Text(
+          const Text(
             'スペック対戦ゲーム',
             style: TextStyle(
               fontSize: 14,
@@ -171,18 +177,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               letterSpacing: 2,
             ),
           ),
-          SizedBox(height: 32),
+          const SizedBox(height: 32),
 
           // キャラクターカード
           GestureDetector(
             onTap: _openCharacterDetail,
-            child: _buildCharacterCard(),
+            child: _buildCharacterCard(player),
           ),
-          SizedBox(height: 24),
+          const SizedBox(height: 24),
 
           // 戦績カード
           _buildRecordCard(record),
-          SizedBox(height: 32),
+          const SizedBox(height: 32),
 
           // バトル開始ボタン
           AnimatedBuilder(
@@ -194,9 +200,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               );
             },
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
 
-          Text(
+          const Text(
             'タップしてキャラクター詳細を見る',
             style: TextStyle(color: Colors.white24, fontSize: 11),
           ),
@@ -205,78 +211,78 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildCharacterCard() {
-    final elemColor = _getElementColor(_playerCharacter.element);
+  Widget _buildCharacterCard(Character player) {
+    final elemColor = _getElementColor(player.element);
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            elemColor.withOpacity(0.2),
-            Color(0xFF1B2838),
+            elemColor.withValues(alpha: 0.2),
+            const Color(0xFF1B2838),
           ],
         ),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: elemColor.withOpacity(0.4)),
+        border: Border.all(color: elemColor.withValues(alpha: 0.4)),
         boxShadow: [
           BoxShadow(
-            color: elemColor.withOpacity(0.15),
+            color: elemColor.withValues(alpha: 0.15),
             blurRadius: 20,
-            offset: Offset(0, 8),
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Row(
         children: [
-          PixelCharacter(character: _playerCharacter, size: 100),
-          SizedBox(width: 16),
+          PixelCharacter(character: player, size: 100),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _playerCharacter.name ?? 'Unknown',
-                  style: TextStyle(
+                  player.name,
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Row(
                   children: [
-                    _elementBadge(_playerCharacter.element),
-                    SizedBox(width: 8),
+                    _elementBadge(player.element),
+                    const SizedBox(width: 8),
                     Text(
-                      'Lv.${_playerCharacter.level}',
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                      'Lv.${player.level}',
+                      style: const TextStyle(color: Colors.white70, fontSize: 14),
                     ),
                   ],
                 ),
-                SizedBox(height: 10),
+                const SizedBox(height: 10),
                 StatBar(
                   label: 'HP',
                   value: 1.0,
                   color: Colors.greenAccent,
                   trailingText:
-                      '${_playerCharacter.currentStats.hp}',
+                      '${player.currentStats.hp}',
                   height: 8,
                 ),
                 StatBar(
                   label: 'EXP',
-                  value: _playerCharacter.experience?.progressPercentage ?? 0,
-                  color: Color(0xFF6C5CE7),
+                  value: player.experience.progressPercentage,
+                  color: const Color(0xFF6C5CE7),
                   trailingText:
-                      '${_playerCharacter.experience?.currentExp ?? 0}/${_playerCharacter.experience?.expToNext ?? 100}',
+                      '${player.experience.currentExp}/${player.experience.expToNext}',
                   height: 8,
                 ),
               ],
             ),
           ),
-          Icon(Icons.chevron_right, color: Colors.white30),
+          const Icon(Icons.chevron_right, color: Colors.white30),
         ],
       ),
     );
@@ -285,9 +291,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildRecordCard(Map<String, int> record) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Color(0xFF1B2838),
+        color: const Color(0xFF1B2838),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: Colors.white10),
       ),
@@ -300,8 +306,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           Container(width: 1, height: 30, color: Colors.white10),
           _recordItem(
             '勝率',
-            record['battles'] > 0
-                ? '${(record['wins'] / record['battles'] * 100).toStringAsFixed(0)}%'
+            record['battles']! > 0
+                ? '${(record['wins']! / record['battles']! * 100).toStringAsFixed(0)}%'
                 : '-',
             Icons.trending_up,
           ),
@@ -314,11 +320,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Column(
       children: [
         Icon(icon, color: Colors.white30, size: 18),
-        SizedBox(height: 4),
+        const SizedBox(height: 4),
         Text(value,
-            style: TextStyle(
+            style: const TextStyle(
                 color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-        Text(label, style: TextStyle(color: Colors.white38, fontSize: 10)),
+        Text(label, style: const TextStyle(color: Colors.white38, fontSize: 10)),
       ],
     );
   }
@@ -329,15 +335,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: ElevatedButton(
         onPressed: _startBattle,
         style: ElevatedButton.styleFrom(
-          primary: Color(0xFF6C5CE7),
-          padding: EdgeInsets.symmetric(vertical: 18),
+          backgroundColor: const Color(0xFF6C5CE7),
+          padding: const EdgeInsets.symmetric(vertical: 18),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           elevation: 8,
-          shadowColor: Color(0xFF6C5CE7).withOpacity(0.5),
+          shadowColor: const Color(0xFF6C5CE7).withValues(alpha: 0.5),
         ),
-        child: Row(
+        child: const Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.flash_on, color: Colors.white, size: 24),
@@ -359,11 +365,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _elementBadge(ElementType element) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: _getElementColor(element).withOpacity(0.2),
+        color: _getElementColor(element).withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _getElementColor(element).withOpacity(0.5)),
+        border: Border.all(color: _getElementColor(element).withValues(alpha: 0.5)),
       ),
       child: Text(
         elementName(element),
@@ -379,18 +385,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Color _getElementColor(ElementType element) {
     switch (element) {
       case ElementType.fire:
-        return Color(0xFFFF6B6B);
+        return const Color(0xFFFF6B6B);
       case ElementType.water:
-        return Color(0xFF74B9FF);
+        return const Color(0xFF74B9FF);
       case ElementType.earth:
-        return Color(0xFFFDCB6E);
+        return const Color(0xFFFDCB6E);
       case ElementType.wind:
-        return Color(0xFF55EFC4);
+        return const Color(0xFF55EFC4);
       case ElementType.light:
-        return Color(0xFFFFF176);
+        return const Color(0xFFFFF176);
       case ElementType.dark:
-        return Color(0xFFAB47BC);
+        return const Color(0xFFAB47BC);
     }
-    return Colors.white;
   }
 }

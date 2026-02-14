@@ -33,7 +33,6 @@ String elementName(ElementType type) {
     case ElementType.dark:
       return '闇';
   }
-  return '';
 }
 
 /// 属性の相性倍率を返す（攻撃側 → 守備側）

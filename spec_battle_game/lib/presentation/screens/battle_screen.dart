@@ -11,26 +11,26 @@ class BattleScreen extends StatefulWidget {
   final Character player;
   final Character enemy;
 
-  const BattleScreen({Key key, this.player, this.enemy}) : super(key: key);
+  const BattleScreen({super.key, required this.player, required this.enemy});
 
   @override
-  _BattleScreenState createState() => _BattleScreenState();
+  State<BattleScreen> createState() => _BattleScreenState();
 }
 
 class _BattleScreenState extends State<BattleScreen>
     with TickerProviderStateMixin {
-  BattleResult _result;
+  late BattleResult _result;
   List<BattleLogEntry> _displayedLog = [];
   int _currentLogIndex = 0;
   bool _battleComplete = false;
 
-  Character _currentPlayer;
-  Character _currentEnemy;
+  late Character _currentPlayer;
+  late Character _currentEnemy;
 
   // アニメーション
-  AnimationController _shakeController;
-  AnimationController _flashController;
-  Animation<double> _shakeAnimation;
+  late AnimationController _shakeController;
+  late AnimationController _flashController;
+  late Animation<double> _shakeAnimation;
 
   @override
   void initState() {
@@ -39,7 +39,7 @@ class _BattleScreenState extends State<BattleScreen>
     _currentEnemy = widget.enemy;
 
     _shakeController = AnimationController(
-      duration: Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 300),
       vsync: this,
     );
     _shakeAnimation = Tween<double>(begin: 0, end: 8).animate(
@@ -47,7 +47,7 @@ class _BattleScreenState extends State<BattleScreen>
     );
 
     _flashController = AnimationController(
-      duration: Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 200),
       vsync: this,
     );
 
@@ -78,7 +78,7 @@ class _BattleScreenState extends State<BattleScreen>
       return;
     }
 
-    Future.delayed(Duration(milliseconds: 800), () {
+    Future.delayed(const Duration(milliseconds: 800), () {
       if (!mounted) return;
 
       final entry = _result.log[_currentLogIndex];
@@ -125,7 +125,7 @@ class _BattleScreenState extends State<BattleScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF0D1B2A),
+      backgroundColor: const Color(0xFF0D1B2A),
       body: SafeArea(
         child: Column(
           children: [
@@ -144,8 +144,8 @@ class _BattleScreenState extends State<BattleScreen>
   Widget _buildBattleField() {
     return Container(
       height: 280,
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
+      padding: const EdgeInsets.all(16),
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
@@ -180,7 +180,7 @@ class _BattleScreenState extends State<BattleScreen>
               ),
             ],
           ),
-          Spacer(),
+          const Spacer(),
           // 下部: プレイヤーキャラクター
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -210,25 +210,25 @@ class _BattleScreenState extends State<BattleScreen>
   Widget _buildCharacterInfo(Character char, bool isPlayer) {
     final stats = char.currentStats;
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       child: Column(
         crossAxisAlignment:
             isPlayer ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           Text(
-            char.name ?? '',
-            style: TextStyle(
+            char.name,
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 14,
               fontWeight: FontWeight.bold,
             ),
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Text(
             'Lv.${char.level}  ${elementName(char.element)}',
-            style: TextStyle(color: Colors.white54, fontSize: 11),
+            style: const TextStyle(color: Colors.white54, fontSize: 11),
           ),
-          SizedBox(height: 6),
+          const SizedBox(height: 6),
           StatBar(
             label: 'HP',
             value: stats.hpPercentage,
@@ -247,10 +247,10 @@ class _BattleScreenState extends State<BattleScreen>
 
   Widget _buildBattleLog() {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: EdgeInsets.all(12),
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Color(0xFF1B2838).withOpacity(0.8),
+        color: const Color(0xFF1B2838).withValues(alpha: 0.8),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white10),
       ),
@@ -260,7 +260,7 @@ class _BattleScreenState extends State<BattleScreen>
         itemBuilder: (context, index) {
           final entry = _displayedLog[_displayedLog.length - 1 - index];
           return Padding(
-            padding: EdgeInsets.symmetric(vertical: 2),
+            padding: const EdgeInsets.symmetric(vertical: 2),
             child: Text(
               entry.message,
               style: TextStyle(
@@ -280,7 +280,7 @@ class _BattleScreenState extends State<BattleScreen>
 
   Widget _buildActionButtons() {
     return Container(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       child: Row(
         children: [
           if (!_battleComplete)
@@ -288,13 +288,13 @@ class _BattleScreenState extends State<BattleScreen>
               child: ElevatedButton(
                 onPressed: _skipToEnd,
                 style: ElevatedButton.styleFrom(
-                  primary: Color(0xFF2D3748),
-                  padding: EdgeInsets.symmetric(vertical: 14),
+                  backgroundColor: const Color(0xFF2D3748),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: Text('スキップ ▶▶',
+                child: const Text('スキップ ▶▶',
                     style: TextStyle(color: Colors.white70)),
               ),
             ),
@@ -313,15 +313,15 @@ class _BattleScreenState extends State<BattleScreen>
                   );
                 },
                 style: ElevatedButton.styleFrom(
-                  primary: _result.playerWon
-                      ? Color(0xFF00B894)
-                      : Color(0xFFE17055),
-                  padding: EdgeInsets.symmetric(vertical: 14),
+                  backgroundColor: _result.playerWon
+                      ? const Color(0xFF00B894)
+                      : const Color(0xFFE17055),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: Text(
+                child: const Text(
                   'リザルトへ',
                   style: TextStyle(
                     color: Colors.white,

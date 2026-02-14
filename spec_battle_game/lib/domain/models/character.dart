@@ -21,12 +21,12 @@ class Character {
   final int colorPaletteIndex;
 
   Character({
-    this.name,
-    this.element,
-    this.baseStats,
-    this.currentStats,
-    this.skills,
-    this.experience,
+    required this.name,
+    required this.element,
+    required this.baseStats,
+    required this.currentStats,
+    required this.skills,
+    required this.experience,
     this.seed = 0,
     this.headIndex = 0,
     this.bodyIndex = 0,
@@ -35,7 +35,7 @@ class Character {
     this.colorPaletteIndex = 0,
   });
 
-  int get level => experience?.level ?? 1;
+  int get level => experience.level;
 
   /// バトル用のステータスを取得（レベル反映）
   Stats get battleStats => baseStats.levelUp(level);

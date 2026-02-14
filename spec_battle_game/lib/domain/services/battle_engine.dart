@@ -14,14 +14,14 @@ enum BattleActionType {
 /// バトルログの1エントリ
 class BattleLogEntry {
   final String actorName;
-  final BattleActionType actionType;
+  final BattleActionType? actionType;
   final String actionName;
   final int damage;
   final int healing;
   final String message;
 
   BattleLogEntry({
-    this.actorName,
+    required this.actorName,
     this.actionType,
     this.actionName = '',
     this.damage = 0,
@@ -41,7 +41,7 @@ class BattleResult {
   final List<BattleLogEntry> log;
 
   BattleResult({
-    this.playerWon,
+    required this.playerWon,
     this.turnsPlayed = 0,
     this.expGained = 0,
     this.log = const [],
@@ -146,7 +146,6 @@ class BattleEngine {
       case BattleActionType.skill:
         return _doSkill(attacker, defender, isPlayer, log);
     }
-    return defender;
   }
 
   /// AIの行動選択ロジック
@@ -281,14 +280,13 @@ class BattleEngine {
         ));
         return defender;
     }
-    return defender;
   }
 
   /// クールダウンを1減らす
   void _reduceCooldowns(Map<String, int> cooldowns) {
     final keys = cooldowns.keys.toList();
     for (final key in keys) {
-      cooldowns[key] = max(0, cooldowns[key] - 1);
+      cooldowns[key] = max(0, cooldowns[key]! - 1);
     }
   }
 }

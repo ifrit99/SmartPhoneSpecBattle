@@ -39,7 +39,7 @@ class Experience {
       expToNext > 0 ? currentExp / expToNext : 0.0;
 
   /// バトル結果から獲得経験値を計算
-  static int calcBattleExp({bool won, int enemyLevel = 1}) {
+  static int calcBattleExp({required bool won, int enemyLevel = 1}) {
     final base = won ? 50 : 20;
     return (base * (1.0 + (enemyLevel - 1) * 0.2)).round();
   }
