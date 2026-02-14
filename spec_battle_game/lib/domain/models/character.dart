@@ -20,13 +20,13 @@ class Character {
   final int legIndex;
   final int colorPaletteIndex;
 
-  Character({
+  const Character({
     required this.name,
     required this.element,
     required this.baseStats,
     required this.currentStats,
     required this.skills,
-    required this.experience,
+    this.experience = const Experience(),
     this.seed = 0,
     this.headIndex = 0,
     this.bodyIndex = 0,

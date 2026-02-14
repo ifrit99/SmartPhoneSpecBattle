@@ -10,12 +10,14 @@ class LocalStorageService {
 
   late SharedPreferences _prefs;
 
+  /// SharedPreferencesの初期化
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
   }
 
   // --- 経験値・レベル ---
 
+  /// 経験値情報を保存
   Future<void> saveExperience(int level, int currentExp, int expToNext) async {
     await _prefs.setInt(_keyLevel, level);
     await _prefs.setInt(_keyCurrentExp, currentExp);
@@ -28,11 +30,13 @@ class LocalStorageService {
 
   // --- バトル戦績 ---
 
+  /// バトル回数をインクリメント
   Future<void> incrementBattleCount() async {
     final count = getBattleCount() + 1;
     await _prefs.setInt(_keyBattleCount, count);
   }
 
+  /// 勝利回数をインクリメント
   Future<void> incrementWinCount() async {
     final count = getWinCount() + 1;
     await _prefs.setInt(_keyWinCount, count);
@@ -41,16 +45,16 @@ class LocalStorageService {
   int getBattleCount() => _prefs.getInt(_keyBattleCount) ?? 0;
   int getWinCount() => _prefs.getInt(_keyWinCount) ?? 0;
 
-  // --- キャラクターデータ（seed情報）---
+  // --- キャラクター ---
 
+  /// キャラクターシードを保存
   Future<void> saveCharacterSeed(int seed) async {
     await _prefs.setInt('character_seed', seed);
   }
 
   int getCharacterSeed() => _prefs.getInt('character_seed') ?? 0;
 
-  // --- リセット ---
-
+  /// 全データをクリア
   Future<void> clearAll() async {
     await _prefs.clear();
   }

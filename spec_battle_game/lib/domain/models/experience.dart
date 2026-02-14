@@ -4,7 +4,7 @@ class Experience {
   final int currentExp;
   final int expToNext;
 
-  Experience({
+  const Experience({
     this.level = 1,
     this.currentExp = 0,
     this.expToNext = 100,
@@ -16,6 +16,7 @@ class Experience {
     int newLevel = level;
     int nextRequired = expToNext;
 
+    // レベルアップ判定をループで処理
     while (newExp >= nextRequired) {
       newExp -= nextRequired;
       newLevel++;
@@ -35,6 +36,7 @@ class Experience {
     return (100 * (1.0 + (level - 1) * 0.5)).round();
   }
 
+  /// 経験値バーの進捗割合（0.0〜1.0）
   double get progressPercentage =>
       expToNext > 0 ? currentExp / expToNext : 0.0;
 

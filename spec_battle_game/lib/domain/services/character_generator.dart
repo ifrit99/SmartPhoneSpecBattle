@@ -41,7 +41,7 @@ class CharacterGenerator {
     // キャラクター名の生成
     final name = _generateName(element, seed);
 
-    final exp = experience ?? Experience();
+    final exp = experience ?? const Experience();
 
     return Character(
       name: name,
@@ -65,28 +65,26 @@ class CharacterGenerator {
     final seed = random.nextInt(999999);
 
     // ランダムな属性
-    final element =
-        ElementType.values[random.nextInt(ElementType.values.length)];
+    final element = ElementType.values[random.nextInt(ElementType.values.length)];
 
-    // プレイヤーレベルに近いステータスで生成
-    final levelVariance = (random.nextInt(3) - 1); // -1, 0, +1
+    // プレイヤーレベルに近いステータスで生成（±1レベルの範囲）
+    final levelVariance = random.nextInt(3) - 1;
     final opponentLevel = max(1, playerLevel + levelVariance);
 
+    // HPはhpとmaxHpを同一値で初期化
+    final baseHp = 80 + random.nextInt(60);
+
     final baseStats = Stats(
-      hp: 80 + random.nextInt(60),    // 80-139
-      maxHp: 80 + random.nextInt(60),
-      atk: 8 + random.nextInt(10),     // 8-17
-      def: 8 + random.nextInt(10),     // 8-17
-      spd: 8 + random.nextInt(10),     // 8-17
+      hp: baseHp,
+      maxHp: baseHp,
+      atk: 8 + random.nextInt(10),   // 8-17
+      def: 8 + random.nextInt(10),   // 8-17
+      spd: 8 + random.nextInt(10),   // 8-17
     );
 
     final skills = getSkillsForElement(element);
     final name = _generateName(element, seed);
-    final exp = Experience(
-      level: opponentLevel,
-      currentExp: 0,
-      expToNext: 100,
-    );
+    final exp = Experience(level: opponentLevel, currentExp: 0, expToNext: 100);
 
     return Character(
       name: name,
@@ -118,8 +116,8 @@ class CharacterGenerator {
     // バッテリー残量 → 素早さ (50%=10, 100%=15)
     final spd = ((specs.batteryLevel / 10) + 5).round().clamp(8, 25);
 
-    // 少しランダム要素を追加 (±2)
-    final variance = () => random.nextInt(5) - 2;
+    // 少しランダム要素を追加（±2）
+    int variance() => random.nextInt(5) - 2;
 
     return Stats(
       hp: hp + variance(),
@@ -132,7 +130,7 @@ class CharacterGenerator {
 
   /// 属性とシードからキャラクター名を生成
   static String _generateName(ElementType element, int seed) {
-    final prefixes = {
+    const prefixes = {
       ElementType.fire: ['フレア', 'イグニス', 'ブレイズ', 'バーン'],
       ElementType.water: ['アクア', 'ウェイブ', 'タイダル', 'リップル'],
       ElementType.earth: ['テラ', 'ロック', 'ガイア', 'グランド'],
@@ -140,14 +138,12 @@ class CharacterGenerator {
       ElementType.light: ['ルミナ', 'レイ', 'シャイン', 'グロウ'],
       ElementType.dark: ['シャドウ', 'ノクス', 'ダスク', 'ヴォイド'],
     };
-
-    final suffixes = ['ナイト', 'ガーディアン', 'ウォリアー', 'メイジ',
+    const suffixes = ['ナイト', 'ガーディアン', 'ウォリアー', 'メイジ',
                       'スピリット', 'ファントム', 'チャンプ', 'キング'];
 
     final pList = prefixes[element]!;
     final prefix = pList[seed.abs() % pList.length];
     final suffix = suffixes[(seed.abs() ~/ 10) % suffixes.length];
-
     return '$prefix・$suffix';
   }
 }
