@@ -83,7 +83,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
-  void _reloadData() {
+  /// バトル後にデータを最新状態にリロードする
+  Future<void> _reloadData() async {
+    // SharedPreferencesの最新データを再取得
+    await _storage.init();
     final experience = _expService.loadExperience();
     final player = _playerCharacter;
     if (player != null) {

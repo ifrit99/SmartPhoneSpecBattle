@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../data/local_storage_service.dart';
 import '../../domain/models/character.dart';
 import '../../domain/services/battle_engine.dart';
+import '../../domain/services/experience_service.dart';
 import '../widgets/pixel_character.dart';
 
 /// バトルリザルト画面
@@ -24,6 +26,7 @@ class _ResultScreenState extends State<ResultScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
+  late Future<void> _saveFuture;
   late Animation<double> _opacityAnimation;
 
   @override
@@ -40,6 +43,23 @@ class _ResultScreenState extends State<ResultScreen>
       CurvedAnimation(parent: _controller, curve: Curves.easeIn),
     );
     _controller.forward();
+
+    // バトル結果を永続化する（Futureを保持して遷移前に完了を保証）
+    _saveFuture = _saveResult();
+  }
+
+  /// バトル結果をLocalStorageに保存する
+  Future<void> _saveResult() async {
+    final storage = LocalStorageService();
+    await storage.init();
+    final expService = ExperienceService(storage);
+
+    // 経験値を加算して保存
+    final currentExp = expService.loadExperience();
+    await expService.addExp(currentExp, widget.result.expGained);
+
+    // 戦績を記録
+    await expService.recordBattle(widget.result.playerWon);
   }
 
   @override
@@ -159,9 +179,12 @@ class _ResultScreenState extends State<ResultScreen>
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () {
-                // ホーム画面まで戻る
-                Navigator.of(context).popUntil((route) => route.isFirst);
+              onPressed: () async {
+                // 保存完了を待ってからホーム画面に戻る
+                await _saveFuture;
+                if (mounted) {
+                  Navigator.of(context).popUntil((route) => route.isFirst);
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: won ? const Color(0xFF00B894) : const Color(0xFF2D3748),
