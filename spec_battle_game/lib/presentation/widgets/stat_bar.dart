@@ -39,35 +39,39 @@ class StatBar extends StatelessWidget {
               ),
             ),
           Expanded(
-            child: Stack(
-              children: [
-                Container(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return Container(
                   height: height,
                   decoration: BoxDecoration(
                     color: backgroundColor.withValues(alpha: 0.3),
                     borderRadius: BorderRadius.circular(height / 2),
                   ),
-                ),
-                FractionallySizedBox(
-                  widthFactor: value.clamp(0.0, 1.0),
-                  child: Container(
-                    height: height,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [color, color.withValues(alpha: 0.7)],
-                      ),
-                      borderRadius: BorderRadius.circular(height / 2),
-                      boxShadow: [
-                        BoxShadow(
-                          color: color.withValues(alpha: 0.4),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
+                  child: Stack(
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 500),
+                        curve: Curves.easeOutCubic,
+                        width: constraints.maxWidth * value.clamp(0.0, 1.0),
+                        height: height,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [color, color.withValues(alpha: 0.7)],
+                          ),
+                          borderRadius: BorderRadius.circular(height / 2),
+                          boxShadow: [
+                            BoxShadow(
+                              color: color.withValues(alpha: 0.4),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
+                );
+              },
             ),
           ),
           if (trailingText.isNotEmpty)

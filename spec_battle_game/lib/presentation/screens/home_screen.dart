@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../data/device_info_service.dart';
 import '../../data/local_storage_service.dart';
@@ -23,9 +24,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool _loading = true;
   late LocalStorageService _storage;
   late ExperienceService _expService;
+  final DeviceInfoService _deviceInfo = DeviceInfoService();
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  
+  StreamSubscription<int>? _batterySubscription;
+  int _currentBatteryLevel = 100;
 
   @override
   void initState() {
@@ -38,12 +43,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
     _initGame();
+    _startBatteryMonitoring();
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
+    _batterySubscription?.cancel();
     super.dispose();
+  }
+
+  void _startBatteryMonitoring() {
+    _batterySubscription = _deviceInfo.batteryLevelStream.listen((level) {
+      if (mounted) {
+        setState(() {
+          _currentBatteryLevel = level;
+          if (_playerCharacter != null) {
+            _playerCharacter = _playerCharacter!.copyWith(batteryLevel: level);
+          }
+        });
+      }
+    });
   }
 
   Future<void> _initGame() async {
@@ -51,12 +71,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     await _storage.init();
     _expService = ExperienceService(_storage);
 
-    final deviceInfo = DeviceInfoService();
-    final specs = await deviceInfo.getDeviceSpecs();
+    final specs = await _deviceInfo.getDeviceSpecs();
 
     // 画面サイズは後で設定（BuildContext不要の場合のデフォルト）
     final experience = _expService.loadExperience();
-    final character = CharacterGenerator.generate(specs, experience: experience);
+    
+    // 生成時に最新のバッテリーレベルを反映
+    final batterySpecs = specs.withBattery(_currentBatteryLevel);
+    final character = CharacterGenerator.generate(batterySpecs, experience: experience);
 
     setState(() {
       _playerCharacter = character;
@@ -104,6 +126,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           armIndex: player.armIndex,
           legIndex: player.legIndex,
           colorPaletteIndex: player.colorPaletteIndex,
+          statusEffects: player.statusEffects,
+          batteryLevel: _currentBatteryLevel,
         );
       });
     }
@@ -155,30 +179,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          const SizedBox(height: 20),
-          // タイトル
-          Text(
-            'SPEC BATTLE',
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-              letterSpacing: 4,
-              shadows: [
-                Shadow(
-                  color: const Color(0xFF6C5CE7).withValues(alpha: 0.5),
-                  blurRadius: 20,
-                ),
-              ],
-            ),
-          ),
-          const Text(
-            'スペック対戦ゲーム',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white38,
-              letterSpacing: 2,
-            ),
+          // ヘッダー（タイトル + バッテリー）
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'SPEC BATTLE',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                      letterSpacing: 4,
+                      shadows: [
+                        Shadow(
+                          color: const Color(0xFF6C5CE7).withValues(alpha: 0.5),
+                          blurRadius: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Text(
+                    'スペック対戦ゲーム',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white38,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ],
+              ),
+              _buildBatteryIndicator(),
+            ],
           ),
           const SizedBox(height: 32),
 
@@ -208,6 +243,60 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           const Text(
             'タップしてキャラクター詳細を見る',
             style: TextStyle(color: Colors.white24, fontSize: 11),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBatteryIndicator() {
+    Color batteryColor = Colors.greenAccent;
+    IconData batteryIcon = Icons.battery_full;
+
+    if (_currentBatteryLevel <= 20) {
+      batteryColor = Colors.redAccent;
+      batteryIcon = Icons.battery_alert;
+    } else if (_currentBatteryLevel <= 50) {
+      batteryColor = Colors.amberAccent;
+      batteryIcon = Icons.battery_std;
+    }
+
+    // SPD補正値の計算
+    final spdBonus = ((_currentBatteryLevel - 50) * 0.002 * 100).round();
+    final bonusText = spdBonus >= 0 ? '+$spdBonus%' : '$spdBonus%';
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white10,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          Row(
+            children: [
+              Icon(batteryIcon, color: batteryColor, size: 16),
+              const SizedBox(width: 4),
+              Text(
+                '$_currentBatteryLevel%',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'SPD $bonusText',
+            style: TextStyle(
+              color: batteryColor,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -281,6 +370,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   trailingText:
                       '${player.experience.currentExp}/${player.experience.expToNext}',
                   height: 8,
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      const Icon(Icons.flash_on, size: 12, color: Colors.amber),
+                      const SizedBox(width: 4),
+                      Text(
+                        'SPD: ${player.effectiveStats.spd}',
+                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

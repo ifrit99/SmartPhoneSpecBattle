@@ -1,9 +1,12 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../domain/models/character.dart';
 import '../../domain/enums/element_type.dart';
 import '../../domain/services/battle_engine.dart';
 import '../widgets/pixel_character.dart';
 import '../widgets/stat_bar.dart';
+import '../widgets/damage_popup.dart';
+import '../widgets/skill_effect_overlay.dart';
 import 'result_screen.dart';
 
 /// バトル画面 — 自動バトルのアニメーション表示
@@ -27,7 +30,11 @@ class _BattleScreenState extends State<BattleScreen>
   late Character _currentPlayer;
   late Character _currentEnemy;
 
-  // アニメーション
+  // アニメーション・演出用
+  final List<Widget> _popups = [];
+  Widget? _currentSkillOverlay;
+  int _currentTurn = 1;
+  
   late AnimationController _shakeController;
   late AnimationController _flashController;
   late Animation<double> _shakeAnimation;
@@ -70,41 +77,86 @@ class _BattleScreenState extends State<BattleScreen>
     _showNextLog();
   }
 
-  void _showNextLog() {
+  Future<void> _showNextLog() async {
     if (_currentLogIndex >= _result.log.length) {
-      setState(() {
-        _battleComplete = true;
-      });
+      if (mounted) {
+        setState(() {
+          _battleComplete = true;
+        });
+      }
       return;
     }
 
-    Future.delayed(const Duration(milliseconds: 800), () {
-      if (!mounted) return;
+    final entry = _result.log[_currentLogIndex];
 
-      final entry = _result.log[_currentLogIndex];
-      setState(() {
-        _displayedLog.add(entry);
+    // ターン更新の検知
+    if (entry.message.contains('--- ターン')) {
+      final match = RegExp(r'ターン (\d+)').firstMatch(entry.message);
+      if (match != null) {
+        setState(() {
+          _currentTurn = int.parse(match.group(1)!);
+        });
+      }
+    }
 
-        // ダメージ演出
-        if (entry.damage > 0) {
-          _shakeController.forward().then((_) => _shakeController.reverse());
-          _flashController.forward().then((_) => _flashController.reverse());
+    // スキル発動時のエフェクト待機
+    if (entry.actionType == BattleActionType.skill && !entry.message.contains('防御力が上がった')) {
+      // 防御バフ以外（攻撃・回復）の場合にエフェクト表示
+      final isPlayerAction = entry.actorName == _currentPlayer.name ||
+          entry.actorName == widget.player.name;
+      final actor = isPlayerAction ? _currentPlayer : _currentEnemy;
+      
+      // 簡易的にアクターの属性を使用
+      await _showSkillEffect(entry.actionName, actor.element);
+    }
 
-          // HPバーの更新
-          if (entry.actorName == widget.player.name ||
-              entry.actorName == _currentPlayer.name) {
-            final newHp = _currentEnemy.currentStats.hp - entry.damage;
-            _currentEnemy = _currentEnemy.withHp(newHp);
-          } else {
-            final newHp = _currentPlayer.currentStats.hp - entry.damage;
-            _currentPlayer = _currentPlayer.withHp(newHp);
-          }
+    if (!mounted) return;
+
+    setState(() {
+      _displayedLog.add(entry);
+
+      final isPlayerActor = entry.actorName == _currentPlayer.name ||
+          entry.actorName == widget.player.name;
+
+      // ダメージ演出
+      if (entry.damage > 0) {
+        _shakeController.forward().then((_) => _shakeController.reverse());
+        _flashController.forward().then((_) => _flashController.reverse());
+
+        // HPバーの更新 & ポップアップ
+        if (isPlayerActor) {
+          // 敵がダメージ
+          final newHp = max(0, _currentEnemy.currentStats.hp - entry.damage);
+          _currentEnemy = _currentEnemy.withHp(newHp);
+          _addDamagePopup(entry.damage, false, false, false);
+        } else {
+          // プレイヤーがダメージ
+          final newHp = max(0, _currentPlayer.currentStats.hp - entry.damage);
+          _currentPlayer = _currentPlayer.withHp(newHp);
+          _addDamagePopup(entry.damage, true, false, false);
         }
-      });
-
-      _currentLogIndex++;
-      _showNextLog();
+      }
+      // 回復演出
+      else if (entry.healing > 0) {
+        if (isPlayerActor) {
+          final newHp = min(_currentPlayer.currentStats.maxHp,
+              _currentPlayer.currentStats.hp + entry.healing);
+          _currentPlayer = _currentPlayer.withHp(newHp);
+          _addDamagePopup(entry.healing, true, false, true);
+        } else {
+          final newHp = min(_currentEnemy.currentStats.maxHp,
+              _currentEnemy.currentStats.hp + entry.healing);
+          _currentEnemy = _currentEnemy.withHp(newHp);
+          _addDamagePopup(entry.healing, false, false, true);
+        }
+      }
     });
+
+    _currentLogIndex++;
+    
+    // 次のログまでのウェイト
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (mounted) _showNextLog();
   }
 
   void _skipToEnd() {
@@ -127,14 +179,20 @@ class _BattleScreenState extends State<BattleScreen>
     return Scaffold(
       backgroundColor: const Color(0xFF0D1B2A),
       body: SafeArea(
-        child: Column(
+        child: Stack(
           children: [
-            // バトルフィールド上部
-            _buildBattleField(),
-            // バトルログ
-            Expanded(child: _buildBattleLog()),
-            // ボタン
-            _buildActionButtons(),
+            Column(
+              children: [
+                // バトルフィールド上部
+                _buildBattleField(),
+                // バトルログ
+                Expanded(child: _buildBattleLog()),
+                // ボタン
+                _buildActionButtons(),
+              ],
+            ),
+            // スキルエフェクトオーバーレイ
+            if (_currentSkillOverlay != null) _currentSkillOverlay!,
           ],
         ),
       ),
@@ -144,6 +202,7 @@ class _BattleScreenState extends State<BattleScreen>
   Widget _buildBattleField() {
     return Container(
       height: 280,
+      width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
@@ -155,53 +214,85 @@ class _BattleScreenState extends State<BattleScreen>
           ],
         ),
       ),
-      child: Column(
+      child: Stack(
         children: [
-          // 上部: 敵キャラクター
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          // ターン表示
+          Align(
+            alignment: Alignment.topCenter,
+            child: Container(
+              margin: const EdgeInsets.only(top: 0),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.black45,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white24),
+              ),
+              child: Text(
+                'TURN $_currentTurn',
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.2,
+                ),
+              ),
+            ),
+          ),
+          Column(
             children: [
-              Expanded(child: _buildCharacterInfo(_currentEnemy, false)),
-              AnimatedBuilder(
-                animation: _shakeAnimation,
-                builder: (context, child) {
-                  final isEnemyHit = _displayedLog.isNotEmpty &&
-                      _displayedLog.last.damage > 0 &&
-                      (_displayedLog.last.actorName == _currentPlayer.name ||
-                       _displayedLog.last.actorName == widget.player.name);
-                  return Transform.translate(
-                    offset: Offset(isEnemyHit ? _shakeAnimation.value : 0, 0),
-                    child: PixelCharacter(
-                        character: _currentEnemy,
-                        size: 80,
-                        flipHorizontal: true),
-                  );
-                },
+              // 上部: 敵キャラクター
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: _buildCharacterInfo(_currentEnemy, false)),
+                    AnimatedBuilder(
+                      animation: _shakeAnimation,
+                      builder: (context, child) {
+                        final isEnemyHit = _displayedLog.isNotEmpty &&
+                            _displayedLog.last.damage > 0 &&
+                            (_displayedLog.last.actorName == _currentPlayer.name ||
+                             _displayedLog.last.actorName == widget.player.name);
+                        return Transform.translate(
+                          offset: Offset(isEnemyHit ? _shakeAnimation.value : 0, 0),
+                          child: PixelCharacter(
+                              character: _currentEnemy,
+                              size: 80,
+                              flipHorizontal: true),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              // 下部: プレイヤーキャラクター
+              Expanded(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    AnimatedBuilder(
+                      animation: _shakeAnimation,
+                      builder: (context, child) {
+                        final isPlayerHit = _displayedLog.isNotEmpty &&
+                            _displayedLog.last.damage > 0 &&
+                            _displayedLog.last.actorName != _currentPlayer.name &&
+                            _displayedLog.last.actorName != widget.player.name;
+                        return Transform.translate(
+                          offset: Offset(isPlayerHit ? -_shakeAnimation.value : 0, 0),
+                          child: PixelCharacter(
+                              character: _currentPlayer, size: 80),
+                        );
+                      },
+                    ),
+                    Expanded(child: _buildCharacterInfo(_currentPlayer, true)),
+                  ],
+                ),
               ),
             ],
           ),
-          const Spacer(),
-          // 下部: プレイヤーキャラクター
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              AnimatedBuilder(
-                animation: _shakeAnimation,
-                builder: (context, child) {
-                  final isPlayerHit = _displayedLog.isNotEmpty &&
-                      _displayedLog.last.damage > 0 &&
-                      _displayedLog.last.actorName != _currentPlayer.name &&
-                      _displayedLog.last.actorName != widget.player.name;
-                  return Transform.translate(
-                    offset: Offset(isPlayerHit ? -_shakeAnimation.value : 0, 0),
-                    child: PixelCharacter(
-                        character: _currentPlayer, size: 80),
-                  );
-                },
-              ),
-              Expanded(child: _buildCharacterInfo(_currentPlayer, true)),
-            ],
-          ),
+          // ダメージポップアップレイヤー
+          ..._popups,
         ],
       ),
     );
@@ -334,5 +425,63 @@ class _BattleScreenState extends State<BattleScreen>
         ],
       ),
     );
+  }
+
+  /// ダメージポップアップを追加
+  void _addDamagePopup(int value, bool isPlayerDamage, bool isCritical, bool isHealing) {
+    if (!mounted) return;
+    
+    final key = UniqueKey();
+    final random = Random();
+    final offsetX = random.nextDouble() * 60 - 30;
+    
+    // 画面サイズに対する相対位置の調整 (Container height=280内)
+    // 敵: Top付近, プレイヤー: Bottom付近
+    
+    final widget = Positioned(
+      key: key,
+      top: isPlayerDamage ? null : 60 + random.nextDouble() * 20,
+      bottom: isPlayerDamage ? 60 + random.nextDouble() * 20 : null,
+      right: isPlayerDamage ? 60 + offsetX : null, // プレイヤーは右寄り
+      left: isPlayerDamage ? null : 60 + offsetX, // 敵は左寄り
+      child: DamagePopup(
+        value: value,
+        isCritical: isCritical, // 現状はクリティカル判定ロジックがないのでfalse
+        isHealing: isHealing,
+        onComplete: () {
+          if (mounted) {
+            setState(() {
+              _popups.removeWhere((w) => w.key == key);
+            });
+          }
+        },
+      ),
+    );
+    
+    setState(() {
+      _popups.add(widget);
+    });
+  }
+
+  /// スキルエフェクトを表示
+  Future<void> _showSkillEffect(String skillName, ElementType element) async {
+    if (!mounted) return;
+    
+    setState(() {
+      _currentSkillOverlay = SkillEffectOverlay(
+        skillName: skillName,
+        element: element,
+        onComplete: () {
+          if (mounted) {
+            setState(() {
+              _currentSkillOverlay = null;
+            });
+          }
+        },
+      );
+    });
+    
+    // エフェクトのピークまで少し待つ
+    await Future.delayed(const Duration(milliseconds: 1000));
   }
 }

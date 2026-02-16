@@ -2,7 +2,9 @@ import 'dart:math';
 import '../models/character.dart';
 import '../models/skill.dart';
 import '../models/experience.dart';
+import '../models/status_effect.dart';
 import '../enums/element_type.dart';
+import '../enums/effect_type.dart';
 
 /// バトルアクションの種類
 enum BattleActionType {
@@ -79,22 +81,40 @@ class BattleEngine {
       turn++;
       log.add(BattleLogEntry(actorName: 'システム', message: '\n--- ターン $turn ---'));
 
-      // SPDの高い方が先攻
-      final playerFirst = currentPlayer.currentStats.spd >= currentEnemy.currentStats.spd;
+      // SPDの高い方が先攻（effectiveStatsを使用）
+      final playerSpd = currentPlayer.effectiveStats.spd;
+      final enemySpd = currentEnemy.effectiveStats.spd;
+      final playerFirst = playerSpd >= enemySpd;
 
       if (playerFirst) {
-        currentEnemy = _executeAction(currentPlayer, currentEnemy, true, log);
+        // プレイヤーの行動
+        final result1 = _executeAction(currentPlayer, currentEnemy, true, log);
+        currentPlayer = result1.$1;
+        currentEnemy = result1.$2;
+
         if (!currentEnemy.currentStats.isAlive) break;
-        currentPlayer = _executeAction(currentEnemy, currentPlayer, false, log);
+
+        // 敵の行動
+        final result2 = _executeAction(currentEnemy, currentPlayer, false, log);
+        currentEnemy = result2.$1;
+        currentPlayer = result2.$2;
       } else {
-        currentPlayer = _executeAction(currentEnemy, currentPlayer, false, log);
+        // 敵の行動
+        final result1 = _executeAction(currentEnemy, currentPlayer, false, log);
+        currentEnemy = result1.$1;
+        currentPlayer = result1.$2;
+
         if (!currentPlayer.currentStats.isAlive) break;
-        currentEnemy = _executeAction(currentPlayer, currentEnemy, true, log);
+
+        // プレイヤーの行動
+        final result2 = _executeAction(currentPlayer, currentEnemy, true, log);
+        currentPlayer = result2.$1;
+        currentEnemy = result2.$2;
       }
 
-      // クールダウンを減らす
-      _reduceCooldowns(_playerCooldowns);
-      _reduceCooldowns(_enemyCooldowns);
+      // ターン終了時の処理（バフ経過、クールダウン減少）
+      currentPlayer = _onTurnEnd(currentPlayer, _playerCooldowns, log);
+      currentEnemy = _onTurnEnd(currentEnemy, _enemyCooldowns, log);
     }
 
     final playerWon = currentPlayer.currentStats.isAlive;
@@ -115,10 +135,43 @@ class BattleEngine {
     );
   }
 
-  /// AIが行動を選択して実行
-  Character _executeAction(
+  /// ターン終了処理（ステータス効果更新、クールダウン減少）
+  Character _onTurnEnd(Character char, Map<String, int> cooldowns, List<BattleLogEntry> log) {
+    // クールダウン減少
+    for (final key in cooldowns.keys.toList()) {
+      cooldowns[key] = max(0, cooldowns[key]! - 1);
+    }
+
+    // ステータス効果の経過
+    final newEffects = <StatusEffect>[];
+    for (final effect in char.statusEffects) {
+      final newEffect = effect.decreaseDuration();
+      if (newEffect.duration > 0) {
+        newEffects.add(newEffect);
+      } else {
+        log.add(BattleLogEntry(
+          actorName: char.name,
+          message: '${char.name} の ${effect.type.label} 効果が切れた。',
+        ));
+      }
+    }
+    return char.copyWith(statusEffects: newEffects);
+  }
+
+  /// AIが行動を選択して実行 (戻り値: (Attacker, Defender))
+  (Character, Character) _executeAction(
       Character attacker, Character defender, bool isPlayer,
       List<BattleLogEntry> log) {
+    
+    // スタン判定
+    if (attacker.statusEffects.any((e) => e.type == EffectType.stun)) {
+      log.add(BattleLogEntry(
+        actorName: attacker.name,
+        message: '${attacker.name} はスタンしていて動けない！',
+      ));
+      return (attacker, defender);
+    }
+
     final action = _selectAction(attacker, defender, isPlayer);
     switch (action) {
       case BattleActionType.attack:
@@ -130,6 +183,8 @@ class BattleEngine {
     }
   }
 
+  // ... (省略: _selectAction は変更なし、後で全体を確認)
+  
   /// AIの行動選択ロジック
   BattleActionType _selectAction(
       Character attacker, Character defender, bool isPlayer) {
@@ -145,7 +200,7 @@ class BattleEngine {
     if (hpRatio < 0.3 && _random.nextDouble() < 0.4) {
       return BattleActionType.defend; // HP低い時は防御確率UP
     }
-    if (hasAvailableSkill && _random.nextDouble() < 0.35) {
+    if (hasAvailableSkill && _random.nextDouble() < 0.45) { // スキル使用確率ちょい上げ
       return BattleActionType.skill;
     }
     if (_random.nextDouble() < 0.15) {
@@ -154,12 +209,15 @@ class BattleEngine {
     return BattleActionType.attack;
   }
 
+
   /// 通常攻撃
-  Character _doAttack(
+  (Character, Character) _doAttack(
       Character attacker, Character defender, List<BattleLogEntry> log) {
     final elemMult = elementMultiplier(attacker.element, defender.element);
-    final rawDamage = attacker.currentStats.atk * 1.0 * elemMult
-        - defender.currentStats.def * 0.5;
+    
+    // effectiveStatsを使用してダメージ計算
+    final rawDamage = attacker.effectiveStats.atk * 1.0 * elemMult
+        - defender.effectiveStats.def * 0.5;
     final damage = max(1, rawDamage.round());
 
     // 属性相性メッセージ
@@ -174,12 +232,15 @@ class BattleEngine {
       damage: damage,
       message: '${attacker.name} の攻撃！ $damage ダメージ！$elemMsg',
     ));
-    return defender.withHp(defender.currentStats.hp - damage);
+    
+    // 相手のHPを減らす
+    return (attacker, defender.withHp(defender.currentStats.hp - damage));
   }
 
-  /// 防御（HP微回復）
-  Character _doDefend(
+  /// 防御（HP微回復 + 防御バフもつける？）
+  (Character, Character) _doDefend(
       Character attacker, Character defender, List<BattleLogEntry> log) {
+    // 防御時は最大HPの5%回復
     final healAmount = (attacker.currentStats.maxHp * 0.05).round();
 
     log.add(BattleLogEntry(
@@ -189,11 +250,14 @@ class BattleEngine {
       healing: healAmount,
       message: '${attacker.name} は防御の構えをとった！ HP $healAmount 回復！',
     ));
-    return defender;
+    
+    // 自分のHPを回復
+    final newHp = min(attacker.currentStats.maxHp, attacker.currentStats.hp + healAmount);
+    return (attacker.withHp(newHp), defender);
   }
 
   /// スキル使用
-  Character _doSkill(
+  (Character, Character) _doSkill(
       Character attacker, Character defender, bool isPlayer,
       List<BattleLogEntry> log) {
     final cooldowns = isPlayer ? _playerCooldowns : _enemyCooldowns;
@@ -207,13 +271,35 @@ class BattleEngine {
     final skill = availableSkills[_random.nextInt(availableSkills.length)];
     cooldowns[skill.name] = skill.cooldown;
 
+    Character newAttacker = attacker;
+    Character newDefender = defender;
+
+    // バフ・デバフの付与処理
+    final effect = skill.effect;
+    if (effect != null) {
+      if (skill.isSelfTarget) {
+        newAttacker = _addStatusEffect(newAttacker, effect);
+        log.add(BattleLogEntry(
+          actorName: attacker.name,
+          message: '${attacker.name} に ${effect.description} が付与された！',
+        ));
+      } else {
+        newDefender = _addStatusEffect(newDefender, effect);
+        log.add(BattleLogEntry(
+          actorName: attacker.name,
+          message: '${defender.name} に ${effect.description} が付与された！',
+        ));
+      }
+    }
+
     switch (skill.category) {
       case SkillCategory.attack:
-        // 攻撃スキル: 属性倍率 × スキル倍率でダメージ計算
         final elemMult = elementMultiplier(skill.element, defender.element);
-        final rawDamage = attacker.currentStats.atk * skill.multiplier * elemMult
-            - defender.currentStats.def * 0.3;
+        // effectiveStatsを使用
+        final rawDamage = newAttacker.effectiveStats.atk * skill.multiplier * elemMult
+            - newDefender.effectiveStats.def * 0.3;
         final damage = max(1, rawDamage.round());
+        
         log.add(BattleLogEntry(
           actorName: attacker.name,
           actionType: BattleActionType.skill,
@@ -221,36 +307,80 @@ class BattleEngine {
           damage: damage,
           message: '${attacker.name} の ${skill.name}！ $damage ダメージ！',
         ));
-        return defender.withHp(defender.currentStats.hp - damage);
+        newDefender = newDefender.withHp(newDefender.currentStats.hp - damage);
+        break;
 
       case SkillCategory.defense:
-        // 防御スキル: 防御力バフ（現在は演出のみ）
+        // 防御スキルの場合、ロジック自体はStatusEffectで処理されることが多いが
+        // 追加のメッセージや即時効果があればここに記述
         log.add(BattleLogEntry(
           actorName: attacker.name,
           actionType: BattleActionType.skill,
           actionName: skill.name,
-          message: '${attacker.name} の ${skill.name}！ 防御力が上がった！',
+          message: '${attacker.name} の ${skill.name}！',
         ));
-        return defender;
+        break;
 
       case SkillCategory.special:
-        // 特殊スキル: HP回復
-        final healAmount = (attacker.currentStats.maxHp * skill.multiplier).round();
-        log.add(BattleLogEntry(
-          actorName: attacker.name,
-          actionType: BattleActionType.skill,
-          actionName: skill.name,
-          healing: healAmount,
-          message: '${attacker.name} の ${skill.name}！ HP $healAmount 回復！',
-        ));
-        return defender;
+        // 回復スキルなど
+        if (skill.isSelfTarget && skill.multiplier > 0) {
+           final healAmount = (newAttacker.currentStats.maxHp * skill.multiplier).round();
+           final newHp = min(newAttacker.currentStats.maxHp, newAttacker.currentStats.hp + healAmount);
+           newAttacker = newAttacker.withHp(newHp);
+           
+           log.add(BattleLogEntry(
+            actorName: attacker.name,
+            actionType: BattleActionType.skill,
+            actionName: skill.name,
+            healing: healAmount, // ここでヒール数値を渡す
+            message: '${attacker.name} の ${skill.name}！ HP $healAmount 回復！',
+          ));
+        } else if (!skill.isSelfTarget && skill.multiplier > 0 && skill.category == SkillCategory.special) {
+           // ドレインなど（攻撃＋回復）はロジックが複雑だが、とりあえず攻撃として扱うか、
+           // 個別に実装が必要。
+           // 今回はカースドレイン（HP吸収）がある。
+           // 敵にダメージを与え、自分を回復する。
+           if (skill.name == 'カースドレイン') {
+              // multiplier 0.3 とかなので、攻撃力依存にする
+              final rawDamage = newAttacker.effectiveStats.atk * skill.multiplier;
+              final dmg = max(1, rawDamage.round());
+              
+              newDefender = newDefender.withHp(newDefender.currentStats.hp - dmg);
+              // 回復
+              final heal = dmg; // 吸収なので同量回復
+              final newHp = min(newAttacker.currentStats.maxHp, newAttacker.currentStats.hp + heal);
+              newAttacker = newAttacker.withHp(newHp);
+
+              log.add(BattleLogEntry(
+                actorName: attacker.name,
+                actionType: BattleActionType.skill,
+                actionName: skill.name,
+                damage: dmg,
+                healing: heal,
+                message: '${attacker.name} の ${skill.name}！ $dmg ダメージを与え、体力を奪った！',
+              ));
+           } else {
+             // その他の特殊スキル (バフのみ・デバフのみの場合はここ)
+             log.add(BattleLogEntry(
+              actorName: attacker.name,
+              actionType: BattleActionType.skill,
+              actionName: skill.name,
+              message: '${attacker.name} の ${skill.name}！',
+            ));
+           }
+        }
+        break;
     }
+    
+    return (newAttacker, newDefender);
   }
 
-  /// クールダウンを1ターン分減少させる
-  void _reduceCooldowns(Map<String, int> cooldowns) {
-    for (final key in cooldowns.keys.toList()) {
-      cooldowns[key] = max(0, cooldowns[key]! - 1);
-    }
+  Character _addStatusEffect(Character char, StatusEffect effect) {
+    final effects = List<StatusEffect>.from(char.statusEffects);
+    // 同じIDの効果があれば削除（上書き）
+    effects.removeWhere((e) => e.id == effect.id);
+    effects.add(effect);
+    return char.copyWith(statusEffects: effects);
   }
+
 }
