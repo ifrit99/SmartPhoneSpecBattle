@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../domain/models/character.dart';
 import '../../domain/enums/element_type.dart';
+import '../../domain/enums/effect_type.dart';
 import '../../domain/models/skill.dart';
 import '../widgets/pixel_character.dart';
 import '../widgets/stat_bar.dart';
@@ -30,6 +31,11 @@ class CharacterScreen extends StatelessWidget {
             // ステータス詳細
             _buildStatsCard(context),
             const SizedBox(height: 20),
+            // バフ/デバフ表示（効果がある場合のみ）
+            if (character.statusEffects.isNotEmpty) ...[
+              _buildStatusEffectsCard(context),
+              const SizedBox(height: 20),
+            ],
             // スキル一覧
             _buildSkillsCard(context),
             const SizedBox(height: 20),
@@ -193,6 +199,45 @@ class CharacterScreen extends StatelessWidget {
                   ),
                 ),
               )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusEffectsCard(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B2838),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('状態効果',
+              style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white)),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: character.statusEffects.map((effect) {
+              final isBuff = effect.type.isBuff;
+              final color = isBuff ? Colors.green : Colors.red;
+              return Chip(
+                label: Text(
+                  '${effect.type.label} (${effect.duration}T)',
+                  style: TextStyle(color: color, fontSize: 12),
+                ),
+                backgroundColor: color.withValues(alpha: 0.15),
+                side: BorderSide(color: color.withValues(alpha: 0.5)),
+              );
+            }).toList(),
+          ),
         ],
       ),
     );

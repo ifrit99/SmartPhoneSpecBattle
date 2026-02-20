@@ -21,6 +21,7 @@ class BattleLogEntry {
   final int damage;
   final int healing;
   final String message;
+  final bool isCritical;
 
   const BattleLogEntry({
     required this.actorName,
@@ -29,6 +30,7 @@ class BattleLogEntry {
     this.damage = 0,
     this.healing = 0,
     this.message = '',
+    this.isCritical = false,
   });
 
   @override
@@ -41,12 +43,16 @@ class BattleResult {
   final int turnsPlayed;
   final int expGained;
   final List<BattleLogEntry> log;
+  final int finalPlayerHp;
+  final int finalEnemyHp;
 
   const BattleResult({
     required this.playerWon,
     this.turnsPlayed = 0,
     this.expGained = 0,
     this.log = const [],
+    this.finalPlayerHp = 0,
+    this.finalEnemyHp = 0,
   });
 }
 
@@ -132,6 +138,8 @@ class BattleEngine {
       turnsPlayed: turn,
       expGained: expGained,
       log: log,
+      finalPlayerHp: currentPlayer.currentStats.hp,
+      finalEnemyHp: currentEnemy.currentStats.hp,
     );
   }
 
@@ -144,7 +152,31 @@ class BattleEngine {
 
     // ステータス効果の経過
     final newEffects = <StatusEffect>[];
+    var currentHp = char.currentStats.hp;
+    final maxHp = char.currentStats.maxHp;
+
     for (final effect in char.statusEffects) {
+      // regen: maxHp * value% 回復
+      if (effect.type == EffectType.regen) {
+        final healAmt = (maxHp * effect.value / 100).round();
+        currentHp = min(maxHp, currentHp + healAmt);
+        log.add(BattleLogEntry(
+          actorName: char.name,
+          healing: healAmt,
+          message: '${char.name} は ${effect.type.label} で HP $healAmt 回復した！',
+        ));
+      }
+      // poison: maxHp * value% ダメージ
+      else if (effect.type == EffectType.poison) {
+        final dmgAmt = (maxHp * effect.value / 100).round();
+        currentHp = max(0, currentHp - dmgAmt);
+        log.add(BattleLogEntry(
+          actorName: char.name,
+          damage: dmgAmt,
+          message: '${char.name} は ${effect.type.label} で $dmgAmt ダメージを受けた！',
+        ));
+      }
+
       final newEffect = effect.decreaseDuration();
       if (newEffect.duration > 0) {
         newEffects.add(newEffect);
@@ -155,7 +187,7 @@ class BattleEngine {
         ));
       }
     }
-    return char.copyWith(statusEffects: newEffects);
+    return char.withHp(currentHp).copyWith(statusEffects: newEffects);
   }
 
   /// AIが行動を選択して実行 (戻り値: (Attacker, Defender))
@@ -214,9 +246,16 @@ class BattleEngine {
   (Character, Character) _doAttack(
       Character attacker, Character defender, List<BattleLogEntry> log) {
     final elemMult = elementMultiplier(attacker.element, defender.element);
-    
+    final attackerSpd = attacker.effectiveStats.spd;
+    final defenderSpd = defender.effectiveStats.spd;
+
+    // クリティカル判定: SPDが相手の1.2倍以上 OR 属性有利で25%の確率
+    final critEligible = attackerSpd >= defenderSpd * 1.2 || elemMult > 1.0;
+    final isCritical = critEligible && _random.nextDouble() < 0.25;
+    final critMult = isCritical ? 1.5 : 1.0;
+
     // effectiveStatsを使用してダメージ計算
-    final rawDamage = attacker.effectiveStats.atk * 1.0 * elemMult
+    final rawDamage = attacker.effectiveStats.atk * 1.0 * elemMult * critMult
         - defender.effectiveStats.def * 0.5;
     final damage = max(1, rawDamage.round());
 
@@ -224,15 +263,17 @@ class BattleEngine {
     String elemMsg = '';
     if (elemMult > 1.0) elemMsg = ' 効果抜群！';
     if (elemMult < 1.0) elemMsg = ' いまひとつ…';
+    final critMsg = isCritical ? ' クリティカル！' : '';
 
     log.add(BattleLogEntry(
       actorName: attacker.name,
       actionType: BattleActionType.attack,
       actionName: '攻撃',
       damage: damage,
-      message: '${attacker.name} の攻撃！ $damage ダメージ！$elemMsg',
+      message: '${attacker.name} の攻撃！$critMsg $damage ダメージ！$elemMsg',
+      isCritical: isCritical,
     ));
-    
+
     // 相手のHPを減らす
     return (attacker, defender.withHp(defender.currentStats.hp - damage));
   }

@@ -134,20 +134,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final player = _playerCharacter;
     if (player != null) {
       setState(() {
-        _playerCharacter = Character(
-          name: player.name,
-          element: player.element,
-          baseStats: player.baseStats,
-          currentStats: player.baseStats.levelUp(experience.level),
-          skills: player.skills,
+        _playerCharacter = player.copyWith(
           experience: experience,
-          seed: player.seed,
-          headIndex: player.headIndex,
-          bodyIndex: player.bodyIndex,
-          armIndex: player.armIndex,
-          legIndex: player.legIndex,
-          colorPaletteIndex: player.colorPaletteIndex,
-          statusEffects: player.statusEffects,
+          currentStats: player.baseStats.levelUp(experience.level),
           batteryLevel: _currentBatteryLevel,
         );
       });

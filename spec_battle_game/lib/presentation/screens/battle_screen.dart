@@ -159,12 +159,12 @@ class _BattleScreenState extends State<BattleScreen>
           // 敵がダメージ
           final newHp = max(0, _currentEnemy.currentStats.hp - entry.damage);
           _currentEnemy = _currentEnemy.withHp(newHp);
-          _addDamagePopup(entry.damage, false, false, false);
+          _addDamagePopup(entry.damage, false, entry.isCritical, false);
         } else {
           // プレイヤーがダメージ
           final newHp = max(0, _currentPlayer.currentStats.hp - entry.damage);
           _currentPlayer = _currentPlayer.withHp(newHp);
-          _addDamagePopup(entry.damage, true, false, false);
+          _addDamagePopup(entry.damage, true, entry.isCritical, false);
         }
       }
       // 回復演出
@@ -196,12 +196,9 @@ class _BattleScreenState extends State<BattleScreen>
       _currentLogIndex = _result.log.length;
       _battleComplete = true;
 
-      // 最終HP状態を反映
-      if (_result.playerWon) {
-        _currentEnemy = _currentEnemy.withHp(0);
-      } else {
-        _currentPlayer = _currentPlayer.withHp(0);
-      }
+      // 実際の最終HPを反映
+      _currentPlayer = _currentPlayer.withHp(_result.finalPlayerHp);
+      _currentEnemy = _currentEnemy.withHp(_result.finalEnemyHp);
     });
   }
 
@@ -408,18 +405,52 @@ class _BattleScreenState extends State<BattleScreen>
         itemCount: _displayedLog.length,
         itemBuilder: (context, index) {
           final entry = _displayedLog[_displayedLog.length - 1 - index];
+          final baseColor = entry.damage > 0
+              ? Colors.redAccent[100]!
+              : entry.healing > 0
+                  ? Colors.greenAccent[100]!
+                  : Colors.white70;
+
+          // アクションタイプに応じたプレフィックスアイコン
+          String prefix = '';
+          if (entry.actionType == BattleActionType.attack) prefix = '⚔️ ';
+          if (entry.actionType == BattleActionType.defend) prefix = '🛡️ ';
+          if (entry.actionType == BattleActionType.skill) prefix = '✨ ';
+
+          final fullMessage = prefix + entry.message;
+
+          // スキル名がある場合は金色ハイライト
+          if (entry.actionType == BattleActionType.skill &&
+              entry.actionName.isNotEmpty) {
+            final parts = fullMessage.split(entry.actionName);
+            if (parts.length == 2) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: RichText(
+                  text: TextSpan(
+                    style: TextStyle(color: baseColor, fontSize: 13),
+                    children: [
+                      TextSpan(text: parts[0]),
+                      TextSpan(
+                        text: entry.actionName,
+                        style: const TextStyle(
+                          color: Color(0xFFFFD700),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextSpan(text: parts[1]),
+                    ],
+                  ),
+                ),
+              );
+            }
+          }
+
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 2),
             child: Text(
-              entry.message,
-              style: TextStyle(
-                color: entry.damage > 0
-                    ? Colors.redAccent[100]
-                    : entry.healing > 0
-                        ? Colors.greenAccent[100]
-                        : Colors.white70,
-                fontSize: 13,
-              ),
+              fullMessage,
+              style: TextStyle(color: baseColor, fontSize: 13),
             ),
           );
         },

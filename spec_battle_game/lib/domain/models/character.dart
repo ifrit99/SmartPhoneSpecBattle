@@ -118,8 +118,15 @@ class Character {
     spdMul = max(0.1, spdMul);
 
     final stats = battleStats;
-    // HPは現在の値を維持（最大HPは変わらない前提だが、最大HPバフがあるなら考慮が必要）
-    // 今回はatk/def/spdのみ変更
+    // HPは currentStats から取得する理由:
+    //   バトル中にダメージ/回復で変化するHPは withHp() 経由で currentStats に書き込まれる。
+    //   battleStats はレベルアップ時の最大値を計算するためだけに使うため、
+    //   実際の残HPは currentStats.hp を参照する必要がある。
+    //
+    // atk/def/spd は battleStats から取得する理由:
+    //   currentStats はバトル開始時のスナップショットで、
+    //   バフ/デバフ倍率を乗算する基準値は常にレベル反映済みの battleStats を使う。
+    //   こうすることで、バフ/デバフが累積せず正しい倍率が適用される。
     return Stats(
       hp: currentStats.hp,
       maxHp: currentStats.maxHp,

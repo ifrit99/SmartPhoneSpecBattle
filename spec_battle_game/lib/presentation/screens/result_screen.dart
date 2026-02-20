@@ -23,11 +23,18 @@ class ResultScreen extends StatefulWidget {
 }
 
 class _ResultScreenState extends State<ResultScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
   late Future<void> _saveFuture;
   late Animation<double> _opacityAnimation;
+
+  late AnimationController _levelUpController;
+  late Animation<double> _levelUpGlowAnimation;
+
+  int _levelBefore = 1;
+  int _levelAfter = 1;
+  bool get _leveledUp => _levelAfter > _levelBefore;
 
   @override
   void initState() {
@@ -44,6 +51,14 @@ class _ResultScreenState extends State<ResultScreen>
     );
     _controller.forward();
 
+    _levelUpController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    )..repeat(reverse: true);
+    _levelUpGlowAnimation = Tween<double>(begin: 0.8, end: 1.2).animate(
+      CurvedAnimation(parent: _levelUpController, curve: Curves.easeInOut),
+    );
+
     // バトル結果を永続化する（Futureを保持して遷移前に完了を保証）
     _saveFuture = _saveResult();
   }
@@ -54,17 +69,23 @@ class _ResultScreenState extends State<ResultScreen>
     await storage.init();
     final expService = ExperienceService(storage);
 
-    // 経験値を加算して保存
+    // 経験値を加算して保存（レベルアップ判定）
     final currentExp = expService.loadExperience();
+    _levelBefore = currentExp.level;
     await expService.addExp(currentExp, widget.result.expGained);
+    final newExp = expService.loadExperience();
+    _levelAfter = newExp.level;
 
     // 戦績を記録
     await expService.recordBattle(widget.result.playerWon);
+
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _levelUpController.dispose();
     super.dispose();
   }
 
@@ -173,6 +194,45 @@ class _ResultScreenState extends State<ResultScreen>
               ],
             ),
           ),
+
+          // レベルアップ演出
+          if (_leveledUp) ...[
+            const SizedBox(height: 16),
+            AnimatedBuilder(
+              animation: _levelUpGlowAnimation,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _levelUpGlowAnimation.value,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFD700).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: const Color(0xFFFFD700),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFFD700).withValues(alpha: 0.4),
+                          blurRadius: 16,
+                        ),
+                      ],
+                    ),
+                    child: Text(
+                      '⭐ LEVEL UP!  Lv.$_levelBefore → Lv.$_levelAfter',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFFFD700),
+                        letterSpacing: 2,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
 
           const SizedBox(height: 32),
           // ホームに戻るボタン

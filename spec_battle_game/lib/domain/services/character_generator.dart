@@ -119,9 +119,10 @@ class CharacterGenerator {
     // 少しランダム要素を追加（±2）
     int variance() => random.nextInt(5) - 2;
 
+    final hpVal = hp + variance();
     return Stats(
-      hp: hp + variance(),
-      maxHp: hp + variance(),
+      hp: hpVal,
+      maxHp: hpVal,
       atk: atk + variance(),
       def: def + variance(),
       spd: spd + variance(),
