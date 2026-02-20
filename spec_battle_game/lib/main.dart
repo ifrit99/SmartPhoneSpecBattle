@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'data/sound_service.dart';
 import 'presentation/screens/home_screen.dart';
 
 void main() {
@@ -14,8 +15,37 @@ void main() {
   runApp(const SpecBattleApp());
 }
 
-class SpecBattleApp extends StatelessWidget {
+class SpecBattleApp extends StatefulWidget {
   const SpecBattleApp({super.key});
+
+  @override
+  State<SpecBattleApp> createState() => _SpecBattleAppState();
+}
+
+class _SpecBattleAppState extends State<SpecBattleApp>
+    with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    // アプリのライフサイクル変化を監視
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    // アプリ終了時にサウンドリソースを解放
+    SoundService().dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // アプリが完全に終了したときにも解放する
+    if (state == AppLifecycleState.detached) {
+      SoundService().dispose();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

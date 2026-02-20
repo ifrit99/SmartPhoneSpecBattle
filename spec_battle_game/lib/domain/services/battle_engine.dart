@@ -336,18 +336,14 @@ class BattleEngine {
             message: '${attacker.name} の ${skill.name}！ HP $healAmount 回復！',
           ));
         } else if (!skill.isSelfTarget && skill.multiplier > 0 && skill.category == SkillCategory.special) {
-           // ドレインなど（攻撃＋回復）はロジックが複雑だが、とりあえず攻撃として扱うか、
-           // 個別に実装が必要。
-           // 今回はカースドレイン（HP吸収）がある。
-           // 敵にダメージを与え、自分を回復する。
-           if (skill.name == 'カースドレイン') {
-              // multiplier 0.3 とかなので、攻撃力依存にする
+           // HP吸収スキル（isDrain == true）: 敵にダメージを与え、その分だけ自分を回復する
+           if (skill.isDrain) {
               final rawDamage = newAttacker.effectiveStats.atk * skill.multiplier;
               final dmg = max(1, rawDamage.round());
-              
+
               newDefender = newDefender.withHp(newDefender.currentStats.hp - dmg);
-              // 回復
-              final heal = dmg; // 吸収なので同量回復
+              // 吸収した分だけ回復
+              final heal = dmg;
               final newHp = min(newAttacker.currentStats.maxHp, newAttacker.currentStats.hp + heal);
               newAttacker = newAttacker.withHp(newHp);
 

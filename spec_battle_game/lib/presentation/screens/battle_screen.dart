@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../domain/models/character.dart';
 import '../../domain/enums/element_type.dart';
 import '../../domain/services/battle_engine.dart';
+import '../../data/sound_service.dart';
 import '../widgets/pixel_character.dart';
 import '../widgets/stat_bar.dart';
 import '../widgets/damage_popup.dart';
@@ -34,7 +35,10 @@ class _BattleScreenState extends State<BattleScreen>
   final List<Widget> _popups = [];
   Widget? _currentSkillOverlay;
   int _currentTurn = 1;
-  
+
+  // サウンドサービス
+  final SoundService _sound = SoundService();
+
   late AnimationController _shakeController;
   late AnimationController _flashController;
   late Animation<double> _shakeAnimation;
@@ -73,6 +77,9 @@ class _BattleScreenState extends State<BattleScreen>
     final engine = BattleEngine();
     _result = engine.executeBattle(widget.player, widget.enemy);
 
+    // バトル開始音を再生
+    _sound.playBattleStart();
+
     // ログを順次表示するアニメーション
     _showNextLog();
   }
@@ -80,6 +87,12 @@ class _BattleScreenState extends State<BattleScreen>
   Future<void> _showNextLog() async {
     if (_currentLogIndex >= _result.log.length) {
       if (mounted) {
+        // 勝敗に応じた効果音を再生
+        if (_result.playerWon) {
+          _sound.playVictory();
+        } else {
+          _sound.playDefeat();
+        }
         setState(() {
           _battleComplete = true;
         });
@@ -99,13 +112,31 @@ class _BattleScreenState extends State<BattleScreen>
       }
     }
 
-    // スキル発動時のエフェクト待機
+    // アクションに応じた効果音を再生
+    if (entry.actionType == BattleActionType.attack) {
+      _sound.playAttack();
+    } else if (entry.actionType == BattleActionType.defend) {
+      if (entry.healing > 0) {
+        _sound.playHeal();
+      } else {
+        _sound.playDefend();
+      }
+    }
+
+    // スキル発動時のエフェクト待機＋効果音
     if (entry.actionType == BattleActionType.skill && !entry.message.contains('防御力が上がった')) {
       // 防御バフ以外（攻撃・回復）の場合にエフェクト表示
       final isPlayerAction = entry.actorName == _currentPlayer.name ||
           entry.actorName == widget.player.name;
       final actor = isPlayerAction ? _currentPlayer : _currentEnemy;
-      
+
+      // スキル種別に応じた効果音
+      if (entry.healing > 0) {
+        _sound.playHeal();
+      } else {
+        _sound.playSkill();
+      }
+
       // 簡易的にアクターの属性を使用
       await _showSkillEffect(entry.actionName, actor.element);
     }
@@ -190,6 +221,33 @@ class _BattleScreenState extends State<BattleScreen>
                 // ボタン
                 _buildActionButtons(),
               ],
+            ),
+            // ミュートボタン（右上に配置）
+            Positioned(
+              top: 8,
+              right: 8,
+              child: StatefulBuilder(
+                builder: (context, setIconState) {
+                  return GestureDetector(
+                    onTap: () {
+                      _sound.toggleMute();
+                      setIconState(() {});
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.black38,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        _sound.isMuted ? Icons.volume_off : Icons.volume_up,
+                        color: Colors.white54,
+                        size: 20,
+                      ),
+                    ),
+                  );
+                },
+              ),
             ),
             // スキルエフェクトオーバーレイ
             if (_currentSkillOverlay != null) _currentSkillOverlay!,

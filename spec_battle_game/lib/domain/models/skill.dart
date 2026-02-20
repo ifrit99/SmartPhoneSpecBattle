@@ -19,6 +19,7 @@ class Skill {
   final int cooldown;       // クールダウンターン数
   final StatusEffect? effect; // 付与する効果
   final bool isSelfTarget;    // 自分自身が対象か
+  final bool isDrain;         // HP吸収スキルか（ダメージ分だけ自分を回復する）
 
   const Skill({
     required this.name,
@@ -29,6 +30,7 @@ class Skill {
     this.cooldown = 0,
     this.effect,
     this.isSelfTarget = false,
+    this.isDrain = false,
   });
 
   @override
@@ -158,6 +160,7 @@ List<Skill> getSkillsForElement(ElementType element) {
           multiplier: 0.3,
           cooldown: 4,
           isSelfTarget: false, // 攻撃+回復なので敵対象
+          isDrain: true,       // HP吸収スキル
         ),
         const Skill(
           name: 'ウィークネス',

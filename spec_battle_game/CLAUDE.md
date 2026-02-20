@@ -1,5 +1,12 @@
 # SmartPhoneSpecBattle - CLAUDE.md
 
+## 言語設定
+
+すべての応答・説明・質問・確認事項・提案・エラーの解説は**日本語**で行うこと。
+コード内のコメントも日本語で記述すること（特別な指示がない限り）。
+専門用語はそのまま英語を使用してよいが、説明は日本語で補足すること。
+このルールはセッションをまたいでも常に適用すること。
+
 ## プロジェクト概要
 スマートフォンのデバイススペック（OSバージョン、メモリ、ストレージ、バッテリー残量など）を解析し、その情報に基づいて世界に1体だけのキャラクターを生成して戦わせる、Flutter製の対戦RPGゲーム。
 
@@ -8,11 +15,14 @@
 - **State Management**: `setState` + `AnimatedBuilder` (シンプル構成)
 - **Local Storage**: `shared_preferences`
 - **Device Info**: `device_info_plus` (Native / Web差分吸収あり), `package_info_plus`, `battery_plus`
+- **Sound**: `audioplayers` (効果音再生、シングルトン `SoundService` で管理)
 
 ## ディレクトリ構造
-- `lib/data/`: データ取得層 (デバイス情報取得API, ローカルストレージ管理など)
+- `lib/data/`: データ取得層 (デバイス情報取得API, ローカルストレージ管理, `SoundService`)
 - `lib/domain/`: ドメインモデルとロジック (キャラクター、スキルステータス効果モデル、各種列挙型、バトルエンジン)
 - `lib/presentation/`: UI層 (画面Screen群、カスタムWidget群)
+- `assets/sounds/`: WAV形式の効果音ファイル (battle_start / attack / skill / defend / heal / victory / defeat / button)
+- `test/domain/`: ドメイン層のユニットテスト
 
 ## よく使うコマンド
 - 依存関係のインストール: `flutter pub get`
@@ -34,18 +44,26 @@
 - [Phase 2-A] バトルアニメーション強化（ダメージ数値ポップアップ、スキルエフェクト全体化、HPバーのアニメーション化、ターン数表示）
 - [Phase 2-B] スキルシステム拡充（StatusEffectモデルによるバフ・デバフ管理、各属性3種の固有スキル追加）
 - [Phase 2-C] バッテリー残量のリアルタイム取得（`battery_plus`）と、キャラクターの素早さ(SPD)へのステータス補正反映
+- [Phase 2-D] サウンドエフェクト追加（`audioplayers` パッケージ導入、`SoundService` 作成、バトル開始・攻撃・スキル・防御・回復・勝利・敗北・ボタン音の実装、ミュートトグルボタン追加）
+- [コード品質] `Skill` モデルに `isDrain` フラグ追加・`battle_engine.dart` のスキル名ハードコード除去
+- [コード品質] `main.dart` に `WidgetsBindingObserver` を追加し `SoundService.dispose()` をライフサイクルに接続
+- [テスト] `test/domain/` にユニットテスト追加（`element_type_test.dart` / `experience_test.dart` / `battle_engine_test.dart`、計21ケース）
 
 ### 実装中の機能（未完成・途中のもの）
-- 特になし（Phase 2-Cまで完了し区切りがついた状態）
+- 特になし
 
 ### 未着手の機能（会話で言及されたが未実装のもの）
-- [Phase 2-D] サウンドエフェクト追加 (`audioplayers` パッケージの導入、`SoundService` の作成、各種アクションへの効果音トリガー追加)
+- **[Phase 3のアイデア（Claude Codeとの相談用）]**
+  現状までの実装（Phase 2）は既存コードの品質向上や機能強化が中心でしたが、以下の機能は新規ファイル追加メインのため、現在の作業と競合せずに並行して安全に進められます。どれを実装するか、または別のアイデアがあるかClaude Codeと相談してください：
+  1. **CPU敵キャラクター生成機能（ランダムスペックバトル）**: `enemy_generator.dart` を新設し、ランダムなスペック（OS、メモリ、ストレージ）を持つ敵キャラを動的生成して対戦のバリエーションを増やす。
+  2. **キャラクター図鑑・対戦履歴**: `collection_screen.dart` を新設し、ローカルストレージに戦った敵のデータや自分のキャラの育成履歴を保存・閲覧できるようにするコレクション要素の追加。
+  3. **タイトル画面の追加**: `title_screen.dart` を新設し、アプリ起動時の導入（ロゴ表示、タップスタート、BGM再生）を整える。
 
 ## 既知の問題・課題
-- 不明（直近の検証では `flutter analyze` などは全て通過しており、目立ったバグの報告はありません）
+- `flutter test` 実行時に `objective_c` パッケージのネイティブビルドが失敗する（原因: Xcode Command Line Tools が x86_64 版のまま Apple Silicon 環境に入っている）。テストコード自体は `flutter analyze` 通過済みで問題なし。修正方法: `sudo rm -rf /Library/Developer/CommandLineTools && sudo xcode-select --install`
 
 ## ⚠️ 現在の作業状態（引継ぎ情報）
 - **最終更新**: 2026-02-20
-- **直近でやっていた作業**: Phase 2-Cの「バッテリー残量リアルタイム反映」およびその関連UI実装。加えてAndroid版のビルドエラー修正（Gradle/AGP設定更新）。
-- **次にやること**: Phase 2-D の実装（サウンド・効果音の追加対応）。
-- **未解決の問題**: 不明
+- **直近でやっていた作業**: テスト待機中の並行作業（Skill.isDrainフラグ追加・SoundServiceライフサイクル接続・ユニットテスト21ケース追加）。
+- **次にやること**: 未定。テスト環境の Xcode Command Line Tools 修正後に `flutter test` を通すと良い。
+- **未解決の問題**: `flutter test` が Xcode Command Line Tools のアーキテクチャ不一致で失敗する（上記「既知の問題」参照）
