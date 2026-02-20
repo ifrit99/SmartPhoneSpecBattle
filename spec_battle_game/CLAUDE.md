@@ -48,22 +48,20 @@
 - [コード品質] `Skill` モデルに `isDrain` フラグ追加・`battle_engine.dart` のスキル名ハードコード除去
 - [コード品質] `main.dart` に `WidgetsBindingObserver` を追加し `SoundService.dispose()` をライフサイクルに接続
 - [テスト] `test/domain/` にユニットテスト追加（`element_type_test.dart` / `experience_test.dart` / `battle_engine_test.dart`、計21ケース）
+- [Phase 3-1] CPU敵キャラクター生成機能（`enemy_generator.dart` 新設）: `EnemyDifficulty` enum・架空デバイスカタログ16種・`EnemyProfile` モデル・`EnemyGenerator` クラスを実装。バトル前の敵プレビューボトムシートを `home_screen.dart` に追加（難易度バッジ・架空デバイス情報・ステータス表示）。
 
 ### 実装中の機能（未完成・途中のもの）
 - 特になし
 
 ### 未着手の機能（会話で言及されたが未実装のもの）
-- **[Phase 3のアイデア（Claude Codeとの相談用）]**
-  現状までの実装（Phase 2）は既存コードの品質向上や機能強化が中心でしたが、以下の機能は新規ファイル追加メインのため、現在の作業と競合せずに並行して安全に進められます。どれを実装するか、または別のアイデアがあるかClaude Codeと相談してください：
-  1. **CPU敵キャラクター生成機能（ランダムスペックバトル）**: `enemy_generator.dart` を新設し、ランダムなスペック（OS、メモリ、ストレージ）を持つ敵キャラを動的生成して対戦のバリエーションを増やす。
-  2. **キャラクター図鑑・対戦履歴**: `collection_screen.dart` を新設し、ローカルストレージに戦った敵のデータや自分のキャラの育成履歴を保存・閲覧できるようにするコレクション要素の追加。
-  3. **タイトル画面の追加**: `title_screen.dart` を新設し、アプリ起動時の導入（ロゴ表示、タップスタート、BGM再生）を整える。
+- [Phase 3-2] **キャラクター図鑑・対戦履歴**: `collection_screen.dart` を新設し、ローカルストレージに戦った敵のデータや自分のキャラの育成履歴を保存・閲覧できるようにするコレクション要素の追加。
+- [Phase 3-3] **タイトル画面の追加**: `title_screen.dart` を新設し、アプリ起動時の導入（ロゴ表示、タップスタート、BGM再生）を整える。
 
 ## 既知の問題・課題
 - `flutter test` 実行時に `objective_c` パッケージのネイティブビルドが失敗する（原因: Xcode Command Line Tools が x86_64 版のまま Apple Silicon 環境に入っている）。テストコード自体は `flutter analyze` 通過済みで問題なし。修正方法: `sudo rm -rf /Library/Developer/CommandLineTools && sudo xcode-select --install`
 
 ## ⚠️ 現在の作業状態（引継ぎ情報）
 - **最終更新**: 2026-02-20
-- **直近でやっていた作業**: テスト待機中の並行作業（Skill.isDrainフラグ追加・SoundServiceライフサイクル接続・ユニットテスト21ケース追加）。
-- **次にやること**: 未定。テスト環境の Xcode Command Line Tools 修正後に `flutter test` を通すと良い。
+- **直近でやっていた作業**: Phase 3-1「CPU敵キャラクター生成機能」の実装。`enemy_generator.dart` 新設＋`home_screen.dart` に敵プレビューボトムシート追加。
+- **次にやること**: Phase 3-2（図鑑・対戦履歴）または Phase 3-3（タイトル画面）。Antigravity 側の手動テスト結果を受けて競合しない方を選択。
 - **未解決の問題**: `flutter test` が Xcode Command Line Tools のアーキテクチャ不一致で失敗する（上記「既知の問題」参照）
