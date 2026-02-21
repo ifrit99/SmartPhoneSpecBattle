@@ -535,7 +535,7 @@ class _BattleScreenState extends State<BattleScreen>
       left: isPlayerDamage ? null : 60 + offsetX, // 敵は左寄り
       child: DamagePopup(
         value: value,
-        isCritical: isCritical, // 現状はクリティカル判定ロジックがないのでfalse
+        isCritical: isCritical,
         isHealing: isHealing,
         onComplete: () {
           if (mounted) {
