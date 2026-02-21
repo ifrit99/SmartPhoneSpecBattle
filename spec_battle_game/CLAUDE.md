@@ -49,29 +49,29 @@
 - [コード品質] `main.dart` に `WidgetsBindingObserver` を追加し `SoundService.dispose()` をライフサイクルに接続
 - [テスト] `test/domain/` にユニットテスト追加（`element_type_test.dart` / `experience_test.dart` / `battle_engine_test.dart`、計21ケース）
 - [Phase 3-1] CPU敵キャラクター生成機能（`enemy_generator.dart` 新設）: `EnemyDifficulty` enum・架空デバイスカタログ16種・`EnemyProfile` モデル・`EnemyGenerator` クラスを実装。バトル前の敵プレビューボトムシートを `home_screen.dart` に追加（難易度バッジ・架空デバイス情報・ステータス表示）。
-- [バトル拡張] クリティカルヒットシステム実装（SPD差・属性有利時に25%確率で1.5倍ダメージ、通常攻撃・攻撃スキル両対応）
-- [ドキュメント] `docs/SPECIFICATION.md`（558行の詳細仕様書）・`docs/TODO.md`（タスク管理）を追加
+- [UX演出] レベルアップ演出（`result_screen.dart`）: `_levelBefore`/`_levelAfter` 比較 + `_levelUpController` パルスアニメ + 「⭐ LEVEL UP!」バナー表示。
+- [UX演出] クリティカルヒット（`battle_engine.dart` `_doAttack()`）: SPD が相手の 1.2 倍以上 OR 属性有利時に 25% の確率でクリティカル（ダメージ 1.5 倍）。`DamagePopup` で大フォント・グロー表示。
+- [UX演出] バトルログ改善（`battle_screen.dart` `_buildBattleLog()`）: アクションタイプ別アイコン（⚔️🛡️✨）追加、スキル名を金色ハイライト表示。
+- [UX演出] キャラクター詳細画面のバフ・デバフ表示（`character_screen.dart` `_buildStatusEffectsCard()`）: バフ（緑）・デバフ（赤）チップ表示、効果がある場合のみ表示。
+- [ドキュメント] `README.md` にフェーズ別開発所要時間テーブルを追記。
 
 ### 実装中の機能（未完成・途中のもの）
 - 特になし
 
-### 未着手の機能（推奨実装順序）? 
-#### Phase 3（基盤拡張）
-- [Phase 3-2] **キャラクター図鑑・対戦履歴**: `collection_screen.dart` を新設し、ローカルストレージに戦った敵のデータや自分のキャラの育成履歴を保存・閲覧できるようにするコレクション要素の追加。← **次に着手推奨**（Phase 4の土台になる）
+### 未着手の機能（会話で言及されたが未実装のもの）
+- [Phase 3-2] **キャラクター図鑑・対戦履歴**: `collection_screen.dart` を新設し、ローカルストレージに戦った敵のデータや自分のキャラの育成履歴を保存・閲覧できるようにするコレクション要素の追加。
 - [Phase 3-3] **タイトル画面の追加**: `title_screen.dart` を新設し、アプリ起動時の導入（ロゴ表示、タップスタート、BGM再生）を整える。
-
-#### Phase 4（ゲームループ拡張・収益化準備）— 詳細は `PHASE4_SPEC_DRAFT.md` 参照
-- [Phase 4-1] **エミュレートガチャ（仮想スペック生成）**: ゲーム内通貨で「過去の名機」「架空の最新端末」のスペックカードを引き、自分以外のキャラを獲得するコレクション＆マネタイズの軸。
-- [Phase 4-2] **QR/URLフレンドスキャン対戦**: 自キャラのデータをQRコード化してSNSシェア → 読み込んだ相手と非同期バトル。サーバーレス設計（QR内にパラメータ埋め込み）。
-- [Phase 4-3] **動的スペックシステム（デイリー環境補正）**: バッテリー（実装済み）に加え、空き容量・時間帯・曜日でステータスが日々変動し、毎日のログイン動機を作る。
-- [Phase 4-4] **パーツ換装・オーバークロック**: 装備アイテムや使い捨て強化パッチでキャラを限界突破させるハクスラ要素。
-- [Phase 4-5] **AIフレーバーテキスト生成**: Gemini API等でスペック情報から「二つ名」「性格」「フレーバーテキスト」を動的生成し、キャラへの愛着を強化。
 
 ## 既知の問題・課題
 - `flutter test` 実行時に `objective_c` パッケージのネイティブビルドが失敗する（原因: Xcode Command Line Tools が x86_64 版のまま Apple Silicon 環境に入っている）。テストコード自体は `flutter analyze` 通過済みで問題なし。修正方法: `sudo rm -rf /Library/Developer/CommandLineTools && sudo xcode-select --install`
 
-## ⚗️ 現在の作業状態（引継ぎ情報）
+## ⚠️ 現在の作業状態（引継ぎ情報）
 - **最終更新**: 2026-02-21
-- **直近でやっていた作業**: VPS側Claude Codeからの引き継ぎ。スキル攻撃へのクリティカルヒット判定追加、TODO.mdの完了項目更新、flutter analyze通過確認。Phase 4仕様案をCLAUDE.mdに反映。
-- **次にやること**: Phase 3-2（図鑑・対戦履歴）→ Phase 3-3（タイトル画面）→ Phase 4（エミュレートガチャ・QR対戦等）の順で進めるのを推奨。
+- **直近でやっていた作業（このセッション）**:
+  1. コードと TODO.md の整合性チェック → 中優先度タスク #6〜#9（UX演出）・#11・#13（コード品質）がすべて実装済みと確認
+  2. TODO.md をすべて ✅ に更新
+  3. `battle_screen.dart` の古いコメント「クリティカル判定がないのでfalse」を削除
+  4. `README.md` にフェーズ別開発所要時間テーブルを追記（累計 約18〜20時間）
+  5. `CLAUDE.md` の完了済み機能リストに UX演出項目を追記
+- **次にやること**: Phase 3-2（図鑑・対戦履歴）または Phase 3-3（タイトル画面）。残未実装はこの2つのみ。
 - **未解決の問題**: `flutter test` が Xcode Command Line Tools のアーキテクチャ不一致で失敗する（上記「既知の問題」参照）

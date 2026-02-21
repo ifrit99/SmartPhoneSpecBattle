@@ -1,85 +1,63 @@
 # SPEC BATTLE — TODO
 
 バージョン: 0.1.0
-最終更新: 2026-02-20
+最終更新: 2026-02-21
 
 ---
 
-## 優先度: 高（バグ・ロジック不具合） ✅ 全件修正済み
+## 優先度: 高（バグ・ロジック不具合）
 
-### ~~1. Regen の毎ターン回復処理が未実装~~ ✅
-- **ファイル**: `lib/domain/services/battle_engine.dart` `_onTurnEnd()`
-- **問題**: `EffectType.regen` を持つステータス効果（セイントヒール: 15%/T）がターン終了時に HP を回復しない。duration を減らすだけで終わっている
-- **対応**: `_onTurnEnd` 内で `EffectType.regen` の効果を検出し、`maxHp * value / 100` 分だけ HP を回復するログ＋処理を追加する
+### ~~1. Regen の毎ターン回復処理が未実装~~ ✅ 修正済み
+- `battle_engine.dart` `_onTurnEnd()` にて `maxHp * value / 100` の回復処理を実装済み
 
-### ~~2. Poison（継続ダメージ）の毎ターン処理が未実装~~ ✅
-- **ファイル**: `lib/domain/services/battle_engine.dart` `_onTurnEnd()`
-- **問題**: `EffectType.poison` の毎ターンダメージ処理がない（仕様 §9.1 に記載あり）
-- **対応**: regen と同様に `_onTurnEnd` でダメージ処理を追加する
+### ~~2. Poison（継続ダメージ）の毎ターン処理が未実装~~ ✅ 修正済み
+- `battle_engine.dart` `_onTurnEnd()` にて毎ターンダメージ処理を実装済み
 
-### ~~3. hp と maxHp のシード分散が独立している~~ ✅
-- **ファイル**: `lib/domain/services/character_generator.dart` `_calculateBaseStats()` L122-128
-- **問題**: `Stats(hp: hp + variance(), maxHp: hp + variance(), ...)` のように `variance()` を2回呼ぶため、hp と maxHp に異なる乱数が加算され初期状態から hp ≠ maxHp になる可能性がある
-- **対応**: `final hpVal = hp + variance(); return Stats(hp: hpVal, maxHp: hpVal, ...)`
+### ~~3. hp と maxHp のシード分散が独立している~~ ✅ 修正済み
+- `character_generator.dart` `_calculateBaseStats()` で `final hpVal = hp + variance()` として両フィールドに同一値を設定済み
 
-### ~~4. カースドレインのスキル名ハードコード~~ ✅
-- **ファイル**: `lib/domain/services/battle_engine.dart` L343
-- **問題**: `if (skill.name == 'カースドレイン')` という文字列直比較。スキル名変更時に壊れる
-- **対応**: `Skill` モデルにドレイン専用フラグ（例: `isDrain: bool`）を追加するか、`SkillCategory.drain` を新設して分岐する
+### ~~4. カースドレインのスキル名ハードコード~~ ✅ 修正済み
+- `Skill` モデルに `isDrain` フラグを追加し、`battle_engine.dart` でフラグによる分岐に変更済み
 
-### ~~5. スキップ時の HP バー最終状態が不正確~~ ✅
-- **ファイル**: `lib/presentation/screens/battle_screen.dart` `_skipToEnd()`
-- **問題**: スキップ後は勝者側 HP をそのまま・敗者側 HP を0にするだけで、実際のバトル最終 HP と一致しない場合がある。バトル結果（`BattleResult`）に最終 HP を持たせていない
-- **対応**: `BattleResult` に `finalPlayerHp` / `finalEnemyHp` フィールドを追加し、スキップ時はそれを反映する
+### ~~5. スキップ時の HP バー最終状態が不正確~~ ✅ 修正済み
+- `BattleResult` に `finalPlayerHp` / `finalEnemyHp` を追加し、`_skipToEnd()` で反映済み
 
 ---
 
 ## 優先度: 中（UX・演出の改善）
 
-### ~~6. レベルアップ演出がない~~ ✅
-- **ファイル**: `lib/presentation/screens/result_screen.dart`
-- **問題**: リザルト画面でレベルアップしても視覚的なフィードバックがない
-- **対応**: 保存前後でレベルを比較し、レベルアップした場合は「LEVEL UP!」テキスト＋光るアニメーションを表示する
+### ~~6. レベルアップ演出がない~~ ✅ 修正済み
+- `result_screen.dart` にて `_levelBefore` / `_levelAfter` 比較 + `_levelUpController` パルスアニメーション + 「⭐ LEVEL UP!」表示を実装済み
 
-### ~~7. クリティカルヒットが未実装~~ ✅
-- **ファイル**: `lib/presentation/widgets/damage_popup.dart`, `lib/domain/services/battle_engine.dart`
-- **問題**: `DamagePopup` に `isCritical` フラグがあるが、バトルエンジン側でクリティカル判定がなく常に `false`
-- **対応**: SPD が一定以上高い場合や属性有利時に確率でクリティカル（ダメージ1.5倍）を発生させ、ポップアップでも強調表示する
+### ~~7. クリティカルヒットが未実装~~ ✅ 修正済み
+- `battle_engine.dart` `_doAttack()` にてSPD比率・属性有利に基づくクリティカル判定（ダメージ1.5倍）を実装済み
+- `DamagePopup` の `isCritical` フラグによる視覚強調（大フォント・グロー）も実装済み
+- `battle_screen.dart` にて `entry.isCritical` を正しくポップアップに渡すよう実装済み
 
-### ~~8. バトルログが素テキストのみで見づらい~~ ✅
-- **ファイル**: `lib/presentation/screens/battle_screen.dart` `_buildBattleLog()`
-- **問題**: ダメージ・回復テキストの色分けはあるが、スキル名・バフ/デバフのテキストが単色で埋もれる
-- **対応**: ログエントリの `actionType` に応じてアイコン（⚔️🛡️✨）や色を変える
+### ~~8. バトルログが素テキストのみで見づらい~~ ✅ 修正済み
+- `battle_screen.dart` `_buildBattleLog()` にてアクションタイプ別アイコン（⚔️🛡️✨）追加済み
+- スキル名を金色ハイライト表示するよう実装済み
 
-### ~~9. キャラクター詳細画面に現在のバフ・デバフ表示がない~~ ✅
-- **ファイル**: `lib/presentation/screens/character_screen.dart`
-- **問題**: `statusEffects` がホーム→詳細に引き渡されるが、表示されていない
+### ~~9. キャラクター詳細画面に現在のバフ・デバフ表示がない~~ ✅ 修正済み
+- `character_screen.dart` `_buildStatusEffectsCard()` にてバフ（緑）・デバフ（赤）のチップ表示を実装済み
 
-### 10. docs/ ディレクトリが未コミット
-- **問題**: `SPECIFICATION.md` と `TODO.md`（本ファイル）が git 管理外
-- **対応**: `git add spec_battle_game/docs/ && git commit -m "docs: Add SPECIFICATION and TODO"`
+### ~~10. docs/ ディレクトリが未コミット~~ ✅ 修正済み
+- `git add spec_battle_game/docs/ && git commit -m "docs: Add SPECIFICATION and TODO"` にてコミット済み
 
 ---
 
 ## 優先度: 中（コード品質）
 
-### ~~11. ユニットテストが未実装~~ ✅
-- **ファイル**: `test/widget_test.dart`, `test/domain/`（ウィジェットテスト + ドメインテスト21ケース追加済み）
-- **対応（優先順位高いもの）**:
-  - `BattleEngine.executeBattle()` のテスト（勝敗・ターン数・ログ件数の検証）
-  - `CharacterGenerator.generate()` のテスト（同一スペックで同一キャラが生成されるか）
-  - `Experience.addExp()` のレベルアップ境界値テスト
-  - `elementMultiplier()` の属性相性テスト
+### ~~11. ユニットテストが未実装~~ ✅ 修正済み
+- `test/domain/` に `battle_engine_test.dart` / `element_type_test.dart` / `experience_test.dart` を追加済み（計21ケース）
 
-### ~~12. `effectiveStats` の HP 参照が不整合~~ ✅（コメントで意図を明記済み）
+### 12. `effectiveStats` の HP 参照が不整合
 - **ファイル**: `lib/domain/models/character.dart` L120-128
 - **問題**: `effectiveStats` は `battleStats`（レベル倍率適用済み）の `atk/def/spd` を使うが、HP は `currentStats.hp`（バトル中に `withHp` で書き換えられた値）を使う。この二重参照は混乱の元
 - **対応**: コメントで意図を明記するか、HP だけ別 getter にする
 
-### 13. `HomeScreen._reloadData()` の冗長なキャラクター再構築
-- **ファイル**: `lib/presentation/screens/home_screen.dart` L109-134
-- **問題**: `_reloadData` でキャラクター全フィールドを手動コピーしている。`copyWith(experience: ...)` で済む
-- **対応**: `copyWith` を使って簡潔にする
+### ~~13. `HomeScreen._reloadData()` の冗長なキャラクター再構築~~ ✅ 修正済み
+- `home_screen.dart` L137 にて `player.copyWith(experience: experience, ...)` を使うよう実装済み
 
 ---
 
@@ -88,8 +66,8 @@
 ### 14. カスタムピクセルフォントの追加
 - ゲームらしさを高めるため `Press Start 2P` などのピクセルフォントを `pubspec.yaml` に追加し、タイトルや数値表示に適用する
 
-### ~~15. SEとBGMの追加~~ ✅
-- `audioplayers` パッケージで `SoundService` を実装済み。バトル開始・攻撃・スキル・防御・回復・勝利・敗北の効果音を追加済み
+### 15. SEとBGMの追加
+- `audioplayers` または `flame_audio` パッケージを使い、バトル開始・攻撃・勝利・敗北時の効果音を追加する
 
 ### 16. バトル履歴画面の追加
 - 過去のバトルログ（対戦相手名・勝敗・ターン数）を SharedPreferences に保存し、ホームから閲覧できる履歴画面を追加する

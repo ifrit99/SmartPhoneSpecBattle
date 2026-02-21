@@ -335,29 +335,21 @@ class BattleEngine {
 
     switch (skill.category) {
       case SkillCategory.attack:
-      final elemMult = elementMultiplier(skill.element, defender.element);
-      // クリティカル判定（通常攻撃と同じロジック）
-      final atkSpd = newAttacker.effectiveStats.spd;
-      final defSpd = newDefender.effectiveStats.spd;
-      final skillCritEligible = atkSpd >= defSpd * 1.2 || elemMult > 1.0;
-      final skillIsCritical = skillCritEligible && _random.nextDouble() < 0.25;
-      final skillCritMult = skillIsCritical ? 1.5 : 1.0;
-      // effectiveStatsを使用してダメージ計算
-      final rawDamage = newAttacker.effectiveStats.atk * skill.multiplier * elemMult * skillCritMult
-          - newDefender.effectiveStats.def * 0.3;
-      final damage = max(1, rawDamage.round());
-      final skillCritMsg = skillIsCritical ? ' クリティカル！' : '';
-      
-      log.add(BattleLogEntry(
-        actorName: attacker.name,
-        actionType: BattleActionType.skill,
-        actionName: skill.name,
-        damage: damage,
-        message: '${attacker.name} の ${skill.name}！$skillCritMsg $damage ダメージ！',
-        isCritical: skillIsCritical,
-      ));
-      newDefender = newDefender.withHp(newDefender.currentStats.hp - damage);
-      break;
+        final elemMult = elementMultiplier(skill.element, defender.element);
+        // effectiveStatsを使用
+        final rawDamage = newAttacker.effectiveStats.atk * skill.multiplier * elemMult
+            - newDefender.effectiveStats.def * 0.3;
+        final damage = max(1, rawDamage.round());
+        
+        log.add(BattleLogEntry(
+          actorName: attacker.name,
+          actionType: BattleActionType.skill,
+          actionName: skill.name,
+          damage: damage,
+          message: '${attacker.name} の ${skill.name}！ $damage ダメージ！',
+        ));
+        newDefender = newDefender.withHp(newDefender.currentStats.hp - damage);
+        break;
 
       case SkillCategory.defense:
         // 防御スキルの場合、ロジック自体はStatusEffectで処理されることが多いが
