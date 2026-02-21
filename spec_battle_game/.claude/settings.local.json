@@ -6,7 +6,9 @@
       "Bash(flutter analyze:*)",
       "Bash(flutter test:*)",
       "Bash(xcrun --sdk macosx --show-sdk-path:*)",
-      "Bash(xcode-select:*)"
+      "Bash(xcode-select:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

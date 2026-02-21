@@ -49,6 +49,8 @@
 - [コード品質] `main.dart` に `WidgetsBindingObserver` を追加し `SoundService.dispose()` をライフサイクルに接続
 - [テスト] `test/domain/` にユニットテスト追加（`element_type_test.dart` / `experience_test.dart` / `battle_engine_test.dart`、計21ケース）
 - [Phase 3-1] CPU敵キャラクター生成機能（`enemy_generator.dart` 新設）: `EnemyDifficulty` enum・架空デバイスカタログ16種・`EnemyProfile` モデル・`EnemyGenerator` クラスを実装。バトル前の敵プレビューボトムシートを `home_screen.dart` に追加（難易度バッジ・架空デバイス情報・ステータス表示）。
+- [バトル拡張] クリティカルヒットシステム実装（SPD差・属性有利時に25%確率で1.5倍ダメージ、通常攻撃・攻撃スキル両対応）
+- [ドキュメント] `docs/SPECIFICATION.md`（558行の詳細仕様書）・`docs/TODO.md`（タスク管理）を追加
 
 ### 実装中の機能（未完成・途中のもの）
 - 特になし
@@ -60,8 +62,8 @@
 ## 既知の問題・課題
 - `flutter test` 実行時に `objective_c` パッケージのネイティブビルドが失敗する（原因: Xcode Command Line Tools が x86_64 版のまま Apple Silicon 環境に入っている）。テストコード自体は `flutter analyze` 通過済みで問題なし。修正方法: `sudo rm -rf /Library/Developer/CommandLineTools && sudo xcode-select --install`
 
-## ⚠️ 現在の作業状態（引継ぎ情報）
-- **最終更新**: 2026-02-20
-- **直近でやっていた作業**: Phase 3-1「CPU敵キャラクター生成機能」の実装。`enemy_generator.dart` 新設＋`home_screen.dart` に敵プレビューボトムシート追加。
-- **次にやること**: Phase 3-2（図鑑・対戦履歴）または Phase 3-3（タイトル画面）。Antigravity 側の手動テスト結果を受けて競合しない方を選択。
+## ⚗️ 現在の作業状態（引継ぎ情報）
+- **最終更新**: 2026-02-21
+- **直近でやっていた作業**: VPS側Claude Codeからの引き継ぎ。スキル攻撃へのクリティカルヒット判定追加、TODO.mdの完了項目更新、flutter analyze通過確認。
+- **次にやること**: Phase 3-2（図鑑・対戦履歴）または Phase 3-3（タイトル画面）、または Phase 4 の仕様検討（`PHASE4_SPEC_DRAFT.md` 参照）。
 - **未解決の問題**: `flutter test` が Xcode Command Line Tools のアーキテクチャ不一致で失敗する（上記「既知の問題」参照）
