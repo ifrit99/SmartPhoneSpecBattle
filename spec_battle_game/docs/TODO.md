@@ -46,9 +46,34 @@
 
 ---
 
-## Antigravity側への引き継ぎ事項
-- **タイトル画面の視覚確認**: `TitleScreen` のアニメーション演出（ロゴ登場、パーティクル、点滅テキスト）をエミュレータ/実機で確認し、必要に応じてUIの微調整を行う。
-- **BGMアセットの追加**: タイトル画面用のBGM素材を用意し、`SoundService` にBGM再生メソッドを追加する（ループ再生対応）。
+## Antigravity側への引き継ぎ事項（Phase 3-3 後続）
+
+以下のタスクはUI確認・アセット追加が中心のため、Antigravity が担当する。
+
+### タスクA: タイトル画面の視覚確認とUI微調整
+- **対象ファイル**: `lib/presentation/screens/title_screen.dart`
+- **確認ポイント**:
+  1. エミュレータまたは実機でアプリを起動し、タイトル画面が表示されることを確認。
+  2. ロゴのフェードイン＋弾性スケールアニメーション（0→1.2秒）の滑らかさ。
+  3. 背景パーティクル（紫色の浮遊ドット30個）の見た目と速度感。
+  4. 「TAP TO START」の点滅テキスト（1.5秒周期）の視認性。
+  5. タップ後のフェード遷移（600ms）でホーム画面へ正しく移動すること。
+- **調整が必要になりうる箇所**:
+  - パーティクルの数・サイズ・速度（`_TitleScreenState.initState` 内の生成パラメータ）
+  - ロゴアイコンのサイズ・色（`_buildLogo()` メソッド内）
+  - アニメーションのタイミング（`_startSequence()` 内の `Future.delayed` の値）
+
+### タスクB: タイトルBGMの追加
+- **目的**: タイトル画面表示中にループBGMを再生し、ホーム画面遷移時にフェードアウトする。
+- **作業手順**:
+  1. BGM素材（`.mp3` or `.ogg`）を `assets/sounds/` に追加（例: `title_bgm.mp3`）。
+  2. `pubspec.yaml` の `assets` セクションにファイルを追記。
+  3. `lib/data/sound_service.dart` に以下を追加:
+     - BGM用の `AudioPlayer` インスタンス（ループ再生対応）
+     - `playTitleBgm()` — BGMをループ再生開始するメソッド
+     - `stopBgm()` — BGMを停止（フェードアウト付きが望ましい）するメソッド
+  4. `title_screen.dart` の `initState` で `SoundService().playTitleBgm()` を呼び出し、`_onTap()` 内で `SoundService().stopBgm()` を呼び出す。
+- **参考**: 既存の効果音は `_play()` メソッドで `AssetSource` を使用している（`sound_service.dart:36`）。BGMは別途ループ設定（`AudioPlayer.setReleaseMode(ReleaseMode.loop)`）が必要。
 
 ---
 
