@@ -8,6 +8,8 @@ class LocalStorageService {
   static const String _keyBattleCount = 'battle_count';
   static const String _keyWinCount = 'win_count';
   static const String _keyDefeatedEnemies = 'defeated_enemies';
+  static const String _keyCoins = 'coins';
+  static const String _keyPremiumGems = 'premium_gems';
 
   late SharedPreferences _prefs;
 
@@ -68,6 +70,20 @@ class LocalStorageService {
 
   /// 撃破した敵のリストを取得
   List<String> getDefeatedEnemies() => _prefs.getStringList(_keyDefeatedEnemies) ?? [];
+
+  // --- 通貨 ---
+
+  Future<void> saveCoins(int coins) async {
+    await _prefs.setInt(_keyCoins, coins);
+  }
+
+  int getCoins() => _prefs.getInt(_keyCoins) ?? 0;
+
+  Future<void> savePremiumGems(int gems) async {
+    await _prefs.setInt(_keyPremiumGems, gems);
+  }
+
+  int getPremiumGems() => _prefs.getInt(_keyPremiumGems) ?? 0;
 
   /// 全データをクリア
   Future<void> clearAll() async {
