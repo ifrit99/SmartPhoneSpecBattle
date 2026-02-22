@@ -11,6 +11,9 @@ class SoundService {
   final AudioPlayer _player2 = AudioPlayer();
   int _playerIndex = 0;
 
+  // BGM用プレイヤー
+  final AudioPlayer _bgmPlayer = AudioPlayer();
+  
   bool _isMuted = false;
 
   /// ミュート状態
@@ -63,9 +66,35 @@ class SoundService {
   /// ボタン操作音
   Future<void> playButton() => _play('button.wav');
 
+  /// タイトルBGMをループ再生する
+  Future<void> playTitleBgm() async {
+    if (_isMuted) return;
+    try {
+      await _bgmPlayer.setReleaseMode(ReleaseMode.loop);
+      await _bgmPlayer.play(AssetSource('sounds/Crimson_Gauntlet.mp3'));
+    } catch (_) {
+      // 無視
+    }
+  }
+
+  /// 現在再生中のBGMをフェードアウトして止める
+  Future<void> stopBgm() async {
+    try {
+      // 簡易的なフェードアウト（1秒かけて音量を下げる）
+      for (int i = 10; i >= 0; i--) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        await _bgmPlayer.setVolume(i / 10);
+      }
+      await _bgmPlayer.stop();
+      // 音量を戻しておく
+      await _bgmPlayer.setVolume(1.0);
+    } catch (_) {}
+  }
+
   /// リソースを解放する（アプリ終了時に呼ぶ）
   void dispose() {
     _player1.dispose();
     _player2.dispose();
+    _bgmPlayer.dispose();
   }
 }

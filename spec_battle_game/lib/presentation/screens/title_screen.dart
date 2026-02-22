@@ -87,6 +87,9 @@ class _TitleScreenState extends State<TitleScreen>
       vsync: this,
     )..repeat();
 
+    // BGM再生開始
+    SoundService().playTitleBgm();
+
     // 演出シーケンスの開始
     _startSequence();
   }
@@ -112,6 +115,7 @@ class _TitleScreenState extends State<TitleScreen>
     _subtitleController.dispose();
     _tapController.dispose();
     _particleController.dispose();
+    SoundService().stopBgm(); // 念のため破棄時にも停止を試みる
     super.dispose();
   }
 
@@ -120,6 +124,7 @@ class _TitleScreenState extends State<TitleScreen>
     _navigating = true;
 
     SoundService().playButton();
+    SoundService().stopBgm(); // BGMをフェードアウト停止
 
     // ホーム画面へ遷移（タイトル画面はスタックから除去）
     Navigator.of(context).pushReplacement(
