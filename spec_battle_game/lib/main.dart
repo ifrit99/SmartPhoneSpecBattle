@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'data/sound_service.dart';
-import 'presentation/screens/home_screen.dart';
+import 'presentation/screens/title_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,7 +66,7 @@ class _SpecBattleAppState extends State<SpecBattleApp>
           elevation: 0,
         ),
       ),
-      home: const HomeScreen(),
+      home: const TitleScreen(),
     );
   }
 }
