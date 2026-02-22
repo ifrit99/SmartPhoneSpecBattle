@@ -10,12 +10,14 @@ class ResultScreen extends StatefulWidget {
   final BattleResult result;
   final Character player;
   final Character enemy;
+  final String? enemyDeviceName;
 
   const ResultScreen({
     super.key,
     required this.result,
     required this.player,
     required this.enemy,
+    this.enemyDeviceName,
   });
 
   @override
@@ -78,6 +80,11 @@ class _ResultScreenState extends State<ResultScreen>
 
     // 戦績を記録
     await expService.recordBattle(widget.result.playerWon);
+
+    // 勝利した場合は敵の端末名を図鑑に記録
+    if (widget.result.playerWon && widget.enemyDeviceName != null) {
+      await storage.saveDefeatedEnemy(widget.enemyDeviceName!);
+    }
 
     if (mounted) setState(() {});
   }

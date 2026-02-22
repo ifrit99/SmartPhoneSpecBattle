@@ -14,8 +14,14 @@ import 'result_screen.dart';
 class BattleScreen extends StatefulWidget {
   final Character player;
   final Character enemy;
+  final String? enemyDeviceName;
 
-  const BattleScreen({super.key, required this.player, required this.enemy});
+  const BattleScreen({
+    super.key, 
+    required this.player, 
+    required this.enemy,
+    this.enemyDeviceName,
+  });
 
   @override
   State<BattleScreen> createState() => _BattleScreenState();
@@ -488,6 +494,7 @@ class _BattleScreenState extends State<BattleScreen>
                         result: _result,
                         player: widget.player,
                         enemy: widget.enemy,
+                        enemyDeviceName: widget.enemyDeviceName,
                       ),
                     ),
                   );

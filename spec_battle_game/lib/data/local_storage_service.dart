@@ -7,6 +7,7 @@ class LocalStorageService {
   static const String _keyExpToNext = 'exp_to_next';
   static const String _keyBattleCount = 'battle_count';
   static const String _keyWinCount = 'win_count';
+  static const String _keyDefeatedEnemies = 'defeated_enemies';
 
   late SharedPreferences _prefs;
 
@@ -53,6 +54,20 @@ class LocalStorageService {
   }
 
   int getCharacterSeed() => _prefs.getInt('character_seed') ?? 0;
+
+  // --- 図鑑（対戦履歴） ---
+
+  /// 撃破した敵のリストに追記
+  Future<void> saveDefeatedEnemy(String deviceName) async {
+    final currentList = getDefeatedEnemies();
+    if (!currentList.contains(deviceName)) {
+      currentList.add(deviceName);
+      await _prefs.setStringList(_keyDefeatedEnemies, currentList);
+    }
+  }
+
+  /// 撃破した敵のリストを取得
+  List<String> getDefeatedEnemies() => _prefs.getStringList(_keyDefeatedEnemies) ?? [];
 
   /// 全データをクリア
   Future<void> clearAll() async {

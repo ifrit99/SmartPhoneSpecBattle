@@ -11,6 +11,7 @@ import '../../domain/services/experience_service.dart';
 import '../widgets/pixel_character.dart';
 import '../widgets/stat_bar.dart';
 import 'character_screen.dart';
+import 'collection_screen.dart';
 import 'battle_screen.dart';
 
 /// ホーム画面
@@ -119,6 +120,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             builder: (context) => BattleScreen(
               player: player,
               enemy: profile.character,
+              enemyDeviceName: profile.deviceSpec.deviceName,
             ),
           ),
         ).then((_) => _reloadData());
@@ -236,6 +238,28 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
           // 戦績カード
           _buildRecordCard(record),
+          const SizedBox(height: 16),
+          
+          // 図鑑・履歴ボタン
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => CollectionScreen(playerCharacter: player),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.menu_book, color: Colors.white70),
+              label: const Text('図鑑・対戦履歴', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Colors.white24),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+          ),
           const SizedBox(height: 32),
 
           // バトル開始ボタン

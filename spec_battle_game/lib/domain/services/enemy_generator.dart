@@ -256,4 +256,14 @@ class EnemyGenerator {
       case EnemyDifficulty.boss:   return _bossDevices;
     }
   }
+
+  /// 全ての難易度の架空デバイスカタログを統合して取得する（図鑑用）
+  static List<EnemyDeviceSpec> get allEnemyDevices {
+    return [
+      ..._easyDevices,
+      ..._normalDevices,
+      ..._hardDevices,
+      ..._bossDevices,
+    ];
+  }
 }
