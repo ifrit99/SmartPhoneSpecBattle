@@ -488,7 +488,7 @@ class _BattleScreenState extends State<BattleScreen>
             Expanded(
               child: ElevatedButton(
                 onPressed: () {
-                  Navigator.of(context).pushReplacement(
+                  Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => ResultScreen(
                         result: _result,
