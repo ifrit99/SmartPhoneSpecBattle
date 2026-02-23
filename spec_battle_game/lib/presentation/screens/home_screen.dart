@@ -133,16 +133,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // SharedPreferencesの最新データを再取得
     await _storage.init();
     final experience = _expService.loadExperience();
-    final player = _playerCharacter;
-    if (player != null) {
-      setState(() {
-        _playerCharacter = player.copyWith(
-          experience: experience,
-          currentStats: player.baseStats.levelUp(experience.level),
-          batteryLevel: _currentBatteryLevel,
-        );
-      });
-    }
+    
+    // バトル後にレベルが上がっている可能性があるため、ジェネレーターから再生成する
+    // これによりbaseStatsから正しい現在レベルのcurrentStats（最大HP等も含む）が作られる
+    final specs = await _deviceInfo.getDeviceSpecs();
+    final batterySpecs = specs.withBattery(_currentBatteryLevel);
+    final character = CharacterGenerator.generate(batterySpecs, experience: experience);
+
+    setState(() {
+      _playerCharacter = character;
+    });
   }
 
   void _openCharacterDetail() {
