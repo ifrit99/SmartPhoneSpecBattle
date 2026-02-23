@@ -4,6 +4,7 @@
 
 ## 🤖 AI向け：最初に読むべきファイル (絶対ルール)
 - 作業開始前に必ず **`CONTEXT.md`** と **`docs/TODO.md`** を読み、AIエージェントの役割（Antigravity / Claude Code）や現在の実装状況を把握すること。
+- **【重要】コンテナ開発の徹底**: 以降のFlutterに関するすべてのコマンド実行（`flutter analyze`, `flutter test`, `git add`, `git commit`, `git push` など）は、必ず提供されているDockerコンテナ内（`docker compose exec flutter-dev bash -c "..."`）で行うこと。ホストOS（Mac/VPSのローカル）での直接実行や権限要求は禁止する。
 
 ## 📚 ドキュメント構成
 - `README.md`: プロジェクトの目的と使用技術スタック等の概要
