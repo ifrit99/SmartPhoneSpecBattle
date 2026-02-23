@@ -5,6 +5,7 @@ import '../../domain/services/battle_engine.dart';
 import '../../domain/services/experience_service.dart';
 import '../../domain/services/currency_service.dart';
 import '../../domain/services/enemy_generator.dart';
+import '../../domain/models/gacha_character.dart';
 import '../widgets/pixel_character.dart';
 
 /// バトルリザルト画面
@@ -82,6 +83,21 @@ class _ResultScreenState extends State<ResultScreen>
     await expService.addExp(currentExp, widget.result.expGained);
     final newExp = expService.loadExperience();
     _levelAfter = newExp.level;
+
+    // ガチャキャラクターを装備している場合、そのキャラクターにも経験値を付与して保存
+    final equippedId = storage.getEquippedGachaCharacterId();
+    if (equippedId != null) {
+      final jsons = storage.getGachaCharacters();
+      for (int i = 0; i < jsons.length; i++) {
+        final g = GachaCharacter.fromJsonString(jsons[i]);
+        if (g.id == equippedId) {
+          final updatedG = g.gainExp(widget.result.expGained);
+          jsons[i] = updatedG.toJsonString();
+          await storage.saveGachaCharacters(jsons);
+          break;
+        }
+      }
+    }
 
     // コインを計算して付与
     final currencyService = CurrencyService(storage);

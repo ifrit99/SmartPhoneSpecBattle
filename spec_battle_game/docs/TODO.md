@@ -12,6 +12,7 @@
   - Phase 3-1 (CPU敵キャラ自動生成: `enemy_generator.dart`)
   - Phase 3-2 (キャラクター図鑑・対戦履歴: `CollectionScreen`)
   - Phase 3-3 (タイトル画面: `title_screen.dart`)
+  - セキュリティ強化・環境分離のためのDocker開発環境（Dockerfile, docker-compose.yml等）の構築
   - 重大なバグ修正、及びユニットテスト群の追加
 - **現在の位置づけ**: Phase 3 が完了し、Phase 4 の新機能（ガチャ・QR対戦等）へ移行する段階。
 
@@ -55,3 +56,4 @@
 ## 既知の問題・課題
 - **ユニットテスト環境構築エラー**: `flutter test` 実行時に `objective_c` パッケージのネイティブビルドが失敗する（Xcode Command Line Tools のアーキテクチャ不一致問題）。
   - ※テストコード自体は `flutter analyze` を問題なく通過しているため、ローカルマシンの環境設定起因の保留事項。
+  - ※この問題を回避するため、今回Linux環境としてDockerコンテナ構成を用意しました。ローカルにDockerがインストールされている環境であれば、`docker compose exec flutter-dev flutter test` でクリーンにテスト検証を実行可能です。

@@ -1,0 +1,9 @@
+.git/
+.dart_tool/
+build/
+.idea/
+.vscode/
+*.iml
+.DS_Store
+.ssh/
+*~

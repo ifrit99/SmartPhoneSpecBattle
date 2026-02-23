@@ -15,6 +15,9 @@ import '../widgets/stat_bar.dart';
 import 'character_screen.dart';
 import 'collection_screen.dart';
 import 'battle_screen.dart';
+import 'gacha_screen.dart';
+import 'inventory_screen.dart';
+import '../../domain/models/gacha_character.dart';
 
 /// ホーム画面
 class HomeScreen extends StatefulWidget {
@@ -85,9 +88,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final experience = _expService.loadExperience();
     final currency = _currencyService.load();
     
-    // 生成時に最新のバッテリーレベルを反映
-    final batterySpecs = specs.withBattery(_currentBatteryLevel);
-    final character = CharacterGenerator.generate(batterySpecs, experience: experience);
+    Character character;
+    final equippedId = _storage.getEquippedGachaCharacterId();
+    if (equippedId != null) {
+      // 装備中のキャラクターを使用
+      final jsons = _storage.getGachaCharacters();
+      final roster = jsons.map((j) => GachaCharacter.fromJsonString(j)).toList();
+      final equipped = roster.where((c) => c.id == equippedId).firstOrNull;
+      
+      if (equipped != null) {
+        character = equipped.withBattery(_currentBatteryLevel).character;
+      } else {
+        final batterySpecs = specs.withBattery(_currentBatteryLevel);
+        character = CharacterGenerator.generate(batterySpecs, experience: experience);
+      }
+    } else {
+      // 生成時に最新のバッテリーレベルを反映
+      final batterySpecs = specs.withBattery(_currentBatteryLevel);
+      character = CharacterGenerator.generate(batterySpecs, experience: experience);
+    }
 
     setState(() {
       _playerCharacter = character;
@@ -143,11 +162,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final experience = _expService.loadExperience();
     final currency = _currencyService.load();
     
-    // バトル後にレベルが上がっている可能性があるため、ジェネレーターから再生成する
-    // これによりbaseStatsから正しい現在レベルのcurrentStats（最大HP等も含む）が作られる
-    final specs = await _deviceInfo.getDeviceSpecs();
-    final batterySpecs = specs.withBattery(_currentBatteryLevel);
-    final character = CharacterGenerator.generate(batterySpecs, experience: experience);
+    Character character;
+    final equippedId = _storage.getEquippedGachaCharacterId();
+    
+    if (equippedId != null) {
+      final jsons = _storage.getGachaCharacters();
+      final roster = jsons.map((j) => GachaCharacter.fromJsonString(j)).toList();
+      final equipped = roster.where((c) => c.id == equippedId).firstOrNull;
+      if (equipped != null) {
+        character = equipped.withBattery(_currentBatteryLevel).character;
+      } else {
+        final specs = await _deviceInfo.getDeviceSpecs();
+        final batterySpecs = specs.withBattery(_currentBatteryLevel);
+        character = CharacterGenerator.generate(batterySpecs, experience: experience);
+      }
+    } else {
+      // バトル後にレベルが上がっている可能性があるため、ジェネレーターから再生成する
+      final specs = await _deviceInfo.getDeviceSpecs();
+      final batterySpecs = specs.withBattery(_currentBatteryLevel);
+      character = CharacterGenerator.generate(batterySpecs, experience: experience);
+    }
 
     setState(() {
       _playerCharacter = character;
@@ -264,7 +298,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   label: 'Party',
                   color: Colors.blueAccent,
                   onTap: () {
-                    // TODO: InventoryScreen
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const InventoryScreen(),
+                      ),
+                    ).then((_) => _reloadData());
                   },
                 ),
               ),
@@ -275,7 +313,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   label: 'Gacha',
                   color: Colors.orangeAccent,
                   onTap: () {
-                    // TODO: GachaScreen
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const GachaScreen(),
+                      ),
+                    ).then((_) => _reloadData()); // 戻ってきたらコイン・キャラ再取得
                   },
                 ),
               ),

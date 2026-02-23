@@ -11,6 +11,7 @@ class LocalStorageService {
   static const String _keyCoins = 'coins';
   static const String _keyPremiumGems = 'premium_gems';
   static const String _keyGachaRoster = 'gacha_roster';
+  static const String _keyEquippedGachaCharacter = 'equipped_gacha_character';
 
   late SharedPreferences _prefs;
 
@@ -95,6 +96,18 @@ class LocalStorageService {
 
   /// ガチャで獲得したキャラクターリスト（JSON文字列のリスト）を取得
   List<String> getGachaCharacters() => _prefs.getStringList(_keyGachaRoster) ?? [];
+
+  /// 装備中のガチャキャラクターIDを保存
+  Future<void> saveEquippedGachaCharacterId(String? id) async {
+    if (id == null) {
+      await _prefs.remove(_keyEquippedGachaCharacter);
+    } else {
+      await _prefs.setString(_keyEquippedGachaCharacter, id);
+    }
+  }
+
+  /// 装備中のガチャキャラクターIDを取得
+  String? getEquippedGachaCharacterId() => _prefs.getString(_keyEquippedGachaCharacter);
 
   /// 全データをクリア
   Future<void> clearAll() async {
