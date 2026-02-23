@@ -8,6 +8,8 @@ import '../../domain/enums/element_type.dart';
 import '../../domain/services/character_generator.dart';
 import '../../domain/services/enemy_generator.dart';
 import '../../domain/services/experience_service.dart';
+import '../../domain/services/currency_service.dart';
+import '../../domain/models/player_currency.dart';
 import '../widgets/pixel_character.dart';
 import '../widgets/stat_bar.dart';
 import 'character_screen.dart';
@@ -24,9 +26,11 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Character? _playerCharacter;
+  PlayerCurrency? _playerCurrency;
   bool _loading = true;
   late LocalStorageService _storage;
   late ExperienceService _expService;
+  late CurrencyService _currencyService;
   final DeviceInfoService _deviceInfo = DeviceInfoService();
 
   late AnimationController _pulseController;
@@ -73,11 +77,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _storage = LocalStorageService();
     await _storage.init();
     _expService = ExperienceService(_storage);
+    _currencyService = CurrencyService(_storage);
 
     final specs = await _deviceInfo.getDeviceSpecs();
 
     // 画面サイズは後で設定（BuildContext不要の場合のデフォルト）
     final experience = _expService.loadExperience();
+    final currency = _currencyService.load();
     
     // 生成時に最新のバッテリーレベルを反映
     final batterySpecs = specs.withBattery(_currentBatteryLevel);
@@ -85,6 +91,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     setState(() {
       _playerCharacter = character;
+      _playerCurrency = currency;
       _loading = false;
     });
   }
@@ -121,6 +128,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               player: player,
               enemy: profile.character,
               enemyDeviceName: profile.deviceSpec.deviceName,
+              enemyDifficulty: profile.deviceSpec.difficulty,
             ),
           ),
         ).then((_) => _reloadData());
@@ -133,6 +141,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     // SharedPreferencesの最新データを再取得
     await _storage.init();
     final experience = _expService.loadExperience();
+    final currency = _currencyService.load();
     
     // バトル後にレベルが上がっている可能性があるため、ジェネレーターから再生成する
     // これによりbaseStatsから正しい現在レベルのcurrentStats（最大HP等も含む）が作られる
@@ -142,6 +151,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     setState(() {
       _playerCharacter = character;
+      _playerCurrency = currency;
     });
   }
 
@@ -191,6 +201,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
+          // 通貨ヘッダー
+          if (_playerCurrency != null) ...[
+            _buildCurrencyHeader(_playerCurrency!),
+            const SizedBox(height: 16),
+          ],
           // ヘッダー（タイトル + バッテリー）
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -240,24 +255,47 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           _buildRecordCard(record),
           const SizedBox(height: 16),
           
+          // アクションボタン領域 (Party, Gacha)
+          Row(
+            children: [
+              Expanded(
+                child: _buildMenuButton(
+                  icon: Icons.group,
+                  label: 'Party',
+                  color: Colors.blueAccent,
+                  onTap: () {
+                    // TODO: InventoryScreen
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildMenuButton(
+                  icon: Icons.star,
+                  label: 'Gacha',
+                  color: Colors.orangeAccent,
+                  onTap: () {
+                    // TODO: GachaScreen
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
           // 図鑑・履歴ボタン
           SizedBox(
             width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () {
+            child: _buildMenuButton(
+              icon: Icons.menu_book,
+              label: 'Collection',
+              color: Colors.white70,
+              onTap: () {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => CollectionScreen(playerCharacter: player),
                   ),
                 );
               },
-              icon: const Icon(Icons.menu_book, color: Colors.white70),
-              label: const Text('図鑑・対戦履歴', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Colors.white24),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
             ),
           ),
           const SizedBox(height: 32),
@@ -280,6 +318,70 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMenuButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return OutlinedButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, color: color),
+      label: Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+      style: OutlinedButton.styleFrom(
+        side: BorderSide(color: color.withValues(alpha: 0.4)),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        backgroundColor: color.withValues(alpha: 0.05),
+      ),
+    );
+  }
+
+  Widget _buildCurrencyHeader(PlayerCurrency currency) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        // コイン
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.black45,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFFFD700).withValues(alpha: 0.5)),
+          ),
+          child: Row(
+            children: [
+              const Text('🪙 ', style: TextStyle(fontSize: 14)),
+              Text(
+                '${currency.coins}',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        // ジェム
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.black45,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE056FD).withValues(alpha: 0.5)),
+          ),
+          child: Row(
+            children: [
+              const Text('💎 ', style: TextStyle(fontSize: 14)),
+              Text(
+                '${currency.premiumGems}',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

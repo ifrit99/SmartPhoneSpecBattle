@@ -8,6 +8,7 @@ import '../widgets/pixel_character.dart';
 import '../widgets/stat_bar.dart';
 import '../widgets/damage_popup.dart';
 import '../widgets/skill_effect_overlay.dart';
+import '../../domain/services/enemy_generator.dart';
 import 'result_screen.dart';
 
 /// バトル画面 — 自動バトルのアニメーション表示
@@ -15,12 +16,14 @@ class BattleScreen extends StatefulWidget {
   final Character player;
   final Character enemy;
   final String? enemyDeviceName;
+  final EnemyDifficulty enemyDifficulty;
 
   const BattleScreen({
     super.key, 
     required this.player, 
     required this.enemy,
     this.enemyDeviceName,
+    this.enemyDifficulty = EnemyDifficulty.normal,
   });
 
   @override
@@ -495,6 +498,7 @@ class _BattleScreenState extends State<BattleScreen>
                         player: widget.player,
                         enemy: widget.enemy,
                         enemyDeviceName: widget.enemyDeviceName,
+                        enemyDifficulty: widget.enemyDifficulty,
                       ),
                     ),
                   );

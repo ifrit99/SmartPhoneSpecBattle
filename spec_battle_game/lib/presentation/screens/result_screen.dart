@@ -3,6 +3,8 @@ import '../../data/local_storage_service.dart';
 import '../../domain/models/character.dart';
 import '../../domain/services/battle_engine.dart';
 import '../../domain/services/experience_service.dart';
+import '../../domain/services/currency_service.dart';
+import '../../domain/services/enemy_generator.dart';
 import '../widgets/pixel_character.dart';
 
 /// バトルリザルト画面
@@ -11,6 +13,7 @@ class ResultScreen extends StatefulWidget {
   final Character player;
   final Character enemy;
   final String? enemyDeviceName;
+  final EnemyDifficulty enemyDifficulty;
 
   const ResultScreen({
     super.key,
@@ -18,6 +21,7 @@ class ResultScreen extends StatefulWidget {
     required this.player,
     required this.enemy,
     this.enemyDeviceName,
+    this.enemyDifficulty = EnemyDifficulty.normal,
   });
 
   @override
@@ -37,6 +41,7 @@ class _ResultScreenState extends State<ResultScreen>
   int _levelBefore = 1;
   int _levelAfter = 1;
   bool get _leveledUp => _levelAfter > _levelBefore;
+  int _coinsGained = 0;
 
   @override
   void initState() {
@@ -77,6 +82,16 @@ class _ResultScreenState extends State<ResultScreen>
     await expService.addExp(currentExp, widget.result.expGained);
     final newExp = expService.loadExperience();
     _levelAfter = newExp.level;
+
+    // コインを計算して付与
+    final currencyService = CurrencyService(storage);
+    final coins = CurrencyService.calcBattleCoins(
+      won: widget.result.playerWon,
+      playerLevel: _levelBefore,
+      difficulty: widget.enemyDifficulty,
+    );
+    await currencyService.addCoins(coins);
+    _coinsGained = coins;
 
     // 戦績を記録
     await expService.recordBattle(widget.result.playerWon);
@@ -198,6 +213,7 @@ class _ResultScreenState extends State<ResultScreen>
                 const SizedBox(height: 12),
                 _infoRow('ターン数', '${widget.result.turnsPlayed}'),
                 _infoRow('獲得経験値', '+${widget.result.expGained} EXP'),
+                _infoRow('獲得コイン', '+$_coinsGained Coin'),
               ],
             ),
           ),
