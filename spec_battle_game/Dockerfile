@@ -1,5 +1,9 @@
 FROM ghcr.io/cirruslabs/flutter:stable
 
+# 権限昇格し、git と openssh-client をインストールしてコンテナ内で開発（Git連携）を完結させる
+USER root
+RUN apt-get update && apt-get install -y git openssh-client && rm -rf /var/lib/apt/lists/*
+
 # 作業ディレクトリの設定
 WORKDIR /app
 

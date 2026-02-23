@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   flutter-dev:
     build:
@@ -7,8 +5,16 @@ services:
       dockerfile: Dockerfile
     container_name: spec_battle_flutter
     volumes:
-      - .:/app
-    working_dir: /app
+      # プロジェクトルート全体をマウントして .git ディレクトリもコンテナ側から参照できるようにする
+      - ../:/workspace
+      # ホストの .gitconfig をコンテナのrootにReadOnlyでマウントし、設定を引き継ぐ
+      - ~/.gitconfig:/root/.gitconfig:ro
+      # Docker Desktop for MacのSSHソケットをマウント（SSH Agent Forwarding）
+      - /run/host-services/ssh-auth.sock:/run/host-services/ssh-auth.sock
+    environment:
+      # マウントしたSSHソケットを認識させる
+      - SSH_AUTH_SOCK=/run/host-services/ssh-auth.sock
+    working_dir: /workspace/spec_battle_game
     # コンテナを起動状態で維持する
     tty: true
     stdin_open: true
