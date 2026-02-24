@@ -213,19 +213,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'SPEC BATTLE',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      letterSpacing: 4,
-                      shadows: [
-                        Shadow(
-                          color: const Color(0xFF6C5CE7).withValues(alpha: 0.5),
-                          blurRadius: 20,
-                        ),
-                      ],
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'SPEC BATTLE',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: 4,
+                        shadows: [
+                          Shadow(
+                            color: const Color(0xFF6C5CE7).withValues(alpha: 0.5),
+                            blurRadius: 20,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const Text(
@@ -449,6 +452,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildCharacterCard(Character player) {
     final elemColor = elementColor(player.element);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final charSize = (screenWidth * 0.22).clamp(60.0, 120.0);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -473,7 +479,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
       child: Row(
         children: [
-          PixelCharacter(character: player, size: 100),
+          PixelCharacter(character: player, size: charSize),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -656,6 +662,8 @@ class _EnemyPreviewSheet extends StatelessWidget {
     final enemy = profile.character;
     final device = profile.deviceSpec;
     final enemyColor = elementColor(enemy.element);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final charSize = (screenWidth * 0.18).clamp(50.0, 100.0);
 
     // 難易度に応じたカラー
     final diffColor = switch (device.difficulty) {
@@ -736,7 +744,7 @@ class _EnemyPreviewSheet extends StatelessWidget {
                 // ピクセルキャラクター（反転表示）
                 PixelCharacter(
                   character: enemy,
-                  size: 80,
+                  size: charSize,
                   flipHorizontal: true,
                 ),
                 const SizedBox(width: 16),

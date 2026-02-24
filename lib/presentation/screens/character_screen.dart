@@ -50,6 +50,9 @@ class CharacterScreen extends StatelessWidget {
 
   Widget _buildCharacterCard(BuildContext context) {
     final elemColor = elementColor(character.element);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final charSize = (screenWidth * 0.35).clamp(100.0, 200.0);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -67,7 +70,7 @@ class CharacterScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          PixelCharacter(character: character, size: 160),
+          PixelCharacter(character: character, size: charSize),
           const SizedBox(height: 16),
           Text(
             character.name,
@@ -76,6 +79,8 @@ class CharacterScreen extends StatelessWidget {
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 8),
           Row(

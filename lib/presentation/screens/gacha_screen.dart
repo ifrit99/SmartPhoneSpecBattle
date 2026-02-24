@@ -346,43 +346,50 @@ class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin
         ],
       ),
       body: Center(
-        child: Column(
+        child: SingleChildScrollView(
+          child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // ガチャ機体のようなUI
-            AnimatedBuilder(
-              animation: _shakeController,
-              builder: (context, child) {
-                final offset = sin(_shakeController.value * pi * 4) * 8;
-                return Transform.translate(
-                  offset: Offset(offset, 0),
-                  child: Container(
-                    width: 200,
-                    height: 200,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2D3748),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white24, width: 4),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _isPulling ? const Color(0xFFFFD700).withValues(alpha: 0.3) : Colors.transparent,
-                          blurRadius: 40,
-                          spreadRadius: 10,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final orbSize = (constraints.maxWidth * 0.45).clamp(120.0, 220.0);
+                final iconSize = orbSize * 0.4;
+                return AnimatedBuilder(
+                  animation: _shakeController,
+                  builder: (context, child) {
+                    final offset = sin(_shakeController.value * pi * 4) * 8;
+                    return Transform.translate(
+                      offset: Offset(offset, 0),
+                      child: Container(
+                        width: orbSize,
+                        height: orbSize,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2D3748),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white24, width: 4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _isPulling ? const Color(0xFFFFD700).withValues(alpha: 0.3) : Colors.transparent,
+                              blurRadius: 40,
+                              spreadRadius: 10,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.memory,
-                        size: 80,
-                        color: _isPulling ? const Color(0xFFFFD700) : Colors.white54,
+                        child: Center(
+                          child: Icon(
+                            Icons.memory,
+                            size: iconSize,
+                            color: _isPulling ? const Color(0xFFFFD700) : Colors.white54,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 );
               },
             ),
-            const SizedBox(height: 60),
+            const SizedBox(height: 40),
 
             // 提供割合
             Container(
@@ -493,6 +500,7 @@ class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin
               style: TextStyle(color: Colors.white38, fontSize: 12),
             ),
           ],
+        ),
         ),
       ),
     );

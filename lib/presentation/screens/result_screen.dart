@@ -141,7 +141,7 @@ class _ResultScreenState extends State<ResultScreen>
   }
 
   Widget _buildContent(BuildContext context, bool won) {
-    return Padding(
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -154,12 +154,15 @@ class _ResultScreenState extends State<ResultScreen>
           ),
           const SizedBox(height: 16),
           // 勝敗テキスト
-          Text(
-            won ? '🎉 勝利！' : '💀 敗北…',
-            style: TextStyle(
-              fontSize: 36,
-              fontWeight: FontWeight.bold,
-              color: won ? const Color(0xFFFFD700) : const Color(0xFFE17055),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              won ? '🎉 勝利！' : '💀 敗北…',
+              style: TextStyle(
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+                color: won ? const Color(0xFFFFD700) : const Color(0xFFE17055),
+              ),
             ),
           ),
           const SizedBox(height: 32),
@@ -188,9 +191,15 @@ class _ResultScreenState extends State<ResultScreen>
                         PixelCharacter(
                             character: widget.player, size: 60),
                         const SizedBox(height: 8),
-                        Text(widget.player.name,
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 12)),
+                        SizedBox(
+                          width: 80,
+                          child: Text(widget.player.name,
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 12),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center),
+                        ),
                       ],
                     ),
                     const Text('VS',
@@ -206,9 +215,15 @@ class _ResultScreenState extends State<ResultScreen>
                             size: 60,
                             flipHorizontal: true),
                         const SizedBox(height: 8),
-                        Text(widget.enemy.name,
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 12)),
+                        SizedBox(
+                          width: 80,
+                          child: Text(widget.enemy.name,
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 12),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center),
+                        ),
                       ],
                     ),
                   ],
@@ -247,13 +262,16 @@ class _ResultScreenState extends State<ResultScreen>
                         ),
                       ],
                     ),
-                    child: Text(
-                      '⭐ LEVEL UP!  Lv.$_levelBefore → Lv.$_levelAfter',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFFFFD700),
-                        letterSpacing: 2,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        '⭐ LEVEL UP!  Lv.$_levelBefore → Lv.$_levelAfter',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFFFFD700),
+                          letterSpacing: 2,
+                        ),
                       ),
                     ),
                   ),

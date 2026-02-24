@@ -62,8 +62,8 @@ class _CollectionScreenState extends State<CollectionScreen> {
     // 難易度順にソートするなどの工夫も可能だがそのまま表示
     return GridView.builder(
       padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 200,
         childAspectRatio: 0.8,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
@@ -125,12 +125,16 @@ class _CollectionScreenState extends State<CollectionScreen> {
             device.deviceName,
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
           Text(
             '${device.osLabel}\nRAM: ${device.ramMB ~/ 1024}GB',
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white54, fontSize: 11),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

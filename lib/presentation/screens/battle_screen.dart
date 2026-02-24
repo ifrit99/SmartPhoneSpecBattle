@@ -259,9 +259,11 @@ class _BattleScreenState extends State<BattleScreen>
   }
 
   Widget _buildBattleField() {
-    // 画面高さの40%を基準に、最小200・最大320の範囲で制約
-    final screenHeight = MediaQuery.sizeOf(context).height;
-    final fieldHeight = (screenHeight * 0.38).clamp(200.0, 320.0);
+    final screenSize = MediaQuery.sizeOf(context);
+    // 画面高さの38%を基準に、最小200・最大320の範囲で制約
+    final fieldHeight = (screenSize.height * 0.38).clamp(200.0, 320.0);
+    // キャラサイズは画面幅の18%を基準に、最小50・最大100の範囲
+    final charSize = (screenSize.width * 0.18).clamp(50.0, 100.0);
 
     return Container(
       height: fieldHeight,
@@ -320,7 +322,7 @@ class _BattleScreenState extends State<BattleScreen>
                           offset: Offset(isEnemyHit ? _shakeAnimation.value : 0, 0),
                           child: PixelCharacter(
                               character: _currentEnemy,
-                              size: 80,
+                              size: charSize,
                               flipHorizontal: true),
                         );
                       },
@@ -344,7 +346,7 @@ class _BattleScreenState extends State<BattleScreen>
                         return Transform.translate(
                           offset: Offset(isPlayerHit ? -_shakeAnimation.value : 0, 0),
                           child: PixelCharacter(
-                              character: _currentPlayer, size: 80),
+                              character: _currentPlayer, size: charSize),
                         );
                       },
                     ),
