@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../domain/models/character.dart';
 import '../../domain/enums/element_type.dart';
 import '../../domain/enums/effect_type.dart';
+import '../theme/app_colors.dart';
 import '../../domain/models/skill.dart';
 import '../widgets/pixel_character.dart';
 import '../widgets/stat_bar.dart';
@@ -48,7 +49,7 @@ class CharacterScreen extends StatelessWidget {
   }
 
   Widget _buildCharacterCard(BuildContext context) {
-    final elemColor = _getElementColor(character.element);
+    final elemColor = elementColor(character.element);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -174,7 +175,7 @@ class CharacterScreen extends StatelessWidget {
                     children: [
                       Icon(
                         _skillIcon(skill.category),
-                        color: _getElementColor(skill.element),
+                        color: elementColor(skill.element),
                         size: 20,
                       ),
                       const SizedBox(width: 12),
@@ -278,15 +279,15 @@ class CharacterScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: _getElementColor(element).withValues(alpha: 0.2),
+        color: elementColor(element).withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(12),
         border:
-            Border.all(color: _getElementColor(element).withValues(alpha: 0.6)),
+            Border.all(color: elementColor(element).withValues(alpha: 0.6)),
       ),
       child: Text(
         elementName(element),
         style: TextStyle(
-          color: _getElementColor(element),
+          color: elementColor(element),
           fontSize: 13,
           fontWeight: FontWeight.bold,
         ),
@@ -305,20 +306,4 @@ class CharacterScreen extends StatelessWidget {
     }
   }
 
-  Color _getElementColor(ElementType element) {
-    switch (element) {
-      case ElementType.fire:
-        return const Color(0xFFFF6B6B);
-      case ElementType.water:
-        return const Color(0xFF74B9FF);
-      case ElementType.earth:
-        return const Color(0xFFFDCB6E);
-      case ElementType.wind:
-        return const Color(0xFF55EFC4);
-      case ElementType.light:
-        return const Color(0xFFFFF176);
-      case ElementType.dark:
-        return const Color(0xFFAB47BC);
-    }
-  }
 }

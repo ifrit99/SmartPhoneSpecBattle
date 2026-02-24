@@ -2,10 +2,10 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../domain/enums/rarity.dart';
 import '../../domain/models/gacha_character.dart';
+import '../theme/app_colors.dart';
 import '../../domain/models/player_currency.dart';
 import '../../domain/services/gacha_service.dart';
-import '../../domain/services/currency_service.dart';
-import '../../data/local_storage_service.dart';
+import '../../domain/services/service_locator.dart';
 import '../../data/sound_service.dart';
 import '../widgets/pixel_character.dart';
 
@@ -17,8 +17,8 @@ class GachaScreen extends StatefulWidget {
 }
 
 class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin {
-  late LocalStorageService _storage;
-  late GachaService _gachaService;
+  final _sl = ServiceLocator();
+  GachaService get _gachaService => _sl.gachaService;
   int _currentCoins = 0;
   bool _isPulling = false;
 
@@ -31,22 +31,13 @@ class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin
       duration: const Duration(milliseconds: 100),
       vsync: this,
     );
-    _initServices();
-  }
-
-  Future<void> _initServices() async {
-    _storage = LocalStorageService();
-    await _storage.init();
-    if (!mounted) return;
-    final currencyService = CurrencyService(_storage);
-    _gachaService = GachaService(currencyService, _storage);
     _refreshCoins();
   }
 
   void _refreshCoins() {
     if (!mounted) return;
     setState(() {
-      _currentCoins = _storage.getCoins();
+      _currentCoins = _sl.storage.getCoins();
     });
   }
 
@@ -56,14 +47,7 @@ class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin
     super.dispose();
   }
 
-  Color _getRarityColor(Rarity rarity) {
-    switch (rarity) {
-      case Rarity.n: return Colors.grey;
-      case Rarity.r: return Colors.blueAccent;
-      case Rarity.sr: return const Color(0xFFFFD700);
-      case Rarity.ssr: return const Color(0xFFE056FD);
-    }
-  }
+  Color _getRarityColor(Rarity rarity) => rarityColor(rarity);
 
   /// 単発ガチャを実行
   Future<void> _pullSingle() async {

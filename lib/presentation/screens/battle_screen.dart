@@ -93,110 +93,105 @@ class _BattleScreenState extends State<BattleScreen>
     _showNextLog();
   }
 
+  /// バトルログを順次再生する（イテレーティブ実装）
   Future<void> _showNextLog() async {
-    if (_currentLogIndex >= _result.log.length) {
-      if (mounted) {
-        // 勝敗に応じた効果音を再生
-        if (_result.playerWon) {
-          _sound.playVictory();
-        } else {
-          _sound.playDefeat();
+    while (_currentLogIndex < _result.log.length) {
+      if (!mounted) return;
+
+      final entry = _result.log[_currentLogIndex];
+
+      // ターン更新の検知
+      if (entry.message.contains('--- ターン')) {
+        final match = RegExp(r'ターン (\d+)').firstMatch(entry.message);
+        if (match != null) {
+          setState(() {
+            _currentTurn = int.parse(match.group(1)!);
+          });
         }
-        setState(() {
-          _battleComplete = true;
-        });
       }
-      return;
+
+      // アクションに応じた効果音を再生
+      if (entry.actionType == BattleActionType.attack) {
+        _sound.playAttack();
+      } else if (entry.actionType == BattleActionType.defend) {
+        if (entry.healing > 0) {
+          _sound.playHeal();
+        } else {
+          _sound.playDefend();
+        }
+      }
+
+      // スキル発動時のエフェクト待機＋効果音
+      if (entry.actionType == BattleActionType.skill && !entry.message.contains('防御力が上がった')) {
+        final isPlayerAction = entry.actorName == _currentPlayer.name ||
+            entry.actorName == widget.player.name;
+        final actor = isPlayerAction ? _currentPlayer : _currentEnemy;
+
+        if (entry.healing > 0) {
+          _sound.playHeal();
+        } else {
+          _sound.playSkill();
+        }
+
+        await _showSkillEffect(entry.actionName, actor.element);
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _displayedLog.add(entry);
+
+        final isPlayerActor = entry.actorName == _currentPlayer.name ||
+            entry.actorName == widget.player.name;
+
+        // ダメージ演出
+        if (entry.damage > 0) {
+          _shakeController.forward().then((_) => _shakeController.reverse());
+          _flashController.forward().then((_) => _flashController.reverse());
+
+          if (isPlayerActor) {
+            final newHp = max(0, _currentEnemy.currentStats.hp - entry.damage);
+            _currentEnemy = _currentEnemy.withHp(newHp);
+            _addDamagePopup(entry.damage, false, entry.isCritical, false);
+          } else {
+            final newHp = max(0, _currentPlayer.currentStats.hp - entry.damage);
+            _currentPlayer = _currentPlayer.withHp(newHp);
+            _addDamagePopup(entry.damage, true, entry.isCritical, false);
+          }
+        }
+        // 回復演出
+        else if (entry.healing > 0) {
+          if (isPlayerActor) {
+            final newHp = min(_currentPlayer.currentStats.maxHp,
+                _currentPlayer.currentStats.hp + entry.healing);
+            _currentPlayer = _currentPlayer.withHp(newHp);
+            _addDamagePopup(entry.healing, true, false, true);
+          } else {
+            final newHp = min(_currentEnemy.currentStats.maxHp,
+                _currentEnemy.currentStats.hp + entry.healing);
+            _currentEnemy = _currentEnemy.withHp(newHp);
+            _addDamagePopup(entry.healing, false, false, true);
+          }
+        }
+      });
+
+      _currentLogIndex++;
+
+      // 次のログまでのウェイト
+      await Future.delayed(const Duration(milliseconds: 800));
     }
 
-    final entry = _result.log[_currentLogIndex];
-
-    // ターン更新の検知
-    if (entry.message.contains('--- ターン')) {
-      final match = RegExp(r'ターン (\d+)').firstMatch(entry.message);
-      if (match != null) {
-        setState(() {
-          _currentTurn = int.parse(match.group(1)!);
-        });
-      }
-    }
-
-    // アクションに応じた効果音を再生
-    if (entry.actionType == BattleActionType.attack) {
-      _sound.playAttack();
-    } else if (entry.actionType == BattleActionType.defend) {
-      if (entry.healing > 0) {
-        _sound.playHeal();
+    // ログ再生完了
+    if (mounted) {
+      if (_result.playerWon) {
+        _sound.playVictory();
       } else {
-        _sound.playDefend();
+        _sound.playDefeat();
       }
+      setState(() {
+        _battleComplete = true;
+      });
     }
-
-    // スキル発動時のエフェクト待機＋効果音
-    if (entry.actionType == BattleActionType.skill && !entry.message.contains('防御力が上がった')) {
-      // 防御バフ以外（攻撃・回復）の場合にエフェクト表示
-      final isPlayerAction = entry.actorName == _currentPlayer.name ||
-          entry.actorName == widget.player.name;
-      final actor = isPlayerAction ? _currentPlayer : _currentEnemy;
-
-      // スキル種別に応じた効果音
-      if (entry.healing > 0) {
-        _sound.playHeal();
-      } else {
-        _sound.playSkill();
-      }
-
-      // 簡易的にアクターの属性を使用
-      await _showSkillEffect(entry.actionName, actor.element);
-    }
-
-    if (!mounted) return;
-
-    setState(() {
-      _displayedLog.add(entry);
-
-      final isPlayerActor = entry.actorName == _currentPlayer.name ||
-          entry.actorName == widget.player.name;
-
-      // ダメージ演出
-      if (entry.damage > 0) {
-        _shakeController.forward().then((_) => _shakeController.reverse());
-        _flashController.forward().then((_) => _flashController.reverse());
-
-        // HPバーの更新 & ポップアップ
-        if (isPlayerActor) {
-          // 敵がダメージ
-          final newHp = max(0, _currentEnemy.currentStats.hp - entry.damage);
-          _currentEnemy = _currentEnemy.withHp(newHp);
-          _addDamagePopup(entry.damage, false, entry.isCritical, false);
-        } else {
-          // プレイヤーがダメージ
-          final newHp = max(0, _currentPlayer.currentStats.hp - entry.damage);
-          _currentPlayer = _currentPlayer.withHp(newHp);
-          _addDamagePopup(entry.damage, true, entry.isCritical, false);
-        }
-      }
-      // 回復演出
-      else if (entry.healing > 0) {
-        if (isPlayerActor) {
-          final newHp = min(_currentPlayer.currentStats.maxHp,
-              _currentPlayer.currentStats.hp + entry.healing);
-          _currentPlayer = _currentPlayer.withHp(newHp);
-          _addDamagePopup(entry.healing, true, false, true);
-        } else {
-          final newHp = min(_currentEnemy.currentStats.maxHp,
-              _currentEnemy.currentStats.hp + entry.healing);
-          _currentEnemy = _currentEnemy.withHp(newHp);
-          _addDamagePopup(entry.healing, false, false, true);
-        }
-      }
-    });
-
-    _currentLogIndex++;
-    
-    // 次のログまでのウェイト
-    await Future.delayed(const Duration(milliseconds: 800));
-    if (mounted) _showNextLog();
   }
 
   void _skipToEnd() {
@@ -538,12 +533,12 @@ class _BattleScreenState extends State<BattleScreen>
     // 画面サイズに対する相対位置の調整 (Container height=280内)
     // 敵: Top付近, プレイヤー: Bottom付近
     
-    final widget = Positioned(
+    final popup = Positioned(
       key: key,
       top: isPlayerDamage ? null : 60 + random.nextDouble() * 20,
       bottom: isPlayerDamage ? 60 + random.nextDouble() * 20 : null,
-      right: isPlayerDamage ? 60 + offsetX : null, // プレイヤーは右寄り
-      left: isPlayerDamage ? null : 60 + offsetX, // 敵は左寄り
+      right: isPlayerDamage ? 60 + offsetX : null,
+      left: isPlayerDamage ? null : 60 + offsetX,
       child: DamagePopup(
         value: value,
         isCritical: isCritical,
@@ -557,9 +552,9 @@ class _BattleScreenState extends State<BattleScreen>
         },
       ),
     );
-    
+
     setState(() {
-      _popups.add(widget);
+      _popups.add(popup);
     });
   }
 

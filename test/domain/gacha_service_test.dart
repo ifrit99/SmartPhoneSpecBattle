@@ -2,7 +2,6 @@ import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spec_battle_game/domain/enums/rarity.dart';
-import 'package:spec_battle_game/domain/models/player_currency.dart';
 import 'package:spec_battle_game/domain/services/gacha_service.dart';
 import 'package:spec_battle_game/domain/services/currency_service.dart';
 import 'package:spec_battle_game/data/local_storage_service.dart';
@@ -91,7 +90,7 @@ void main() {
     setUp(() async {
       SharedPreferences.setMockInitialValues({});
       storage = LocalStorageService();
-      await storage.init();
+      await storage.resetForTest();
       currencyService = CurrencyService(storage);
     });
 
@@ -157,7 +156,7 @@ void main() {
       for (int seed = 0; seed < 50; seed++) {
         SharedPreferences.setMockInitialValues({});
         final s = LocalStorageService();
-        await s.init();
+        await s.resetForTest();
         final cs = CurrencyService(s);
         await cs.addCoins(900);
 
@@ -273,7 +272,7 @@ void main() {
     test('hasSR: SR以上が含まれるか判定', () async {
       SharedPreferences.setMockInitialValues({});
       final s = LocalStorageService();
-      await s.init();
+      await s.resetForTest();
       final cs = CurrencyService(s);
       await cs.addCoins(900);
 

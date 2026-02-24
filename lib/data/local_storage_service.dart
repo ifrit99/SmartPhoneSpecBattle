@@ -1,7 +1,12 @@
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// ローカルストレージを使用したデータ永続化サービス
+/// ローカルストレージを使用したデータ永続化サービス（シングルトン）
 class LocalStorageService {
+  static final LocalStorageService _instance = LocalStorageService._internal();
+  factory LocalStorageService() => _instance;
+  LocalStorageService._internal();
+
   static const String _keyLevel = 'level';
   static const String _keyCurrentExp = 'current_exp';
   static const String _keyExpToNext = 'exp_to_next';
@@ -22,6 +27,12 @@ class LocalStorageService {
   /// SharedPreferencesの初期化
   Future<void> init() async {
     _prefs ??= await SharedPreferences.getInstance();
+  }
+
+  /// テスト用: SharedPreferencesインスタンスをリセットして再取得する
+  @visibleForTesting
+  Future<void> resetForTest() async {
+    _prefs = await SharedPreferences.getInstance();
   }
 
   /// 初期化済みのSharedPreferencesを取得（未初期化時は例外）

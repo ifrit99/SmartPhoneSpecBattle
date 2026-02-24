@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../data/local_storage_service.dart';
 import '../../domain/models/character.dart';
 import '../../domain/services/battle_engine.dart';
-import '../../domain/services/experience_service.dart';
 import '../../domain/services/currency_service.dart';
 import '../../domain/services/enemy_generator.dart';
-import '../../domain/models/gacha_character.dart';
+import '../../domain/services/service_locator.dart';
 import '../widgets/pixel_character.dart';
 
 /// バトルリザルト画面
@@ -73,48 +71,39 @@ class _ResultScreenState extends State<ResultScreen>
 
   /// バトル結果をLocalStorageに保存する
   Future<void> _saveResult() async {
-    final storage = LocalStorageService();
-    await storage.init();
-    final expService = ExperienceService(storage);
+    final sl = ServiceLocator();
 
     // 経験値を加算して保存（レベルアップ判定）
-    final currentExp = expService.loadExperience();
+    final currentExp = sl.experienceService.loadExperience();
     _levelBefore = currentExp.level;
-    await expService.addExp(currentExp, widget.result.expGained);
-    final newExp = expService.loadExperience();
+    final newExp = await sl.experienceService.addExp(currentExp, widget.result.expGained);
     _levelAfter = newExp.level;
 
     // ガチャキャラクターを装備している場合、そのキャラクターにも経験値を付与して保存
-    final equippedId = storage.getEquippedGachaCharacterId();
+    final equippedId = sl.storage.getEquippedGachaCharacterId();
     if (equippedId != null) {
-      final jsons = storage.getGachaCharacters();
-      for (int i = 0; i < jsons.length; i++) {
-        final g = GachaCharacter.fromJsonString(jsons[i]);
-        if (g.id == equippedId) {
-          final updatedG = g.gainExp(widget.result.expGained);
-          jsons[i] = updatedG.toJsonString();
-          await storage.saveGachaCharacters(jsons);
-          break;
-        }
+      final equipped = sl.gachaService.findById(equippedId);
+      if (equipped != null) {
+        final updatedG = equipped.gainExp(widget.result.expGained);
+        await sl.gachaService.updateCharacter(updatedG);
       }
     }
 
     // コインを計算して付与
-    final currencyService = CurrencyService(storage);
     final coins = CurrencyService.calcBattleCoins(
       won: widget.result.playerWon,
       playerLevel: _levelBefore,
       difficulty: widget.enemyDifficulty,
     );
-    await currencyService.addCoins(coins);
+    await sl.currencyService.addCoins(coins);
     _coinsGained = coins;
 
     // 戦績を記録
-    await expService.recordBattle(widget.result.playerWon);
+    await sl.experienceService.recordBattle(widget.result.playerWon);
 
     // 勝利した場合は敵の端末名を図鑑に記録
     if (widget.result.playerWon && widget.enemyDeviceName != null) {
-      await storage.saveDefeatedEnemy(widget.enemyDeviceName!);
+      await sl.storage.saveDefeatedEnemy(widget.enemyDeviceName!);
     }
 
     if (mounted) setState(() {});

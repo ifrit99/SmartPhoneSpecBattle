@@ -107,7 +107,10 @@ class Character {
           spdMul += effect.value / 100.0;
         case EffectType.speedDown:
           spdMul -= effect.value / 100.0;
-        default:
+        case EffectType.poison:
+        case EffectType.regen:
+        case EffectType.stun:
+          // 倍率に影響しない効果はスキップ
           break;
       }
     }
@@ -139,42 +142,15 @@ class Character {
   /// 経験値を加算した新しいキャラクターを返す
   Character gainExp(int amount) {
     final newExp = experience.addExp(amount);
-    return Character(
-      name: name,
-      element: element,
-      baseStats: baseStats,
-      currentStats: baseStats.levelUp(newExp.level),
-      skills: skills,
+    return copyWith(
       experience: newExp,
-      seed: seed,
-      headIndex: headIndex,
-      bodyIndex: bodyIndex,
-      armIndex: armIndex,
-      legIndex: legIndex,
-      colorPaletteIndex: colorPaletteIndex,
-      statusEffects: statusEffects,
-      batteryLevel: batteryLevel,
+      currentStats: baseStats.levelUp(newExp.level),
     );
   }
 
   /// HPを更新したバトル中のキャラクターを返す
   Character withHp(int newHp) {
-    return Character(
-      name: name,
-      element: element,
-      baseStats: baseStats,
-      currentStats: currentStats.copyWithHp(newHp),
-      skills: skills,
-      experience: experience,
-      seed: seed,
-      headIndex: headIndex,
-      bodyIndex: bodyIndex,
-      armIndex: armIndex,
-      legIndex: legIndex,
-      colorPaletteIndex: colorPaletteIndex,
-      statusEffects: statusEffects,
-      batteryLevel: batteryLevel,
-    );
+    return copyWith(currentStats: currentStats.copyWithHp(newHp));
   }
 
   @override

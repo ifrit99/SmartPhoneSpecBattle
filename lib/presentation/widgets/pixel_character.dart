@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../domain/models/character.dart';
-import '../../domain/enums/element_type.dart';
+import '../theme/app_colors.dart';
 
 /// ドット絵風キャラクターを描画するウィジェット
 /// アセット画像がない場合はCanvasでシンプルなピクセルキャラを描画
@@ -46,23 +46,7 @@ List<Color> _getPalette(int index) {
   return palettes[index % palettes.length];
 }
 
-/// 属性に対応する色
-Color _elementColor(ElementType element) {
-  switch (element) {
-    case ElementType.fire:
-      return const Color(0xFFFF6B6B);
-    case ElementType.water:
-      return const Color(0xFF74B9FF);
-    case ElementType.earth:
-      return const Color(0xFFFDCB6E);
-    case ElementType.wind:
-      return const Color(0xFF55EFC4);
-    case ElementType.light:
-      return const Color(0xFFFFF176);
-    case ElementType.dark:
-      return const Color(0xFFAB47BC);
-  }
-}
+// elementColor は element_type.dart から利用
 
 class _PixelCharacterPainter extends CustomPainter {
   final Character character;
@@ -73,7 +57,7 @@ class _PixelCharacterPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final palette = _getPalette(character.colorPaletteIndex);
     final pixelSize = size.width / 12;
-    final elemColor = _elementColor(character.element);
+    final elemColor = elementColor(character.element);
 
     // 体のベースカラー
     final bodyPaint = Paint()..color = palette[0];
@@ -120,8 +104,8 @@ class _PixelCharacterPainter extends CustomPainter {
     _drawPixelRect(canvas, bodyX + 0.5, bodyY + 0.5, bodyWidth.toDouble() - 1, 2, pixelSize, accentPaint);
 
     // 属性マーク
-    _drawPixelRect(canvas, 5.5, bodyY + 1, 1, 1, pixelSize,
-        Paint()..color = elemColor);
+    final elemPaint = Paint()..color = elemColor;
+    _drawPixelRect(canvas, 5.5, bodyY + 1, 1, 1, pixelSize, elemPaint);
 
     // --- 腕の描画 (armIndex で変化) ---
     final armY = bodyY + 0.5;
@@ -145,5 +129,13 @@ class _PixelCharacterPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+  bool shouldRepaint(covariant _PixelCharacterPainter oldDelegate) {
+    return oldDelegate.character.name != character.name ||
+        oldDelegate.character.element != character.element ||
+        oldDelegate.character.colorPaletteIndex != character.colorPaletteIndex ||
+        oldDelegate.character.headIndex != character.headIndex ||
+        oldDelegate.character.bodyIndex != character.bodyIndex ||
+        oldDelegate.character.armIndex != character.armIndex ||
+        oldDelegate.character.legIndex != character.legIndex;
+  }
 }
