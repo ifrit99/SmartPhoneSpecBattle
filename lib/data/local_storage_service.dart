@@ -12,52 +12,65 @@ class LocalStorageService {
   static const String _keyPremiumGems = 'premium_gems';
   static const String _keyGachaRoster = 'gacha_roster';
   static const String _keyEquippedGachaCharacter = 'equipped_gacha_character';
+  static const String _keySeed = 'character_seed';
 
-  late SharedPreferences _prefs;
+  SharedPreferences? _prefs;
+
+  /// SharedPreferencesが初期化済みかどうか
+  bool get isInitialized => _prefs != null;
 
   /// SharedPreferencesの初期化
   Future<void> init() async {
-    _prefs = await SharedPreferences.getInstance();
+    _prefs ??= await SharedPreferences.getInstance();
+  }
+
+  /// 初期化済みのSharedPreferencesを取得（未初期化時は例外）
+  SharedPreferences get _store {
+    final prefs = _prefs;
+    if (prefs == null) {
+      throw StateError('LocalStorageService.init() が呼ばれていません。先に init() を実行してください。');
+    }
+    return prefs;
   }
 
   // --- 経験値・レベル ---
 
   /// 経験値情報を保存
   Future<void> saveExperience(int level, int currentExp, int expToNext) async {
-    await _prefs.setInt(_keyLevel, level);
-    await _prefs.setInt(_keyCurrentExp, currentExp);
-    await _prefs.setInt(_keyExpToNext, expToNext);
+    await _store.setInt(_keyLevel, level);
+    await _store.setInt(_keyCurrentExp, currentExp);
+    await _store.setInt(_keyExpToNext, expToNext);
   }
 
-  int getLevel() => _prefs.getInt(_keyLevel) ?? 1;
-  int getCurrentExp() => _prefs.getInt(_keyCurrentExp) ?? 0;
-  int getExpToNext() => _prefs.getInt(_keyExpToNext) ?? 100;
+  int getLevel() => _store.getInt(_keyLevel) ?? 1;
+  int getCurrentExp() => _store.getInt(_keyCurrentExp) ?? 0;
+  int getExpToNext() => _store.getInt(_keyExpToNext) ?? 100;
 
   // --- バトル戦績 ---
 
   /// バトル回数をインクリメント
   Future<void> incrementBattleCount() async {
     final count = getBattleCount() + 1;
-    await _prefs.setInt(_keyBattleCount, count);
+    await _store.setInt(_keyBattleCount, count);
   }
 
   /// 勝利回数をインクリメント
   Future<void> incrementWinCount() async {
     final count = getWinCount() + 1;
-    await _prefs.setInt(_keyWinCount, count);
+    await _store.setInt(_keyWinCount, count);
   }
 
-  int getBattleCount() => _prefs.getInt(_keyBattleCount) ?? 0;
-  int getWinCount() => _prefs.getInt(_keyWinCount) ?? 0;
+  int getBattleCount() => _store.getInt(_keyBattleCount) ?? 0;
+  int getWinCount() => _store.getInt(_keyWinCount) ?? 0;
 
   // --- キャラクター ---
 
   /// キャラクターシードを保存
   Future<void> saveCharacterSeed(int seed) async {
-    await _prefs.setInt('character_seed', seed);
+    await _store.setInt(_keySeed, seed);
   }
 
-  int getCharacterSeed() => _prefs.getInt('character_seed') ?? 0;
+  int getCharacterSeed() => _store.getInt(_keySeed) ?? 0;
 
   // --- 図鑑（対戦履歴） ---
 
@@ -66,51 +79,51 @@ class LocalStorageService {
     final currentList = getDefeatedEnemies();
     if (!currentList.contains(deviceName)) {
       currentList.add(deviceName);
-      await _prefs.setStringList(_keyDefeatedEnemies, currentList);
+      await _store.setStringList(_keyDefeatedEnemies, currentList);
     }
   }
 
   /// 撃破した敵のリストを取得
-  List<String> getDefeatedEnemies() => _prefs.getStringList(_keyDefeatedEnemies) ?? [];
+  List<String> getDefeatedEnemies() => _store.getStringList(_keyDefeatedEnemies) ?? [];
 
   // --- 通貨 ---
 
   Future<void> saveCoins(int coins) async {
-    await _prefs.setInt(_keyCoins, coins);
+    await _store.setInt(_keyCoins, coins);
   }
 
-  int getCoins() => _prefs.getInt(_keyCoins) ?? 0;
+  int getCoins() => _store.getInt(_keyCoins) ?? 0;
 
   Future<void> savePremiumGems(int gems) async {
-    await _prefs.setInt(_keyPremiumGems, gems);
+    await _store.setInt(_keyPremiumGems, gems);
   }
 
-  int getPremiumGems() => _prefs.getInt(_keyPremiumGems) ?? 0;
+  int getPremiumGems() => _store.getInt(_keyPremiumGems) ?? 0;
 
   // --- ガチャインベントリ ---
 
   /// ガチャで獲得したキャラクターリストを保存
   Future<void> saveGachaCharacters(List<String> characterJsons) async {
-    await _prefs.setStringList(_keyGachaRoster, characterJsons);
+    await _store.setStringList(_keyGachaRoster, characterJsons);
   }
 
   /// ガチャで獲得したキャラクターリスト（JSON文字列のリスト）を取得
-  List<String> getGachaCharacters() => _prefs.getStringList(_keyGachaRoster) ?? [];
+  List<String> getGachaCharacters() => _store.getStringList(_keyGachaRoster) ?? [];
 
   /// 装備中のガチャキャラクターIDを保存
   Future<void> saveEquippedGachaCharacterId(String? id) async {
     if (id == null) {
-      await _prefs.remove(_keyEquippedGachaCharacter);
+      await _store.remove(_keyEquippedGachaCharacter);
     } else {
-      await _prefs.setString(_keyEquippedGachaCharacter, id);
+      await _store.setString(_keyEquippedGachaCharacter, id);
     }
   }
 
   /// 装備中のガチャキャラクターIDを取得
-  String? getEquippedGachaCharacterId() => _prefs.getString(_keyEquippedGachaCharacter);
+  String? getEquippedGachaCharacterId() => _store.getString(_keyEquippedGachaCharacter);
 
   /// 全データをクリア
   Future<void> clearAll() async {
-    await _prefs.clear();
+    await _store.clear();
   }
 }

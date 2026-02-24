@@ -29,7 +29,8 @@ class _CollectionScreenState extends State<CollectionScreen> {
   Future<void> _loadData() async {
     _storage = LocalStorageService();
     await _storage.init();
-    
+    if (!mounted) return;
+
     final expService = ExperienceService(_storage);
 
     setState(() {

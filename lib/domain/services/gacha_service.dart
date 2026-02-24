@@ -125,7 +125,7 @@ class GachaService {
 
   /// インベントリにキャラクターを追加保存
   Future<void> _saveToRoster(List<GachaCharacter> newCharacters) async {
-    final current = _storage.getGachaCharacters();
+    final current = List<String>.from(_storage.getGachaCharacters());
     for (final c in newCharacters) {
       current.add(c.toJsonString());
     }

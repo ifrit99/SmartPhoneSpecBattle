@@ -38,6 +38,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
       return b.character.level.compareTo(a.character.level);
     });
 
+    if (!mounted) return;
     setState(() {
       _roster = chars;
       _equippedId = _storage.getEquippedGachaCharacterId();

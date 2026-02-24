@@ -37,12 +37,14 @@ class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin
   Future<void> _initServices() async {
     _storage = LocalStorageService();
     await _storage.init();
+    if (!mounted) return;
     final currencyService = CurrencyService(_storage);
     _gachaService = GachaService(currencyService, _storage);
     _refreshCoins();
   }
 
   void _refreshCoins() {
+    if (!mounted) return;
     setState(() {
       _currentCoins = _storage.getCoins();
     });
@@ -104,9 +106,10 @@ class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin
     _refreshCoins();
 
     SoundService().playSkill();
+    if (!mounted) return;
     setState(() => _isPulling = false);
 
-    if (result == null || !mounted) return;
+    if (result == null) return;
 
     // 結果表示
     if (result.characters.length == 1) {

@@ -97,7 +97,7 @@ class GachaCharacter {
       'rarity': rarity.label,
       'obtainedAt': obtainedAt.toIso8601String(),
       'name': c.name,
-      'element': c.element.index,
+      'element': c.element.name,
       'baseHp': c.baseStats.hp,
       'baseMaxHp': c.baseStats.maxHp,
       'baseAtk': c.baseStats.atk,
@@ -117,7 +117,10 @@ class GachaCharacter {
 
   /// JSONからGachaCharacterを復元
   factory GachaCharacter.fromJson(Map<String, dynamic> json) {
-    final element = ElementType.values[json['element'] as int];
+    final elementValue = json['element'];
+    final element = elementValue is int
+        ? ElementType.values[elementValue]  // 旧データとの後方互換
+        : ElementType.values.byName(elementValue as String);
     final experience = Experience(
       level: json['level'] as int,
       currentExp: json['currentExp'] as int,

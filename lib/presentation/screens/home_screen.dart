@@ -108,6 +108,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       character = CharacterGenerator.generate(batterySpecs, experience: experience);
     }
 
+    if (!mounted) return;
     setState(() {
       _playerCharacter = character;
       _playerCurrency = currency;
@@ -183,6 +184,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       character = CharacterGenerator.generate(batterySpecs, experience: experience);
     }
 
+    if (!mounted) return;
     setState(() {
       _playerCharacter = character;
       _playerCurrency = currency;
