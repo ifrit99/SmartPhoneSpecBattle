@@ -259,8 +259,12 @@ class _BattleScreenState extends State<BattleScreen>
   }
 
   Widget _buildBattleField() {
+    // 画面高さの40%を基準に、最小200・最大320の範囲で制約
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final fieldHeight = (screenHeight * 0.38).clamp(200.0, 320.0);
+
     return Container(
-      height: 280,
+      height: fieldHeight,
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: const BoxDecoration(
@@ -372,11 +376,15 @@ class _BattleScreenState extends State<BattleScreen>
               fontSize: 14,
               fontWeight: FontWeight.bold,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
           Text(
             'Lv.${char.level}  ${elementName(char.element)}',
             style: const TextStyle(color: Colors.white54, fontSize: 11),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 6),
           StatBar(
@@ -525,20 +533,19 @@ class _BattleScreenState extends State<BattleScreen>
   /// ダメージポップアップを追加
   void _addDamagePopup(int value, bool isPlayerDamage, bool isCritical, bool isHealing) {
     if (!mounted) return;
-    
+
     final key = UniqueKey();
     final random = Random();
-    final offsetX = random.nextDouble() * 60 - 30;
-    
-    // 画面サイズに対する相対位置の調整 (Container height=280内)
-    // 敵: Top付近, プレイヤー: Bottom付近
-    
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final offsetX = random.nextDouble() * (screenWidth * 0.15) - (screenWidth * 0.075);
+    final baseOffset = screenWidth * 0.15;
+
     final popup = Positioned(
       key: key,
-      top: isPlayerDamage ? null : 60 + random.nextDouble() * 20,
-      bottom: isPlayerDamage ? 60 + random.nextDouble() * 20 : null,
-      right: isPlayerDamage ? 60 + offsetX : null,
-      left: isPlayerDamage ? null : 60 + offsetX,
+      top: isPlayerDamage ? null : baseOffset + random.nextDouble() * 20,
+      bottom: isPlayerDamage ? baseOffset + random.nextDouble() * 20 : null,
+      right: isPlayerDamage ? baseOffset + offsetX : null,
+      left: isPlayerDamage ? null : baseOffset + offsetX,
       child: DamagePopup(
         value: value,
         isCritical: isCritical,

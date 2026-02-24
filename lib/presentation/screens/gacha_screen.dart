@@ -117,7 +117,8 @@ class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin
             child: ScaleTransition(
               scale: CurvedAnimation(parent: anim1, curve: Curves.elasticOut),
               child: Container(
-                width: 300,
+                width: MediaQuery.sizeOf(context).width * 0.85,
+                constraints: const BoxConstraints(maxWidth: 340),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: const Color(0xFF1B2838),
@@ -158,6 +159,8 @@ class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin
                         color: Colors.white,
                       ),
                       textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -209,8 +212,8 @@ class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin
             child: ScaleTransition(
               scale: CurvedAnimation(parent: anim1, curve: Curves.elasticOut),
               child: Container(
-                width: 340,
-                constraints: const BoxConstraints(maxHeight: 520),
+                width: MediaQuery.sizeOf(context).width * 0.9,
+                constraints: const BoxConstraints(maxWidth: 380, maxHeight: 520),
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: const Color(0xFF1B2838),
@@ -388,8 +391,9 @@ class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin
                 color: Colors.black26,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
+              child: const Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 4,
                 children: [
                   Text('確率: ', style: TextStyle(color: Colors.white54)),
                   Text('N 60% ', style: TextStyle(color: Colors.grey)),
@@ -402,8 +406,10 @@ class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin
             const SizedBox(height: 32),
 
             // ボタン群
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 16,
+              runSpacing: 12,
               children: [
                 // 単発ガチャボタン
                 ElevatedButton(
@@ -442,7 +448,6 @@ class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin
                     ],
                   ),
                 ),
-                const SizedBox(width: 16),
                 // 10連ガチャボタン
                 ElevatedButton(
                   onPressed: _isPulling ? null : _pullTen,

@@ -105,6 +105,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
               Text(
                 char.deviceName,
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
@@ -190,8 +193,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
             )
           : GridView.builder(
               padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 140,
                 childAspectRatio: 0.75,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
