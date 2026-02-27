@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../data/local_storage_service.dart';
-import '../../domain/services/experience_service.dart';
+import '../../domain/services/service_locator.dart';
 import '../../domain/services/enemy_generator.dart';
 import '../../domain/models/character.dart';
 
@@ -14,8 +13,7 @@ class CollectionScreen extends StatefulWidget {
 }
 
 class _CollectionScreenState extends State<CollectionScreen> {
-  late LocalStorageService _storage;
-  bool _loading = true;
+  final _sl = ServiceLocator();
 
   List<String> _defeatedEnemies = [];
   Map<String, int> _battleRecord = {'battles': 0, 'wins': 0};
@@ -23,20 +21,8 @@ class _CollectionScreenState extends State<CollectionScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
-  }
-
-  Future<void> _loadData() async {
-    _storage = LocalStorageService();
-    await _storage.init();
-    
-    final expService = ExperienceService(_storage);
-
-    setState(() {
-      _defeatedEnemies = _storage.getDefeatedEnemies();
-      _battleRecord = expService.getBattleRecord();
-      _loading = false;
-    });
+    _defeatedEnemies = _sl.storage.getDefeatedEnemies();
+    _battleRecord = _sl.experienceService.getBattleRecord();
   }
 
   @override
@@ -60,9 +46,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
             ],
           ),
         ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : TabBarView(
+        body: TabBarView(
                 children: [
                   _buildCompendiumTab(),
                   _buildPlayerHistoryTab(),
@@ -78,8 +62,8 @@ class _CollectionScreenState extends State<CollectionScreen> {
     // 難易度順にソートするなどの工夫も可能だがそのまま表示
     return GridView.builder(
       padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 200,
         childAspectRatio: 0.8,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
@@ -141,12 +125,16 @@ class _CollectionScreenState extends State<CollectionScreen> {
             device.deviceName,
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
           Text(
             '${device.osLabel}\nRAM: ${device.ramMB ~/ 1024}GB',
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.white54, fontSize: 11),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -223,7 +211,6 @@ class _CollectionScreenState extends State<CollectionScreen> {
                   Text('Level: ${widget.playerCharacter!.level}', style: const TextStyle(color: Colors.white)),
                   const SizedBox(height: 8),
                   Text('EXP: ${widget.playerCharacter!.experience.currentExp} / ${widget.playerCharacter!.experience.expToNext}', style: const TextStyle(color: Colors.white70)),
-                  // TODO: More stats if needed
                 ],
               ),
             ),

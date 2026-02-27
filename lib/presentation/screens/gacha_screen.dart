@@ -1,10 +1,11 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../domain/enums/rarity.dart';
-import '../../domain/data/gacha_device_catalog.dart';
 import '../../domain/models/gacha_character.dart';
-import '../../domain/services/currency_service.dart';
-import '../../data/local_storage_service.dart';
+import '../theme/app_colors.dart';
+import '../../domain/models/player_currency.dart';
+import '../../domain/services/gacha_service.dart';
+import '../../domain/services/service_locator.dart';
 import '../../data/sound_service.dart';
 import '../widgets/pixel_character.dart';
 
@@ -16,14 +17,12 @@ class GachaScreen extends StatefulWidget {
 }
 
 class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin {
-  late LocalStorageService _storage;
-  late CurrencyService _currencyService;
+  final _sl = ServiceLocator();
+  GachaService get _gachaService => _sl.gachaService;
   int _currentCoins = 0;
   bool _isPulling = false;
 
   late AnimationController _shakeController;
-
-  static const int gachaCost = 100;
 
   @override
   void initState() {
@@ -32,19 +31,13 @@ class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin
       duration: const Duration(milliseconds: 100),
       vsync: this,
     );
-    _initServices();
-  }
-
-  Future<void> _initServices() async {
-    _storage = LocalStorageService();
-    await _storage.init();
-    _currencyService = CurrencyService(_storage);
     _refreshCoins();
   }
 
   void _refreshCoins() {
+    if (!mounted) return;
     setState(() {
-      _currentCoins = _currencyService.load().coins;
+      _currentCoins = _sl.storage.getCoins();
     });
   }
 
@@ -54,39 +47,36 @@ class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin
     super.dispose();
   }
 
-  /// レアリティの抽選ロジック
-  /// N: 60%, R: 25%, SR: 10%, SSR: 5%
-  Rarity _drawRarity() {
-    final rand = Random().nextInt(100);
-    if (rand < 5) return Rarity.ssr;
-    if (rand < 15) return Rarity.sr;
-    if (rand < 40) return Rarity.r;
-    return Rarity.n;
-  }
+  Color _getRarityColor(Rarity rarity) => rarityColor(rarity);
 
-  Color _getRarityColor(Rarity rarity) {
-    switch (rarity) {
-      case Rarity.n: return Colors.grey;
-      case Rarity.r: return Colors.blueAccent;
-      case Rarity.sr: return const Color(0xFFFFD700); // Gold
-      case Rarity.ssr: return const Color(0xFFE056FD); // Purple/Pink
-    }
-  }
-
-  Future<void> _pullGacha() async {
-    if (_currentCoins < gachaCost) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('コインが足りません！')),
-      );
-      SoundService().playButton();
+  /// 単発ガチャを実行
+  Future<void> _pullSingle() async {
+    if (_currentCoins < PlayerCurrency.singlePullCost) {
+      _showInsufficientCoins();
       return;
     }
+    await _executePull(() => _gachaService.pullSingle());
+  }
 
+  /// 10連ガチャを実行
+  Future<void> _pullTen() async {
+    if (_currentCoins < PlayerCurrency.tenPullCost) {
+      _showInsufficientCoins();
+      return;
+    }
+    await _executePull(() => _gachaService.pullTen());
+  }
+
+  void _showInsufficientCoins() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('コインが足りません！')),
+    );
+    SoundService().playButton();
+  }
+
+  /// ガチャ演出と結果表示の共通処理
+  Future<void> _executePull(Future<GachaResult?> Function() pullFn) async {
     setState(() => _isPulling = true);
-
-    // コイン消費
-    await _currencyService.spendCoins(gachaCost);
-    _refreshCoins();
 
     // 演出開始
     SoundService().playButton();
@@ -95,24 +85,21 @@ class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin
       await Future.delayed(const Duration(milliseconds: 100));
     }
 
-    // 抽選
-    final rarity = _drawRarity();
-    final candidates = gachaDevicesByRarity(rarity);
-    final selectedDevice = candidates[Random().nextInt(candidates.length)];
-    
-    // 生成と保存
-    final resultChar = GachaCharacter.fromDevice(selectedDevice);
-    final currentRoster = _storage.getGachaCharacters();
-    currentRoster.add(resultChar.toJsonString());
-    await _storage.saveGachaCharacters(currentRoster);
+    // 抽選実行
+    final result = await pullFn();
+    _refreshCoins();
 
     SoundService().playSkill();
-
+    if (!mounted) return;
     setState(() => _isPulling = false);
 
+    if (result == null) return;
+
     // 結果表示
-    if (mounted) {
-      _showResultDialog(resultChar);
+    if (result.characters.length == 1) {
+      _showResultDialog(result.characters.first);
+    } else {
+      _showMultiResultDialog(result.characters);
     }
   }
 
@@ -130,7 +117,8 @@ class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin
             child: ScaleTransition(
               scale: CurvedAnimation(parent: anim1, curve: Curves.elasticOut),
               child: Container(
-                width: 300,
+                width: MediaQuery.sizeOf(context).width * 0.85,
+                constraints: const BoxConstraints(maxWidth: 340),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: const Color(0xFF1B2838),
@@ -171,6 +159,8 @@ class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin
                         color: Colors.white,
                       ),
                       textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -192,6 +182,126 @@ class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin
                         child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     )
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// 10連ガチャの結果一覧ダイアログ
+  void _showMultiResultDialog(List<GachaCharacter> characters) {
+    // 最高レアリティの色でダイアログの枠を装飾
+    final bestRarity = characters
+        .map((c) => c.rarity)
+        .reduce((a, b) => a.sortOrder > b.sortOrder ? a : b);
+    final borderColor = _getRarityColor(bestRarity);
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'GachaMultiResult',
+      transitionDuration: const Duration(milliseconds: 400),
+      pageBuilder: (context, anim1, anim2) {
+        return Center(
+          child: Material(
+            color: Colors.transparent,
+            child: ScaleTransition(
+              scale: CurvedAnimation(parent: anim1, curve: Curves.elasticOut),
+              child: Container(
+                width: MediaQuery.sizeOf(context).width * 0.9,
+                constraints: const BoxConstraints(maxWidth: 380, maxHeight: 520),
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1B2838),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: borderColor, width: 3),
+                  boxShadow: [
+                    BoxShadow(color: borderColor.withValues(alpha: 0.5), blurRadius: 30),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      '10連ガチャ結果',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Flexible(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: characters.length,
+                        separatorBuilder: (_, __) => const Divider(
+                          color: Colors.white12, height: 1,
+                        ),
+                        itemBuilder: (context, index) {
+                          final c = characters[index];
+                          final rColor = _getRarityColor(c.rarity);
+                          return ListTile(
+                            dense: true,
+                            leading: Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.black26,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: rColor, width: 2),
+                              ),
+                              child: Center(
+                                child: PixelCharacter(character: c.character, size: 28),
+                              ),
+                            ),
+                            title: Text(
+                              c.deviceName,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            trailing: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: rColor.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: rColor, width: 1),
+                              ),
+                              child: Text(
+                                c.rarity.label,
+                                style: TextStyle(
+                                  color: rColor,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: borderColor,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text('OK', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -236,44 +346,51 @@ class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin
         ],
       ),
       body: Center(
-        child: Column(
+        child: SingleChildScrollView(
+          child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // ガチャ機体のようなUI
-            AnimatedBuilder(
-              animation: _shakeController,
-              builder: (context, child) {
-                final offset = sin(_shakeController.value * pi * 4) * 8;
-                return Transform.translate(
-                  offset: Offset(offset, 0),
-                  child: Container(
-                    width: 200,
-                    height: 200,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2D3748),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white24, width: 4),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _isPulling ? const Color(0xFFFFD700).withValues(alpha: 0.3) : Colors.transparent,
-                          blurRadius: 40,
-                          spreadRadius: 10,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final orbSize = (constraints.maxWidth * 0.45).clamp(120.0, 220.0);
+                final iconSize = orbSize * 0.4;
+                return AnimatedBuilder(
+                  animation: _shakeController,
+                  builder: (context, child) {
+                    final offset = sin(_shakeController.value * pi * 4) * 8;
+                    return Transform.translate(
+                      offset: Offset(offset, 0),
+                      child: Container(
+                        width: orbSize,
+                        height: orbSize,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2D3748),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white24, width: 4),
+                          boxShadow: [
+                            BoxShadow(
+                              color: _isPulling ? const Color(0xFFFFD700).withValues(alpha: 0.3) : Colors.transparent,
+                              blurRadius: 40,
+                              spreadRadius: 10,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Icon(
-                        Icons.memory,
-                        size: 80,
-                        color: _isPulling ? const Color(0xFFFFD700) : Colors.white54,
+                        child: Center(
+                          child: Icon(
+                            Icons.memory,
+                            size: iconSize,
+                            color: _isPulling ? const Color(0xFFFFD700) : Colors.white54,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 );
               },
             ),
-            const SizedBox(height: 60),
-            
+            const SizedBox(height: 40),
+
             // 提供割合
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -281,8 +398,9 @@ class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin
                 color: Colors.black26,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
+              child: const Wrap(
+                alignment: WrapAlignment.center,
+                spacing: 4,
                 children: [
                   Text('確率: ', style: TextStyle(color: Colors.white54)),
                   Text('N 60% ', style: TextStyle(color: Colors.grey)),
@@ -294,44 +412,95 @@ class _GachaScreenState extends State<GachaScreen> with TickerProviderStateMixin
             ),
             const SizedBox(height: 32),
 
-            // 引くボタン
-            ElevatedButton(
-              onPressed: _isPulling ? null : _pullGacha,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF6C5CE7),
-                padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(30),
+            // ボタン群
+            Wrap(
+              alignment: WrapAlignment.center,
+              spacing: 16,
+              runSpacing: 12,
+              children: [
+                // 単発ガチャボタン
+                ElevatedButton(
+                  onPressed: _isPulling ? null : _pullSingle,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6C5CE7),
+                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    elevation: 8,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        '1回引く',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                           color: Colors.black26,
+                           borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          '🪙 100',
+                          style: TextStyle(color: Colors.white, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                elevation: 8,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    '1回引く',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                // 10連ガチャボタン
+                ElevatedButton(
+                  onPressed: _isPulling ? null : _pullTen,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFE056FD),
+                    padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(30),
                     ),
+                    elevation: 8,
                   ),
-                  const SizedBox(width: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                       color: Colors.black26,
-                       borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text(
-                      '🪙 100',
-                      style: TextStyle(color: Colors.white),
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        '10連',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                           color: Colors.black26,
+                           borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          '🪙 900',
+                          style: TextStyle(color: Colors.white, fontSize: 13),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              '※10連はSR以上1枚確定',
+              style: TextStyle(color: Colors.white38, fontSize: 12),
             ),
           ],
+        ),
         ),
       ),
     );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../domain/enums/element_type.dart';
+import '../theme/app_colors.dart';
 
 /// スキル発動時のエフェクトオーバーレイ
 class SkillEffectOverlay extends StatefulWidget {
@@ -60,31 +61,14 @@ class _SkillEffectOverlayState extends State<SkillEffectOverlay>
     super.dispose();
   }
 
-  Color _getElementColor(ElementType element) {
-    switch (element) {
-      case ElementType.fire:
-        return const Color(0xFFFF6B6B);
-      case ElementType.water:
-        return const Color(0xFF74B9FF);
-      case ElementType.earth:
-        return const Color(0xFFFDCB6E);
-      case ElementType.wind:
-        return const Color(0xFF55EFC4);
-      case ElementType.light:
-        return const Color(0xFFFFF176);
-      case ElementType.dark:
-        return const Color(0xFFAB47BC);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    final color = _getElementColor(widget.element);
+    final color = elementColor(widget.element);
 
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
-        if (_controller.value == 0 || _controller.value == 1) {
+        if (_controller.isDismissed || _controller.isCompleted) {
           return const SizedBox.shrink();
         }
         return Container(

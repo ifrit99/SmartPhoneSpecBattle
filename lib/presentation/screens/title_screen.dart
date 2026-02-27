@@ -297,13 +297,13 @@ class _TitleScreenState extends State<TitleScreen>
 // ─────────────────────────────────────────────
 
 class _Particle {
-  double x;
-  double y;
+  final double x;
+  final double y;
   final double speed;
   final double size;
   final double opacity;
 
-  _Particle({
+  const _Particle({
     required this.x,
     required this.y,
     required this.speed,
@@ -334,5 +334,6 @@ class _ParticlePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_ParticlePainter oldDelegate) => true;
+  bool shouldRepaint(_ParticlePainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }

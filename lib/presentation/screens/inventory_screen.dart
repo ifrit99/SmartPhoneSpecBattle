@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../domain/models/gacha_character.dart';
 import '../../domain/enums/rarity.dart';
-import '../../data/local_storage_service.dart';
+import '../../domain/services/service_locator.dart';
+import '../theme/app_colors.dart';
 import '../../data/sound_service.dart';
 import '../widgets/pixel_character.dart';
 
@@ -13,7 +14,7 @@ class InventoryScreen extends StatefulWidget {
 }
 
 class _InventoryScreenState extends State<InventoryScreen> {
-  late LocalStorageService _storage;
+  final _sl = ServiceLocator();
   List<GachaCharacter> _roster = [];
   String? _equippedId;
   bool _loading = true;
@@ -24,13 +25,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
     _initData();
   }
 
-  Future<void> _initData() async {
-    _storage = LocalStorageService();
-    await _storage.init();
-    
-    final jsons = _storage.getGachaCharacters();
-    final chars = jsons.map((j) => GachaCharacter.fromJsonString(j)).toList();
-    
+  void _initData() {
+    final chars = _sl.gachaService.loadRoster();
+
     // レアリティ降順、レベル降順でソート
     chars.sort((a, b) {
       final rCmp = b.rarity.sortOrder.compareTo(a.rarity.sortOrder);
@@ -40,29 +37,28 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
     setState(() {
       _roster = chars;
-      _equippedId = _storage.getEquippedGachaCharacterId();
+      _equippedId = _sl.storage.getEquippedGachaCharacterId();
       _loading = false;
     });
   }
 
   Future<void> _equipCharacter(GachaCharacter char) async {
     SoundService().playButton();
-    await _storage.saveEquippedGachaCharacterId(char.id);
+    await _sl.gachaService.equipCharacter(char.id);
     setState(() {
       _equippedId = char.id;
     });
-    // 装備完了のトースト等
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${char.deviceName} をメインキャラクターに設定しました')),
       );
-      Navigator.of(context).pop(); // 詳細ダイアログを閉じる
+      Navigator.of(context).pop();
     }
   }
 
   Future<void> _unequip() async {
     SoundService().playButton();
-    await _storage.saveEquippedGachaCharacterId(null);
+    await _sl.gachaService.equipCharacter(null);
     setState(() {
       _equippedId = null;
     });
@@ -73,14 +69,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
   }
 
-  Color _getRarityColor(Rarity rarity) {
-    switch (rarity) {
-      case Rarity.n: return Colors.grey;
-      case Rarity.r: return Colors.blueAccent;
-      case Rarity.sr: return const Color(0xFFFFD700);
-      case Rarity.ssr: return const Color(0xFFE056FD);
-    }
-  }
+  Color _getRarityColor(Rarity rarity) => rarityColor(rarity);
 
   void _showCharacterDetails(GachaCharacter char) {
     SoundService().playButton();
@@ -116,6 +105,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
               Text(
                 char.deviceName,
                 style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
               Text(
@@ -201,8 +193,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
             )
           : GridView.builder(
               padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
+              gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                maxCrossAxisExtent: 140,
                 childAspectRatio: 0.75,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,

@@ -20,7 +20,9 @@ class PlayerCurrency {
 
   /// コインを消費した新しいインスタンスを返す
   PlayerCurrency spendCoins(int amount) {
-    assert(coins >= amount, 'コインが不足しています');
+    if (coins < amount) {
+      throw StateError('コインが不足しています（所持: $coins, 必要: $amount）');
+    }
     return PlayerCurrency(
       coins: coins - amount,
       premiumGems: premiumGems,

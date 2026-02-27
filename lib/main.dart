@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'data/sound_service.dart';
+import 'domain/services/service_locator.dart';
 import 'presentation/screens/title_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // ステータスバーを透明に
@@ -11,6 +12,9 @@ void main() {
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
   ));
+
+  // サービスロケータの初期化
+  await ServiceLocator().init();
 
   runApp(const SpecBattleApp());
 }
@@ -34,16 +38,16 @@ class _SpecBattleAppState extends State<SpecBattleApp>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // アプリ終了時にサウンドリソースを解放
     SoundService().dispose();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // アプリが完全に終了したときにも解放する
-    if (state == AppLifecycleState.detached) {
-      SoundService().dispose();
+    if (state == AppLifecycleState.paused) {
+      SoundService().pauseBgm();
+    } else if (state == AppLifecycleState.resumed) {
+      SoundService().resumeBgm();
     }
   }
 

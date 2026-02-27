@@ -13,7 +13,8 @@ class SoundService {
 
   // BGM用プレイヤー
   final AudioPlayer _bgmPlayer = AudioPlayer();
-  
+  bool _isFadingOut = false;
+
   bool _isMuted = false;
 
   /// ミュート状態
@@ -79,22 +80,41 @@ class SoundService {
 
   /// 現在再生中のBGMをフェードアウトして止める
   Future<void> stopBgm() async {
+    if (_isFadingOut) return;
+    _isFadingOut = true;
     try {
-      // 簡易的なフェードアウト（1秒かけて音量を下げる）
       for (int i = 10; i >= 0; i--) {
         await Future.delayed(const Duration(milliseconds: 100));
         await _bgmPlayer.setVolume(i / 10);
       }
       await _bgmPlayer.stop();
-      // 音量を戻しておく
       await _bgmPlayer.setVolume(1.0);
+    } catch (_) {
+      // プラットフォーム非対応の場合は無視
+    } finally {
+      _isFadingOut = false;
+    }
+  }
+
+  /// BGMを一時停止する（アプリがバックグラウンドに移行した時）
+  Future<void> pauseBgm() async {
+    try {
+      await _bgmPlayer.pause();
+    } catch (_) {}
+  }
+
+  /// BGMを再開する（アプリがフォアグラウンドに復帰した時）
+  Future<void> resumeBgm() async {
+    if (_isMuted) return;
+    try {
+      await _bgmPlayer.resume();
     } catch (_) {}
   }
 
   /// リソースを解放する（アプリ終了時に呼ぶ）
-  void dispose() {
-    _player1.dispose();
-    _player2.dispose();
-    _bgmPlayer.dispose();
+  Future<void> dispose() async {
+    await _player1.dispose();
+    await _player2.dispose();
+    await _bgmPlayer.dispose();
   }
 }

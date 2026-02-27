@@ -14,6 +14,9 @@ services:
     environment:
       # マウントしたSSHソケットを認識させる
       - SSH_AUTH_SOCK=/run/host-services/ssh-auth.sock
+    # Flutter Web開発サーバー用のポートマッピング
+    ports:
+      - "8080:8080"
     working_dir: /workspace
     # コンテナを起動状態で維持する
     tty: true

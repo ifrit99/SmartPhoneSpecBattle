@@ -1,14 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../data/device_info_service.dart';
-import '../../data/local_storage_service.dart';
 import '../../data/sound_service.dart';
 import '../../domain/models/character.dart';
 import '../../domain/enums/element_type.dart';
+import '../theme/app_colors.dart';
 import '../../domain/services/character_generator.dart';
 import '../../domain/services/enemy_generator.dart';
-import '../../domain/services/experience_service.dart';
-import '../../domain/services/currency_service.dart';
+import '../../domain/services/service_locator.dart';
 import '../../domain/models/player_currency.dart';
 import '../widgets/pixel_character.dart';
 import '../widgets/stat_bar.dart';
@@ -17,7 +16,6 @@ import 'collection_screen.dart';
 import 'battle_screen.dart';
 import 'gacha_screen.dart';
 import 'inventory_screen.dart';
-import '../../domain/models/gacha_character.dart';
 
 /// ホーム画面
 class HomeScreen extends StatefulWidget {
@@ -31,9 +29,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Character? _playerCharacter;
   PlayerCurrency? _playerCurrency;
   bool _loading = true;
-  late LocalStorageService _storage;
-  late ExperienceService _expService;
-  late CurrencyService _currencyService;
+  final _sl = ServiceLocator();
   final DeviceInfoService _deviceInfo = DeviceInfoService();
 
   late AnimationController _pulseController;
@@ -77,42 +73,32 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Future<void> _initGame() async {
-    _storage = LocalStorageService();
-    await _storage.init();
-    _expService = ExperienceService(_storage);
-    _currencyService = CurrencyService(_storage);
+    final character = await _buildPlayerCharacter();
+    final currency = _sl.currencyService.load();
 
-    final specs = await _deviceInfo.getDeviceSpecs();
-
-    // 画面サイズは後で設定（BuildContext不要の場合のデフォルト）
-    final experience = _expService.loadExperience();
-    final currency = _currencyService.load();
-    
-    Character character;
-    final equippedId = _storage.getEquippedGachaCharacterId();
-    if (equippedId != null) {
-      // 装備中のキャラクターを使用
-      final jsons = _storage.getGachaCharacters();
-      final roster = jsons.map((j) => GachaCharacter.fromJsonString(j)).toList();
-      final equipped = roster.where((c) => c.id == equippedId).firstOrNull;
-      
-      if (equipped != null) {
-        character = equipped.withBattery(_currentBatteryLevel).character;
-      } else {
-        final batterySpecs = specs.withBattery(_currentBatteryLevel);
-        character = CharacterGenerator.generate(batterySpecs, experience: experience);
-      }
-    } else {
-      // 生成時に最新のバッテリーレベルを反映
-      final batterySpecs = specs.withBattery(_currentBatteryLevel);
-      character = CharacterGenerator.generate(batterySpecs, experience: experience);
-    }
-
+    if (!mounted) return;
     setState(() {
       _playerCharacter = character;
       _playerCurrency = currency;
       _loading = false;
     });
+  }
+
+  /// 装備中のキャラクターまたは実機スペックからCharacterを構築する
+  Future<Character> _buildPlayerCharacter() async {
+    final experience = _sl.experienceService.loadExperience();
+    final equippedId = _sl.storage.getEquippedGachaCharacterId();
+
+    if (equippedId != null) {
+      final equipped = _sl.gachaService.findById(equippedId);
+      if (equipped != null) {
+        return equipped.withBattery(_currentBatteryLevel).character;
+      }
+    }
+
+    final specs = await _deviceInfo.getDeviceSpecs();
+    final batterySpecs = specs.withBattery(_currentBatteryLevel);
+    return CharacterGenerator.generate(batterySpecs, experience: experience);
   }
 
   void _startBattle() {
@@ -137,10 +123,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       builder: (context) => _EnemyPreviewSheet(
         player: player,
         profile: profile,
-        elementColor: _getElementColor,
+        elementColor: elementColor,
       ),
     ).then((confirmed) {
-      if (confirmed == true) {
+      if (confirmed == true && mounted) {
         Navigator.of(context).push(
           MaterialPageRoute(
             builder: (context) => BattleScreen(
@@ -157,32 +143,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   /// バトル後にデータを最新状態にリロードする
   Future<void> _reloadData() async {
-    // SharedPreferencesの最新データを再取得
-    await _storage.init();
-    final experience = _expService.loadExperience();
-    final currency = _currencyService.load();
-    
-    Character character;
-    final equippedId = _storage.getEquippedGachaCharacterId();
-    
-    if (equippedId != null) {
-      final jsons = _storage.getGachaCharacters();
-      final roster = jsons.map((j) => GachaCharacter.fromJsonString(j)).toList();
-      final equipped = roster.where((c) => c.id == equippedId).firstOrNull;
-      if (equipped != null) {
-        character = equipped.withBattery(_currentBatteryLevel).character;
-      } else {
-        final specs = await _deviceInfo.getDeviceSpecs();
-        final batterySpecs = specs.withBattery(_currentBatteryLevel);
-        character = CharacterGenerator.generate(batterySpecs, experience: experience);
-      }
-    } else {
-      // バトル後にレベルが上がっている可能性があるため、ジェネレーターから再生成する
-      final specs = await _deviceInfo.getDeviceSpecs();
-      final batterySpecs = specs.withBattery(_currentBatteryLevel);
-      character = CharacterGenerator.generate(batterySpecs, experience: experience);
-    }
+    final character = await _buildPlayerCharacter();
+    final currency = _sl.currencyService.load();
 
+    if (!mounted) return;
     setState(() {
       _playerCharacter = character;
       _playerCurrency = currency;
@@ -214,8 +178,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(const Color(0xFF6C5CE7)),
+          const CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6C5CE7)),
           ),
           const SizedBox(height: 16),
           const Text(
@@ -229,7 +193,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildContent() {
     final player = _playerCharacter!;
-    final record = _expService.getBattleRecord();
+    final record = _sl.experienceService.getBattleRecord();
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
@@ -245,22 +209,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
+              Flexible(
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'SPEC BATTLE',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                      letterSpacing: 4,
-                      shadows: [
-                        Shadow(
-                          color: const Color(0xFF6C5CE7).withValues(alpha: 0.5),
-                          blurRadius: 20,
-                        ),
-                      ],
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'SPEC BATTLE',
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                        letterSpacing: 4,
+                        shadows: [
+                          Shadow(
+                            color: const Color(0xFF6C5CE7).withValues(alpha: 0.5),
+                            blurRadius: 20,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const Text(
@@ -272,6 +240,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ),
                 ],
+              ),
               ),
               _buildBatteryIndicator(),
             ],
@@ -482,7 +451,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildCharacterCard(Character player) {
-    final elemColor = _getElementColor(player.element);
+    final elemColor = elementColor(player.element);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final charSize = (screenWidth * 0.22).clamp(60.0, 120.0);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -507,7 +479,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
       child: Row(
         children: [
-          PixelCharacter(character: player, size: 100),
+          PixelCharacter(character: player, size: charSize),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -520,6 +492,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Row(
@@ -651,14 +625,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: _getElementColor(element).withValues(alpha: 0.2),
+        color: elementColor(element).withValues(alpha: 0.2),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _getElementColor(element).withValues(alpha: 0.5)),
+        border: Border.all(color: elementColor(element).withValues(alpha: 0.5)),
       ),
       child: Text(
         elementName(element),
         style: TextStyle(
-          color: _getElementColor(element),
+          color: elementColor(element),
           fontSize: 11,
           fontWeight: FontWeight.bold,
         ),
@@ -666,22 +640,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Color _getElementColor(ElementType element) {
-    switch (element) {
-      case ElementType.fire:
-        return const Color(0xFFFF6B6B);
-      case ElementType.water:
-        return const Color(0xFF74B9FF);
-      case ElementType.earth:
-        return const Color(0xFFFDCB6E);
-      case ElementType.wind:
-        return const Color(0xFF55EFC4);
-      case ElementType.light:
-        return const Color(0xFFFFF176);
-      case ElementType.dark:
-        return const Color(0xFFAB47BC);
-    }
-  }
 }
 
 // ─────────────────────────────────────────────
@@ -704,6 +662,8 @@ class _EnemyPreviewSheet extends StatelessWidget {
     final enemy = profile.character;
     final device = profile.deviceSpec;
     final enemyColor = elementColor(enemy.element);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final charSize = (screenWidth * 0.18).clamp(50.0, 100.0);
 
     // 難易度に応じたカラー
     final diffColor = switch (device.difficulty) {
@@ -784,7 +744,7 @@ class _EnemyPreviewSheet extends StatelessWidget {
                 // ピクセルキャラクター（反転表示）
                 PixelCharacter(
                   character: enemy,
-                  size: 80,
+                  size: charSize,
                   flipHorizontal: true,
                 ),
                 const SizedBox(width: 16),
@@ -799,6 +759,8 @@ class _EnemyPreviewSheet extends StatelessWidget {
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
                       Row(
@@ -844,11 +806,15 @@ class _EnemyPreviewSheet extends StatelessWidget {
                     fontSize: 13,
                     fontWeight: FontWeight.bold,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '${device.osLabel}  ／  RAM ${device.ramMB ~/ 1024}GB  ／  空き${device.storageFreeGB}GB  ／  🔋${device.batteryLevel}%',
                   style: const TextStyle(color: Colors.white38, fontSize: 11),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
