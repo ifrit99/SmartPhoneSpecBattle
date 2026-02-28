@@ -1,7 +1,7 @@
 # SPEC BATTLE — TODO
 
 バージョン: 0.1.0
-最終更新: 2026-02-22
+最終更新: 2026-02-27
 
 ---
 
@@ -14,7 +14,9 @@
   - Phase 3-3 (タイトル画面: `title_screen.dart`)
   - セキュリティ強化・環境分離のためのDocker開発環境（Dockerfile, docker-compose.yml等）の構築
   - 重大なバグ修正、及びユニットテスト群の追加
-- **現在の位置づけ**: Phase 3 が完了し、Phase 4 の新機能（ガチャ・QR対戦等）へ移行する段階。直近で行ったディレクトリ再構成のコミットをリモートへプッシュする必要があります。
+  - Phase 4-1 エミュレートガチャ（ガチャロジック・UI・ブラウザテスト）
+  - Phase 4-2 QR/URL対戦 ロジック層（チェックサム検証・QrBattleService・テスト）
+- **現在の位置づけ**: Phase 4-2 のバックエンド/ロジック部分が完了。次はUI層（QRコード表示・カメラ読み取り画面）の実装へ。
 
 ---
 
@@ -27,53 +29,48 @@
 
 ### ~~2. タイトル画面の追加 (Phase 3-3)~~ ✅ 完了
 - `title_screen.dart` を新設し、アプリ起動時の演出を強化。
-- 実装内容:
-  - `main.dart` の初期ルートをホーム画面からタイトル画面へ変更。
-  - ロゴ（グラデーション＋アイコン）のフェードイン＋スケールアニメーション。
-  - 背景に浮遊パーティクルエフェクト。
-  - 「TAP TO START」の点滅表示、タップでフェード遷移してホーム画面へ。
-  - ボタン操作音（`SoundService.playButton()`）連動。
-  - ※BGM再生は専用のBGMアセット追加後に対応予定（Antigravity側タスク）。
 
 ---
 
-## 次に実装すべき機能（Phase 4）
+## ~~Phase 4~~ 進行中
 
 ### ~~1. エミュレートガチャ（仮想スペック生成システム）~~ ✅ 完了
 - ゲーム内通貨を用いてランダムなスペックキャラを生成するガチャ機能。
 
-### 2. QR/URLフレンドスキャン対戦 (Phase 4-2)
-- `qr_flutter` 等を用いてキャラクターデータをQR化し、他端末で読み込んで非同期対戦する機能。
+### ~~2. QR/URLフレンドスキャン対戦 (Phase 4-2) — ロジック層~~ ✅ 完了
+- `CharacterCodec` v2: HMAC-SHA256ベースの4バイトチェックサム付与による改ざん検知
+- `QrBattleService`: エンコード/デコード、ゲスト敵生成、ディープリンクURL生成/解析
+- `IntegrityException`: 不正データ検知用の専用例外クラス
+- v1後方互換性を維持（チェックサムなしの旧データもデコード可能）
+- ユニットテスト: CharacterCodec 25件 + QrBattleService 14件 = 計39件追加
 
 ---
 
-## 🤖 明日のVPS作業向け：Claude Codeへの指示事項（Phase 4-2 着手）
+## 🤖 Antigravity側への引き継ぎ事項（Phase 4-2 UI実装）
 
-明日のVPS環境での作業では、以下の**Phase 4-2 コンポーネントのバックエンド/ロジック部分**の実装に着手してください。
-作業は必ず `feature/phase4-qr-battle` などの専用ブランチを作成し、コンテナ内（`docker compose exec flutter-dev ...`）で実行・コミット・プッシュ（`git push`）までを完結させてください。
+### 次に実装すべき内容: QR/URL対戦のUI層
+以下のUI画面をローカル環境で実装してください。ロジック層は完成済みです。
 
-### 優先タスク: QRフレンドスキャン機能の実装（ロジック層）
-1. **QRエンコード/デコード処理の実装**:
-   - キャラクターのステータス情報（名前、HP、ATK、DEF、SPD等）を軽量な文字列（JSONやBase64等）にシリアライズ・デシリアライズするロジックの構築。
-2. **データの安全性検証**:
-   - 外部から読み込んだデータが不正（チート等）でないか検証する仕組み（簡単なハッシュチェック等）の検討・実装。
-3. **ユニットテストの作成**:
-   - キャラクター情報が正しくエンコード/デコードされ、復元できるかの `flutter test` をコンテナ内で実行して担保する。
+1. **QRコード表示画面**:
+   - `QrBattleService.encodePlayerCharacter()` または `encodeGachaCharacter()` で取得したBase64url文字列を `qr_flutter` でQR化して表示
+   - 共有ボタン（URL共有）: `QrBattleService.generateShareUrl()` でディープリンクURLを生成
 
-※GUI/UI設計（QRコードの表示画面やカメラ読み取り画面）については、後日ローカル環境でAntigravityが担当するため、Claude Code側は**データ変換・検証ロジックとテスト**に専念してください。
+2. **QRコード読み取り画面**:
+   - カメラでQRを読み取り、`QrBattleService.decodeAsGuest()` でゲスト敵を生成
+   - `IntegrityException` をキャッチして「不正なデータです」等のエラー表示
+   - 成功時は `QrBattleGuest.battleCharacter` を `BattleEngine` に渡してバトル画面へ遷移
 
-**【Antigravity作業記録】**
-- ✅ 2026/02/27: `feature/phase4-gacha` ブランチにおけるガチャ画面のUIおよび結合ブラウザテスト（`docs/gacha_browser_test_cases.md`）を完了しました。
+3. **ディープリンク受信ハンドラ**:
+   - `QrBattleService.extractFromUrl()` でURLからデータ抽出 → デコード → バトル画面へ
 
----
+### 主要ファイル
+- `lib/domain/services/qr_battle_service.dart` — QR対戦サービス（エンコード/デコード/URL処理）
+- `lib/domain/services/character_codec.dart` — キャラクターバイナリコーデック（v2チェックサム付き）
+- `lib/domain/models/decoded_character.dart` — デコード結果ラッパー
 
-## Antigravity側への引き継ぎ事項（Phase 3-3 後続）
-- ✅ タイトル画面の視覚確認とUI要素の統合は完了しました。
-- ✅ ユーザー提供BGM (`Crimson_Gauntlet.mp3`) の組み込みとフェードアウト処理も完了しました。
-- ✅ **環境整備**: `SmartPhoneSpecBattle/spec_battle_game` の二重ディレクトリ構造を解消し、すべてのファイルをリポジトリルートに移動しました。あわせて `docker-compose.yml` と `Dockerfile` のマウント・作業ディレクトリ指定を修正済みです。（※コンテナ権限・ホスト側のFlutter SDK権限の都合によりテストはスキップしました）
-- ✅ ディレクトリ修正に伴うファイルのRename変更をローカルにコミット（`リファクタリング: spec_battle_game ディレクトリ階層の解消`）しました。
-
-- ✅ ディレクトリ修正に伴うファイルのRename変更をローカルにコミット（`リファクタリング: spec_battle_game ディレクトリ階層の解消`）しました。（※リモートへのプッシュはユーザー側で実施済み/実施予定です）
+### 依存パッケージ（UI実装時に追加が必要）
+- `qr_flutter` — QRコード表示
+- `mobile_scanner` 等 — カメラ読み取り
 
 ---
 

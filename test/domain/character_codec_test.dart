@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spec_battle_game/domain/models/character.dart';
 import 'package:spec_battle_game/domain/models/stats.dart';
@@ -37,7 +38,7 @@ Character _makeCharacter({
 }
 
 void main() {
-  group('CharacterCodec - 実機キャラ', () {
+  group('CharacterCodec v2 - 実機キャラ', () {
     test('ラウンドトリップ: encode → decode で元データと一致する', () {
       final original = _makeCharacter();
       final encoded = CharacterCodec.encode(original);
@@ -92,7 +93,7 @@ void main() {
     });
   });
 
-  group('CharacterCodec - ガチャキャラ', () {
+  group('CharacterCodec v2 - ガチャキャラ', () {
     test('ラウンドトリップ: rarity と deviceName が復元される', () {
       final original = _makeCharacter(name: 'ギャラクシー・ナイト');
       final encoded = CharacterCodec.encode(
@@ -123,7 +124,7 @@ void main() {
     });
   });
 
-  group('CharacterCodec - 全属性', () {
+  group('CharacterCodec v2 - 全属性', () {
     test('全ElementType(6種)のラウンドトリップ', () {
       for (final element in ElementType.values) {
         final original = _makeCharacter(
@@ -140,7 +141,7 @@ void main() {
     });
   });
 
-  group('CharacterCodec - UTF-8', () {
+  group('CharacterCodec v2 - UTF-8', () {
     test('日本語キャラ名のエンコード/デコード', () {
       final original = _makeCharacter(name: '炎の勇者・ドラゴンスレイヤー');
       final encoded = CharacterCodec.encode(original);
@@ -170,7 +171,7 @@ void main() {
     });
   });
 
-  group('CharacterCodec - エラーハンドリング', () {
+  group('CharacterCodec v2 - エラーハンドリング', () {
     test('不正なBase64urlでFormatException', () {
       expect(
         () => CharacterCodec.decode('!!!invalid!!!'),
@@ -179,7 +180,7 @@ void main() {
     });
 
     test('データが短すぎる場合にFormatException', () {
-      final shortData = base64Url.encode([1, 2, 3]);
+      final shortData = base64Url.encode([2, 0, 0]);
       expect(
         () => CharacterCodec.decode(shortData),
         throwsA(isA<FormatException>().having(
@@ -191,9 +192,8 @@ void main() {
     });
 
     test('未対応バージョンでFormatException', () {
-      // version=99 の不正データを作成
-      final bytes = List<int>.filled(25, 0);
-      bytes[0] = 99; // 未対応バージョン
+      final bytes = List<int>.filled(30, 0);
+      bytes[0] = 99;
       final encoded = base64Url.encode(bytes);
 
       expect(
@@ -214,7 +214,120 @@ void main() {
     });
   });
 
-  group('CharacterCodec - QR適合性', () {
+  group('CharacterCodec v2 - チェックサム検証', () {
+    test('正常データのチェックサム検証が成功する', () {
+      final original = _makeCharacter();
+      final encoded = CharacterCodec.encode(original);
+
+      // 例外なくデコードできること
+      expect(() => CharacterCodec.decode(encoded), returnsNormally);
+    });
+
+    test('1バイト改ざんでIntegrityExceptionがスローされる', () {
+      final original = _makeCharacter();
+      final encoded = CharacterCodec.encode(original);
+
+      // Base64をデコードして1バイト改ざん
+      final bytes = base64Url.decode(encoded);
+      // ペイロード部分（チェックサム手前）の1バイトを変更
+      bytes[5] = (bytes[5] + 1) % 256;
+      final tampered = base64Url.encode(bytes);
+
+      expect(
+        () => CharacterCodec.decode(tampered),
+        throwsA(isA<IntegrityException>()),
+      );
+    });
+
+    test('チェックサム部分の改ざんでIntegrityExceptionがスローされる', () {
+      final original = _makeCharacter();
+      final encoded = CharacterCodec.encode(original);
+
+      final bytes = base64Url.decode(encoded);
+      // チェックサム末尾バイトを改ざん
+      bytes[bytes.length - 1] = (bytes[bytes.length - 1] + 1) % 256;
+      final tampered = base64Url.encode(bytes);
+
+      expect(
+        () => CharacterCodec.decode(tampered),
+        throwsA(isA<IntegrityException>()),
+      );
+    });
+
+    test('decodeUnchecked はチェックサム不一致でも正常にデコードできる', () {
+      final original = _makeCharacter(name: 'テスト');
+      final encoded = CharacterCodec.encode(original);
+
+      // ペイロード改ざん
+      final bytes = base64Url.decode(encoded);
+      // 名前長さの直後のバイトを変更しないよう、ステータス値を変更
+      // atk (offset 7) を変更
+      bytes[7] = (bytes[7] + 10) % 256;
+      final tampered = base64Url.encode(bytes);
+
+      // decode は失敗する
+      expect(
+        () => CharacterCodec.decode(tampered),
+        throwsA(isA<IntegrityException>()),
+      );
+
+      // decodeUnchecked は成功する（改ざんされた値で復元）
+      final decoded = CharacterCodec.decodeUnchecked(tampered);
+      expect(decoded.character.baseStats.atk, (18 + 10) % 256);
+    });
+
+    test('v2エンコードデータにはチェックサム4バイトが付与される', () {
+      final original = _makeCharacter(name: 'A');
+      final encoded = CharacterCodec.encode(original);
+      final bytes = base64Url.decode(encoded);
+
+      // version=2 を確認
+      expect(bytes[0], 2);
+
+      // 固定ヘッダ(19) + nameLen(1) + name(1 byte for 'A') + checksum(4) = 25
+      expect(bytes.length, 25);
+    });
+  });
+
+  group('CharacterCodec - v1後方互換', () {
+    test('v1フォーマットのデータがデコードできる', () {
+      // v1フォーマットのバイナリを手動構築
+      final name = 'TestChar';
+      final nameBytes = utf8.encode(name);
+      final totalSize = 19 + 1 + nameBytes.length;
+      final buffer = ByteData(totalSize);
+      var offset = 0;
+
+      buffer.setUint8(offset++, 1); // version=1
+      buffer.setUint8(offset++, 0); // flags: 実機, fire
+      buffer.setUint8(offset++, 3); // level=3
+      buffer.setUint16(offset, 100); offset += 2; // hp
+      buffer.setUint16(offset, 100); offset += 2; // maxHp
+      buffer.setUint8(offset++, 15); // atk
+      buffer.setUint8(offset++, 10); // def
+      buffer.setUint8(offset++, 12); // spd
+      buffer.setUint32(offset, 99); offset += 4; // seed
+      buffer.setUint8(offset++, 0); // head
+      buffer.setUint8(offset++, 1); // body
+      buffer.setUint8(offset++, 2); // arm
+      buffer.setUint8(offset++, 3); // leg
+      buffer.setUint8(offset++, 0); // palette
+      buffer.setUint8(offset++, nameBytes.length);
+
+      final result = buffer.buffer.asUint8List();
+      result.setRange(offset, offset + nameBytes.length, nameBytes);
+
+      final encoded = base64Url.encode(result);
+      final decoded = CharacterCodec.decode(encoded);
+
+      expect(decoded.character.name, 'TestChar');
+      expect(decoded.character.level, 3);
+      expect(decoded.character.baseStats.atk, 15);
+      expect(decoded.isGacha, false);
+    });
+  });
+
+  group('CharacterCodec v2 - QR適合性', () {
     test('エンコード結果がURL-safe文字のみで構成される', () {
       final original = _makeCharacter(name: '超長い名前のテストキャラクター');
       final encoded = CharacterCodec.encode(
@@ -223,14 +336,12 @@ void main() {
         deviceName: 'iPhone 17 Pro Max Ultra',
       );
 
-      // Base64url は +, / を使わず -, _ を使う
       expect(encoded, isNot(contains('+')));
       expect(encoded, isNot(contains('/')));
-      // URLに安全な文字のみ
       expect(encoded, matches(RegExp(r'^[A-Za-z0-9_=-]*$')));
     });
 
-    test('一般的なキャラのエンコードサイズが100バイト以下', () {
+    test('一般的なキャラのエンコードサイズが120バイト以下', () {
       final original = _makeCharacter(name: 'テスト・ウォリアー');
       final encoded = CharacterCodec.encode(
         original,
@@ -238,14 +349,14 @@ void main() {
         deviceName: 'Galaxy S25',
       );
 
-      // Base64エンコード前のバイナリサイズを確認
       final binarySize = base64Url.decode(encoded).length;
-      expect(binarySize, lessThanOrEqualTo(100),
+      // v2はチェックサム4バイト追加のため上限を120に
+      expect(binarySize, lessThanOrEqualTo(120),
           reason: 'バイナリサイズ: $binarySize bytes');
     });
   });
 
-  group('CharacterCodec - 境界値', () {
+  group('CharacterCodec v2 - 境界値', () {
     test('レベル1の最小キャラ', () {
       final original = _makeCharacter(
         name: 'A',

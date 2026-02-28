@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart';
+
 import '../models/character.dart';
 import '../models/decoded_character.dart';
 import '../models/stats.dart';
@@ -13,9 +15,19 @@ import '../enums/rarity.dart';
 ///
 /// QRコード・URL共有用にキャラクターをコンパクトなBase64url文字列に変換する。
 /// サーバーを介さず、データ自体にキャラ情報を埋め込む設計。
+///
+/// v2 ではデータ末尾に HMAC-SHA256 ベースの4バイトチェックサムを付与し、
+/// 改ざんを検知する。
 class CharacterCodec {
-  static const int currentVersion = 1;
+  static const int currentVersion = 2;
   static const int _fixedHeaderSize = 19;
+  static const int _checksumSize = 4;
+
+  /// チェックサム計算用の秘密鍵
+  ///
+  /// アプリ内に埋め込む共有秘密であり、完全な暗号的安全性ではなく
+  /// カジュアルな改ざん（バイナリ編集等）を検知するためのもの。
+  static const String _hmacKey = 'SpecBattle_v2_integrity_2026';
 
   /// Character を Base64url 文字列にエンコード
   ///
@@ -25,13 +37,21 @@ class CharacterCodec {
     Rarity? rarity,
     String? deviceName,
   }) {
-    final bytes = _toBytes(character, rarity, deviceName);
-    return base64Url.encode(bytes);
+    final payload = _toBytes(character, rarity, deviceName);
+    final checksum = _computeChecksum(payload);
+
+    // payload + checksum(4bytes) を結合
+    final result = Uint8List(payload.length + _checksumSize);
+    result.setRange(0, payload.length, payload);
+    result.setRange(payload.length, result.length, checksum);
+
+    return base64Url.encode(result);
   }
 
   /// Base64url 文字列から DecodedCharacter にデコード
   ///
   /// 不正なデータの場合は [FormatException] をスローする。
+  /// チェックサム不一致の場合は [IntegrityException] をスローする。
   static DecodedCharacter decode(String encoded) {
     final Uint8List bytes;
     try {
@@ -39,7 +59,77 @@ class CharacterCodec {
     } on FormatException {
       throw const FormatException('不正なBase64urlデータです');
     }
-    return _fromBytes(bytes);
+
+    if (bytes.isEmpty) {
+      throw const FormatException('データが空です');
+    }
+
+    final version = bytes[0];
+
+    if (version == 1) {
+      // v1: チェックサムなし（後方互換）
+      return _fromBytes(bytes, version: 1);
+    } else if (version == currentVersion) {
+      // v2: チェックサム検証
+      if (bytes.length < _fixedHeaderSize + 1 + _checksumSize) {
+        throw const FormatException('データが短すぎます');
+      }
+
+      final payloadEnd = bytes.length - _checksumSize;
+      final payload = bytes.sublist(0, payloadEnd);
+      final storedChecksum = bytes.sublist(payloadEnd);
+      final expectedChecksum = _computeChecksum(payload);
+
+      if (!_constantTimeEquals(storedChecksum, expectedChecksum)) {
+        throw const IntegrityException('データの整合性チェックに失敗しました（改ざんの可能性）');
+      }
+
+      return _fromBytes(payload, version: currentVersion);
+    } else {
+      throw FormatException('未対応のバージョンです: v$version');
+    }
+  }
+
+  /// チェックサムを検証せずにデコード（テスト・デバッグ用）
+  static DecodedCharacter decodeUnchecked(String encoded) {
+    final Uint8List bytes;
+    try {
+      bytes = base64Url.decode(encoded);
+    } on FormatException {
+      throw const FormatException('不正なBase64urlデータです');
+    }
+
+    if (bytes.isEmpty) {
+      throw const FormatException('データが空です');
+    }
+
+    final version = bytes[0];
+
+    if (version == currentVersion) {
+      final payloadEnd = bytes.length - _checksumSize;
+      final payload = bytes.sublist(0, payloadEnd);
+      return _fromBytes(payload, version: currentVersion);
+    } else {
+      return _fromBytes(bytes, version: version);
+    }
+  }
+
+  /// HMAC-SHA256 の先頭4バイトをチェックサムとして計算
+  static Uint8List _computeChecksum(Uint8List payload) {
+    final key = utf8.encode(_hmacKey);
+    final hmacSha256 = Hmac(sha256, key);
+    final digest = hmacSha256.convert(payload);
+    return Uint8List.fromList(digest.bytes.sublist(0, _checksumSize));
+  }
+
+  /// タイミング攻撃を防ぐための定数時間比較
+  static bool _constantTimeEquals(List<int> a, List<int> b) {
+    if (a.length != b.length) return false;
+    int result = 0;
+    for (int i = 0; i < a.length; i++) {
+      result |= a[i] ^ b[i];
+    }
+    return result == 0;
   }
 
   static Uint8List _toBytes(
@@ -118,7 +208,7 @@ class CharacterCodec {
     return result;
   }
 
-  static DecodedCharacter _fromBytes(Uint8List bytes) {
+  static DecodedCharacter _fromBytes(Uint8List bytes, {required int version}) {
     if (bytes.length < _fixedHeaderSize + 1) {
       throw const FormatException('データが短すぎます');
     }
@@ -126,11 +216,8 @@ class CharacterCodec {
     final buffer = ByteData.sublistView(bytes);
     var offset = 0;
 
-    // [0] version
-    final version = buffer.getUint8(offset++);
-    if (version != currentVersion) {
-      throw FormatException('未対応のバージョンです: v$version');
-    }
+    // [0] version (既に検証済みなのでスキップ)
+    offset++;
 
     // [1] flags
     final flags = buffer.getUint8(offset++);
@@ -231,4 +318,15 @@ class CharacterCodec {
       deviceName: deviceName,
     );
   }
+}
+
+/// データ整合性チェック失敗時の例外
+///
+/// 外部から読み込んだキャラクターデータが改ざんされている可能性がある場合にスローされる。
+class IntegrityException implements Exception {
+  final String message;
+  const IntegrityException(this.message);
+
+  @override
+  String toString() => 'IntegrityException: $message';
 }
