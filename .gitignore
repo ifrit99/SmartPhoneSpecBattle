@@ -40,6 +40,10 @@ app.*.symbols
 # Obfuscation related
 app.*.map.json
 
+# リリース署名
+android/key.properties
+.keystore/
+
 # テストレポート（ブラウジングテストのスクリーンショット・動画等）
 docs/reports/
 

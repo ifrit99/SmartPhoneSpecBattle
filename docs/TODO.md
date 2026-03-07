@@ -1,7 +1,7 @@
 # SPEC BATTLE — TODO
 
 バージョン: 0.1.0
-最終更新: 2026-02-22
+最終更新: 2026-03-07
 
 ---
 
@@ -14,70 +14,80 @@
   - Phase 3-3 (タイトル画面: `title_screen.dart`)
   - セキュリティ強化・環境分離のためのDocker開発環境（Dockerfile, docker-compose.yml等）の構築
   - 重大なバグ修正、及びユニットテスト群の追加
-- **現在の位置づけ**: Phase 3 が完了し、Phase 4 の新機能（ガチャ・QR対戦等）へ移行する段階。直近で行ったディレクトリ再構成のコミットをリモートへプッシュする必要があります。
+  - Phase 4-1 エミュレートガチャ（ガチャロジック・UI・ブラウザテスト）
+  - Phase 4-2 QR/URL対戦 ロジック層（チェックサム検証・QrBattleService・テスト）
+- **現在の位置づけ**: **Android先行MVPリリースに向けて作業中**（目標: 2026-04-03）。
+  - 詳細な計画は `docs/MVP_RELEASE_PLAN.md` を参照。
 
 ---
 
-## ~~Phase 3 後半~~ ✅ 全完了
+## MVP リリースに向けた残タスク（Android先行）
 
-### ~~1. キャラクター図鑑・対戦履歴 (Phase 3-2)~~ ✅ 完了
-- `CollectionScreen` の実装
-- 過去に遭遇・撃破した架空の端末（敵キャラクター）のリスト表示
-- `shared_preferences` で対戦成績（勝利数・遭遇リスト等）をデータ永続化
+> 詳細スケジュールは `docs/MVP_RELEASE_PLAN.md` を参照。
 
-### ~~2. タイトル画面の追加 (Phase 3-3)~~ ✅ 完了
-- `title_screen.dart` を新設し、アプリ起動時の演出を強化。
-- 実装内容:
-  - `main.dart` の初期ルートをホーム画面からタイトル画面へ変更。
-  - ロゴ（グラデーション＋アイコン）のフェードイン＋スケールアニメーション。
-  - 背景に浮遊パーティクルエフェクト。
-  - 「TAP TO START」の点滅表示、タップでフェード遷移してホーム画面へ。
-  - ボタン操作音（`SoundService.playButton()`）連動。
-  - ※BGM再生は専用のBGMアセット追加後に対応予定（Antigravity側タスク）。
+### Week 1 タスク — ビルド基盤整備
 
----
+#### タスク1-1: targetSdk/compileSdk 更新 ✅ 完了（設定済み・テスト通過済み）
+- `android/app/build.gradle`: compileSdk/targetSdk → **34**
+- AGP: 7.3.0 → **8.7.0**、Gradle: 7.5 → **8.7**、Kotlin: 1.9.0 → **2.1.0**
+- Java互換性: 1.8 → **17**（AGP 8.x 要件）
+- `AndroidManifest.xml`: `android:exported="true"` 追加（targetSdk 34 要件）
+- `flutter analyze` エラー0、`flutter test` 全122件パス ✅
 
-## 次に実装すべき機能（Phase 4）
+#### タスク1-2: リリース用署名設定 🔶 設定済み・ビルド未検証
+- ✅ `keytool` でリリース用keystore生成済み（`.keystore/release.jks`）
+- ✅ `android/key.properties` 作成済み（`.gitignore` に追加済み）
+- ✅ `android/app/build.gradle` にリリース署名設定追加済み（`key.properties` 存在時はrelease署名、不在時はdebug署名にフォールバック）
+- ⚠️ `flutter build appbundle --release` のビルド検証が**未完了**
+  - **原因**: VPS環境のメモリ不足（960MB）でKotlin daemonが起動できず
+  - **対策済み**: `gradle.properties` にメモリ節約設定を追加済み（`kotlin.compiler.execution.strategy=in-process`, `org.gradle.daemon=false` 等）
+  - **→ MacBook環境で `flutter build appbundle --release` を実行して検証してください**
 
-### ~~1. エミュレートガチャ（仮想スペック生成システム）~~ ✅ 完了
-- ゲーム内通貨を用いてランダムなスペックキャラを生成するガチャ機能。
+### Week 1 タスク — QR対戦UI（Antigravity担当）
 
-### 2. QR/URLフレンドスキャン対戦 (Phase 4-2)
-- `qr_flutter` 等を用いてキャラクターデータをQR化し、他端末で読み込んで非同期対戦する機能。
+#### タスク1-3: QRコード表示画面 🔲 未着手
+- `qr_flutter` 導入 → キャラ選択 → QR表示 + URL共有ボタン
 
----
+#### タスク1-4: 対戦コード入力画面 🔲 未着手
+- TextField → `decodeAsGuest` → エラー処理 → バトル遷移
 
-## 🤖 明日のVPS作業向け：Claude Codeへの指示事項（Phase 4-2 着手）
-
-明日のVPS環境での作業では、以下の**Phase 4-2 コンポーネントのバックエンド/ロジック部分**の実装に着手してください。
-作業は必ず `feature/phase4-qr-battle` などの専用ブランチを作成し、コンテナ内（`docker compose exec flutter-dev ...`）で実行・コミット・プッシュ（`git push`）までを完結させてください。
-
-### 優先タスク: QRフレンドスキャン機能の実装（ロジック層）
-1. **QRエンコード/デコード処理の実装**:
-   - キャラクターのステータス情報（名前、HP、ATK、DEF、SPD等）を軽量な文字列（JSONやBase64等）にシリアライズ・デシリアライズするロジックの構築。
-2. **データの安全性検証**:
-   - 外部から読み込んだデータが不正（チート等）でないか検証する仕組み（簡単なハッシュチェック等）の検討・実装。
-3. **ユニットテストの作成**:
-   - キャラクター情報が正しくエンコード/デコードされ、復元できるかの `flutter test` をコンテナ内で実行して担保する。
-
-※GUI/UI設計（QRコードの表示画面やカメラ読み取り画面）については、後日ローカル環境でAntigravityが担当するため、Claude Code側は**データ変換・検証ロジックとテスト**に専念してください。
-
-**【Antigravity作業記録】**
-- ✅ 2026/02/27: `feature/phase4-gacha` ブランチにおけるガチャ画面のUIおよび結合ブラウザテスト（`docs/gacha_browser_test_cases.md`）を完了しました。
+#### タスク1-5: ホーム画面にQR対戦導線追加 🔲 未着手
 
 ---
 
-## Antigravity側への引き継ぎ事項（Phase 3-3 後続）
-- ✅ タイトル画面の視覚確認とUI要素の統合は完了しました。
-- ✅ ユーザー提供BGM (`Crimson_Gauntlet.mp3`) の組み込みとフェードアウト処理も完了しました。
-- ✅ **環境整備**: `SmartPhoneSpecBattle/spec_battle_game` の二重ディレクトリ構造を解消し、すべてのファイルをリポジトリルートに移動しました。あわせて `docker-compose.yml` と `Dockerfile` のマウント・作業ディレクトリ指定を修正済みです。（※コンテナ権限・ホスト側のFlutter SDK権限の都合によりテストはスキップしました）
-- ✅ ディレクトリ修正に伴うファイルのRename変更をローカルにコミット（`リファクタリング: spec_battle_game ディレクトリ階層の解消`）しました。
+## 🤖 MacBook Claude Code への引き継ぎ事項
 
-- ✅ ディレクトリ修正に伴うファイルのRename変更をローカルにコミット（`リファクタリング: spec_battle_game ディレクトリ階層の解消`）しました。（※リモートへのプッシュはユーザー側で実施済み/実施予定です）
+### 現在のブランチ状態
+- **`feature/android-release-setup`** ブランチにプッシュ済み（master起点）
+- **`feature/phase4-qr-battle`** ブランチもプッシュ済み（CharacterCodec v2 + QrBattleService）
+- 両ブランチは独立（別々に master にマージ可能）
+
+### 引き継ぎ先で最初にやること
+1. `git pull` して最新を取得
+2. `feature/android-release-setup` ブランチをチェックアウト
+3. **`flutter build appbundle --release` を実行してビルド通過を確認**
+4. 通らない場合は `android/gradle.properties` のメモリ設定を環境に合わせて調整
+5. ビルド通過を確認したらコミット＆プッシュ（または master にマージ）
+
+### 変更されたファイル一覧（`feature/android-release-setup`）
+| ファイル | 変更内容 |
+|---------|---------|
+| `android/app/build.gradle` | compileSdk/targetSdk→34、署名設定追加、Java 17 |
+| `android/settings.gradle` | AGP 8.7.0、Kotlin 2.1.0 |
+| `android/gradle/wrapper/gradle-wrapper.properties` | Gradle 8.7 |
+| `android/gradle.properties` | メモリ節約設定追加 |
+| `android/app/src/main/AndroidManifest.xml` | `android:exported="true"` 追加 |
+| `.gitignore` | `android/key.properties` と `.keystore/` を追加 |
+| `docs/TODO.md` | 本ファイル（進捗更新） |
+
+### keystore について
+- `.keystore/release.jks` は VPS 上の `/home/dev/projects/SmartPhoneSpecBattle/.keystore/` に存在
+- `.gitignore` に含まれるためリポジトリには含まれない
+- **MacBook環境では新しい keystore を生成するか、VPS からコピーする必要がある**
+- keystoreが存在しない場合、build.gradle は自動的に debug 署名にフォールバックする
 
 ---
 
 ## 既知の問題・課題
-- **ユニットテスト環境構築エラー**: `flutter test` 実行時に `objective_c` パッケージのネイティブビルドが失敗する（Xcode Command Line Tools のアーキテクチャ不一致問題）。
-  - ※テストコード自体は `flutter analyze` を問題なく通過しているため、ローカルマシンの環境設定起因の保留事項。
-  - ※この問題を回避するため、今回Linux環境としてDockerコンテナ構成を用意しました。ローカルにDockerがインストールされている環境であれば、`docker compose exec flutter-dev flutter test` でクリーンにテスト検証を実行可能です。
+- **VPSメモリ不足**: 960MBのVPS環境ではKotlin daemon/Gradleビルドがメモリ不足で失敗する。MacBookでのビルド検証を推奨。
+- **ユニットテスト環境構築エラー（Mac）**: `flutter test` 実行時に `objective_c` パッケージのネイティブビルドが失敗する（Xcode Command Line Tools のアーキテクチャ不一致問題）。Docker環境では問題なし。
