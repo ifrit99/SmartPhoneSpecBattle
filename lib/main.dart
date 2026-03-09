@@ -1,8 +1,17 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'data/sound_service.dart';
 import 'domain/services/service_locator.dart';
+import 'domain/services/qr_battle_service.dart';
 import 'presentation/screens/title_screen.dart';
+import 'presentation/screens/qr_guest_preview_screen.dart';
+
+/// グローバルナビゲーターキー（URL対戦からの画面遷移に使用）
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+/// 起動時のURL対戦パラメータ（Webのみ）
+QrBattleGuest? _initialBattleGuest;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,6 +24,19 @@ void main() async {
 
   // サービスロケータの初期化
   await ServiceLocator().init();
+
+  // Web: URLパラメータから対戦データを検出
+  if (kIsWeb) {
+    final battleParam = QrBattleService.extractBattleParam(Uri.base);
+    if (battleParam != null && battleParam.isNotEmpty) {
+      try {
+        _initialBattleGuest =
+            ServiceLocator().qrBattleService.decodeAsGuest(battleParam);
+      } catch (e) {
+        debugPrint('Invalid battle param in URL: $e');
+      }
+    }
+  }
 
   runApp(const SpecBattleApp());
 }
@@ -31,8 +53,20 @@ class _SpecBattleAppState extends State<SpecBattleApp>
   @override
   void initState() {
     super.initState();
-    // アプリのライフサイクル変化を監視
     WidgetsBinding.instance.addObserver(this);
+
+    // URL対戦パラメータがあれば、初回フレーム後にプレビュー画面へ遷移
+    if (_initialBattleGuest != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final guest = _initialBattleGuest!;
+        _initialBattleGuest = null;
+        navigatorKey.currentState?.push(
+          MaterialPageRoute(
+            builder: (context) => QrGuestPreviewScreen(guest: guest),
+          ),
+        );
+      });
+    }
   }
 
   @override
@@ -54,6 +88,7 @@ class _SpecBattleAppState extends State<SpecBattleApp>
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'Spec Battle',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

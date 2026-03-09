@@ -4,17 +4,19 @@ import '../models/gacha_character.dart';
 import '../enums/rarity.dart';
 import 'character_codec.dart';
 
-/// QR/URL対戦に関するエンコード・デコード・ゲスト敵生成を担うサービス
-///
-/// UI層（QRコード表示やカメラ読み取り画面）はAntigravity側が担当するため、
-/// このサービスはデータ変換と検証ロジックに専念する。
+/// URL対戦に関するエンコード・デコード・URL生成を担うサービス
 class QrBattleService {
-  /// 実機キャラクターをQR/URL共有用文字列にエンコード
+  /// デプロイ先のベースURL
+  final String baseUrl;
+
+  QrBattleService({this.baseUrl = ''});
+
+  /// 実機キャラクターをURL共有用文字列にエンコード
   String encodePlayerCharacter(Character character) {
     return CharacterCodec.encode(character);
   }
 
-  /// ガチャキャラクターをQR/URL共有用文字列にエンコード
+  /// ガチャキャラクターをURL共有用文字列にエンコード
   String encodeGachaCharacter(GachaCharacter gachaCharacter) {
     return CharacterCodec.encode(
       gachaCharacter.character,
@@ -23,54 +25,31 @@ class QrBattleService {
     );
   }
 
-  /// QR/URLから読み取った文字列をデコードしてゲスト敵を生成
-  ///
-  /// チェックサム検証を行い、不正データの場合は例外をスローする。
-  /// 戻り値の [QrBattleGuest] にはデコード済みキャラクターと
-  /// バトル用Characterが含まれる。
+  /// 読み取った文字列をデコードしてゲスト敵を生成
   QrBattleGuest decodeAsGuest(String encoded) {
     final decoded = CharacterCodec.decode(encoded);
     return QrBattleGuest.fromDecoded(decoded);
   }
 
-  /// URL共有用のディープリンクURLを生成
-  ///
-  /// [baseUrl] はアプリのディープリンクベースURL。
-  /// 例: `specbattle://battle?data=<encoded>`
-  String generateShareUrl(String encoded, {String scheme = 'specbattle'}) {
-    return '$scheme://battle?data=$encoded';
+  /// エンコード済みデータからWeb共有URLを生成
+  String generateShareUrl(String encoded) {
+    final base = baseUrl.isNotEmpty ? baseUrl : Uri.base.origin;
+    return '$base/?battle=$encoded';
   }
 
-  /// ディープリンクURLからエンコード済みデータを抽出
-  ///
-  /// URLが正しい形式でない場合は null を返す。
-  String? extractFromUrl(String url) {
-    final uri = Uri.tryParse(url);
-    if (uri == null) return null;
-    return uri.queryParameters['data'];
+  /// URLから対戦パラメータを抽出（nullならパラメータなし）
+  static String? extractBattleParam(Uri uri) {
+    return uri.queryParameters['battle'];
   }
 }
 
-/// QR/URLからスキャンしたゲスト敵キャラクター
-///
-/// バトル画面にそのまま渡せる形式で保持する。
+/// URL対戦で受信したゲストキャラクター情報
 class QrBattleGuest {
-  /// デコードされたキャラクター名
   final String name;
-
-  /// ソースデバイス名（ガチャキャラの場合）
   final String? deviceName;
-
-  /// レアリティ（ガチャキャラの場合）
   final Rarity? rarity;
-
-  /// ガチャ産かどうか
   final bool isGacha;
-
-  /// バトル用Character（BattleEngineに渡す）
   final Character battleCharacter;
-
-  /// 表示用ラベル（例: "[SR] Galaxy S25"）
   final String displayLabel;
 
   const QrBattleGuest({

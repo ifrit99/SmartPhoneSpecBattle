@@ -2,6 +2,7 @@ import '../../data/local_storage_service.dart';
 import 'experience_service.dart';
 import 'currency_service.dart';
 import 'gacha_service.dart';
+import 'qr_battle_service.dart';
 
 /// アプリ全体で共有するサービスインスタンスを一元管理するロケータ
 class ServiceLocator {
@@ -16,6 +17,7 @@ class ServiceLocator {
   late final ExperienceService experienceService;
   late final CurrencyService currencyService;
   late final GachaService gachaService;
+  late final QrBattleService qrBattleService;
 
   /// 全サービスの初期化（アプリ起動時に1回だけ呼ぶ）
   Future<void> init() async {
@@ -27,6 +29,7 @@ class ServiceLocator {
     experienceService = ExperienceService(storage);
     currencyService = CurrencyService(storage);
     gachaService = GachaService(currencyService, storage);
+    qrBattleService = QrBattleService();
 
     _initialized = true;
   }

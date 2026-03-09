@@ -131,27 +131,21 @@ void main() {
   });
 
   group('QrBattleService - URL生成・解析', () {
-    test('ディープリンクURLを生成できる', () {
-      final encoded = service.encodePlayerCharacter(_makeCharacter());
-      final url = service.generateShareUrl(encoded);
+    test('共有URLを生成できる', () {
+      final svc = QrBattleService(baseUrl: 'https://example.com');
+      final encoded = svc.encodePlayerCharacter(_makeCharacter());
+      final url = svc.generateShareUrl(encoded);
 
-      expect(url, startsWith('specbattle://battle?data='));
+      expect(url, startsWith('https://example.com/?battle='));
       expect(url, contains(encoded));
     });
 
-    test('カスタムスキームでURL生成できる', () {
-      final encoded = service.encodePlayerCharacter(_makeCharacter());
-      final url = service.generateShareUrl(encoded, scheme: 'https');
-
-      expect(url, startsWith('https://battle?data='));
-    });
-
-    test('URLからエンコード済みデータを抽出できる', () {
+    test('URLから対戦パラメータを抽出できる', () {
       final original = _makeCharacter(name: '抽出テスト');
       final encoded = service.encodePlayerCharacter(original);
-      final url = service.generateShareUrl(encoded);
+      final uri = Uri.parse('https://example.com/?battle=$encoded');
 
-      final extracted = service.extractFromUrl(url);
+      final extracted = QrBattleService.extractBattleParam(uri);
       expect(extracted, encoded);
 
       // 抽出データからゲスト敵を復元
@@ -159,13 +153,9 @@ void main() {
       expect(guest.name, '抽出テスト');
     });
 
-    test('不正なURLからはnullが返る', () {
-      expect(service.extractFromUrl('not a url %%%'), isNull);
-    });
-
-    test('dataパラメータのないURLからはnullが返る', () {
-      final result = service.extractFromUrl('specbattle://battle?other=value');
-      expect(result, isNull);
+    test('battleパラメータのないURLからはnullが返る', () {
+      final uri = Uri.parse('https://example.com/?other=value');
+      expect(QrBattleService.extractBattleParam(uri), isNull);
     });
   });
 

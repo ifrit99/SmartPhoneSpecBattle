@@ -16,6 +16,7 @@ import 'collection_screen.dart';
 import 'battle_screen.dart';
 import 'gacha_screen.dart';
 import 'inventory_screen.dart';
+import 'qr_menu_screen.dart';
 
 /// ホーム画面
 class HomeScreen extends StatefulWidget {
@@ -293,21 +294,39 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ],
           ),
           const SizedBox(height: 12),
-          // 図鑑・履歴ボタン
-          SizedBox(
-            width: double.infinity,
-            child: _buildMenuButton(
-              icon: Icons.menu_book,
-              label: 'Collection',
-              color: Colors.white70,
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => CollectionScreen(playerCharacter: player),
-                  ),
-                );
-              },
-            ),
+          // 図鑑・履歴 と QR対戦ボタン
+          Row(
+            children: [
+              Expanded(
+                child: _buildMenuButton(
+                  icon: Icons.menu_book,
+                  label: 'Collection',
+                  color: Colors.white70,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => CollectionScreen(playerCharacter: player),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildMenuButton(
+                  icon: Icons.people,
+                  label: 'Friend',
+                  color: Colors.greenAccent,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const FriendBattleMenuScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 32),
 
