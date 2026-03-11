@@ -1,0 +1,64 @@
+# GitHub Pages へ Flutter Web アプリを自動デプロイするワークフロー
+# トリガー: master ブランチへの push / 手動実行
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+# GitHub Pages デプロイに必要な権限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時実行を防止（最新の実行のみ有効）
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Flutter SDK をセットアップ
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.0'
+          channel: stable
+          cache: true
+
+      - name: 依存関係をインストール
+        run: flutter pub get
+
+      - name: 静的解析
+        run: flutter analyze
+
+      - name: Web ビルド
+        run: flutter build web --release --base-href "/SmartPhoneSpecBattle/"
+
+      - name: OGP 画像の絶対パスを設定
+        run: |
+          # GitHub Pages の URL に合わせて OGP 画像パスを絶対 URL に書き換え
+          SITE_URL="https://ifrit99.github.io/SmartPhoneSpecBattle"
+          sed -i "s|content=\"ogp.png\"|content=\"${SITE_URL}/ogp.png\"|g" build/web/index.html
+
+      - name: GitHub Pages 用アーティファクトをアップロード
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: GitHub Pages にデプロイ
+        id: deployment
+        uses: actions/deploy-pages@v4
