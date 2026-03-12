@@ -1,7 +1,18 @@
 # SPEC BATTLE — TODO
 
 バージョン: 0.1.0
-最終更新: 2026-03-10
+最終更新: 2026-03-13
+
+---
+
+## 🤖 CLAUDEへの引き継ぎ事項 (2026-03-13)
+Antigravityからの引き継ぎです。
+- **直近の実装・確認事項**: 
+  - `?battle=<encoded>` 付きのURLによる直接起動とBase64 padding問題の修正およびブラウザでの全画面フロー（URLパース→デコード→対戦画面）の結合テストを完了しました。
+  - `flutter analyze`, `flutter test` はコンテナ内で実行し、**すべてエラーゼロでパス（141 tests passed）** しています。
+- **次に取り組むべきタスク**:
+  - `audioplayers` のWeb環境でのBGM・SE再生のテストおよび必要に応じた修正。
+  - 残るバグの修正と、その後はWeb MVP版のデプロイ作業（GitHub Pages or Firebase等）をお願いします。
 
 ---
 
@@ -41,9 +52,9 @@
 
 ### 🔶 進行中: ブラウザ結合テスト
 
-- [ ] `flutter run -d chrome` で全画面フローを確認
+- [x] `flutter run -d chrome` で全画面フローを確認
   - タイトル → ホーム → Friend → URLシェア → URL入力 → プレビュー → バトル
-  - `?battle=<encoded>` 付きURLで直接開いて対戦遷移するか確認
+  - `?battle=<encoded>` 付きURLで直接開いて対戦遷移するか確認（Base64 padding問題修正済・確認済）
 - [ ] audioplayers のWeb動作確認（BGM・SE再生）
 - [ ] バグ修正（発見次第対応）
 
