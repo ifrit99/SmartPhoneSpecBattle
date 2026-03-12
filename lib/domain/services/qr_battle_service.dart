@@ -32,14 +32,39 @@ class QrBattleService {
   }
 
   /// エンコード済みデータからWeb共有URLを生成
+  ///
+  /// base64urlのパディング(`=`)を除去してURLに安全に埋め込む。
+  /// [extractBattleParam] 側でパディングを復元するため、ペアで使用する。
   String generateShareUrl(String encoded) {
     final base = baseUrl.isNotEmpty ? baseUrl : Uri.base.origin;
-    return '$base/?battle=$encoded';
+    // base64urlパディングを除去してURL安全にする
+    // base64url文字（A-Za-z0-9_-）はURLクエリ内で安全にそのまま使用可能
+    final safeEncoded = _stripBase64Padding(encoded);
+    return '$base/?battle=$safeEncoded';
   }
 
   /// URLから対戦パラメータを抽出（nullならパラメータなし）
+  ///
+  /// [generateShareUrl]で除去されたbase64urlパディングを復元する。
+  /// ブラウザの挙動によりスペースや`+`が混入する場合も除去する。
   static String? extractBattleParam(Uri uri) {
-    return uri.queryParameters['battle'];
+    final raw = uri.queryParameters['battle'];
+    if (raw == null) return null;
+    // スペースや+を除去（ブラウザのURLデコードで混入する場合への対策）
+    final cleaned = raw.replaceAll(' ', '').replaceAll('+', '');
+    return _restoreBase64Padding(cleaned);
+  }
+
+  /// base64urlのパディング(`=`)を除去
+  static String _stripBase64Padding(String encoded) {
+    return encoded.replaceAll('=', '');
+  }
+
+  /// base64urlのパディングを復元（4の倍数になるよう`=`を追加）
+  static String _restoreBase64Padding(String encoded) {
+    final remainder = encoded.length % 4;
+    if (remainder == 0) return encoded;
+    return encoded + '=' * (4 - remainder);
   }
 }
 

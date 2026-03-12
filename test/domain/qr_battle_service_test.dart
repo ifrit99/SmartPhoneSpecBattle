@@ -137,15 +137,37 @@ void main() {
       final url = svc.generateShareUrl(encoded);
 
       expect(url, startsWith('https://example.com/?battle='));
-      expect(url, contains(encoded));
+      // パディング除去後の文字列が含まれること
+      final noPadding = encoded.replaceAll('=', '');
+      expect(url, contains(noPadding));
     });
 
-    test('URLから対戦パラメータを抽出できる', () {
+    test('URLラウンドトリップ: generateShareUrl → extractBattleParam → decode', () {
+      // URL生成→解析→デコードの完全なラウンドトリップテスト
+      final svc = QrBattleService(baseUrl: 'https://example.com');
+      final original = _makeCharacter(name: 'ラウンドトリップ');
+      final encoded = svc.encodePlayerCharacter(original);
+      final url = svc.generateShareUrl(encoded);
+
+      // URLを解析してbattleパラメータを取得
+      final uri = Uri.parse(url);
+      final extracted = QrBattleService.extractBattleParam(uri);
+      expect(extracted, isNotNull);
+
+      // パディングが正しく復元されてデコードに成功すること
+      final guest = svc.decodeAsGuest(extracted!);
+      expect(guest.name, 'ラウンドトリップ');
+    });
+
+    test('URLから対戦パラメータを抽出できる（パディング復元）', () {
       final original = _makeCharacter(name: '抽出テスト');
       final encoded = service.encodePlayerCharacter(original);
-      final uri = Uri.parse('https://example.com/?battle=$encoded');
+      // パディングを除去してURLに埋め込んだ場合をシミュレート
+      final noPadding = encoded.replaceAll('=', '');
+      final uri = Uri.parse('https://example.com/?battle=$noPadding');
 
       final extracted = QrBattleService.extractBattleParam(uri);
+      // パディングが復元されていること
       expect(extracted, encoded);
 
       // 抽出データからゲスト敵を復元
