@@ -1,6 +1,11 @@
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart';
 
 /// ゲーム内のサウンドエフェクトを一元管理するサービス（シングルトン）
+///
+/// Web 環境では、ブラウザの AutoPlay ポリシーにより、
+/// ユーザージェスチャー（タップ/クリック）前の音声再生はブロックされる。
+/// 最初のユーザー操作で [unlockAudio] を呼ぶことで AudioContext を有効化する。
 class SoundService {
   static final SoundService _instance = SoundService._internal();
   factory SoundService() => _instance;
@@ -17,8 +22,14 @@ class SoundService {
 
   bool _isMuted = false;
 
+  /// Web 環境で AudioContext がアンロック済みか
+  bool _audioUnlocked = !kIsWeb; // ネイティブは常にアンロック済み
+
   /// ミュート状態
   bool get isMuted => _isMuted;
+
+  /// AudioContext がアンロック済みか（Web のみ関連）
+  bool get isAudioUnlocked => _audioUnlocked;
 
   /// ミュートのトグル
   void toggleMute() {
@@ -30,6 +41,23 @@ class SoundService {
     _isMuted = value;
   }
 
+  /// Web の AudioContext をユーザージェスチャー内で有効化する。
+  /// タイトル画面の初回タップ等で呼び出すこと。
+  Future<void> unlockAudio() async {
+    if (_audioUnlocked) return;
+    try {
+      // 無音の再生を試みることで AudioContext を resume させる
+      await _player1.setVolume(0);
+      await _player1.play(AssetSource('sounds/button.wav'));
+      await _player1.stop();
+      await _player1.setVolume(1.0);
+      _audioUnlocked = true;
+      debugPrint('[SoundService] Web AudioContext unlocked');
+    } catch (e) {
+      debugPrint('[SoundService] Failed to unlock AudioContext: $e');
+    }
+  }
+
   /// アセットの効果音を再生する（ファイル未存在時は無視）
   Future<void> _play(String fileName) async {
     if (_isMuted) return;
@@ -38,8 +66,9 @@ class SoundService {
       final player = _playerIndex.isEven ? _player1 : _player2;
       _playerIndex++;
       await player.play(AssetSource('sounds/$fileName'));
-    } catch (_) {
-      // サウンドファイルが見つからない場合やプラットフォーム非対応の場合は無視
+    } catch (e) {
+      // サウンドファイルが見つからない場合やプラットフォーム非対応の場合
+      debugPrint('[SoundService] Failed to play $fileName: $e');
     }
   }
 

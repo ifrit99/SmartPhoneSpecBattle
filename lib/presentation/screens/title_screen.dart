@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../data/sound_service.dart';
 import 'home_screen.dart';
@@ -87,8 +88,10 @@ class _TitleScreenState extends State<TitleScreen>
       vsync: this,
     )..repeat();
 
-    // BGM再生開始
-    SoundService().playTitleBgm();
+    // BGM再生開始（Web ではユーザージェスチャー前の自動再生がブロックされるためスキップ）
+    if (!kIsWeb) {
+      SoundService().playTitleBgm();
+    }
 
     // 演出シーケンスの開始
     _startSequence();
@@ -119,9 +122,14 @@ class _TitleScreenState extends State<TitleScreen>
     super.dispose();
   }
 
-  void _onTap() {
+  void _onTap() async {
     if (_navigating) return;
     _navigating = true;
+
+    // Web: 初回タップで AudioContext をアンロック（以降の SE 再生を有効化）
+    if (kIsWeb) {
+      await SoundService().unlockAudio();
+    }
 
     SoundService().playButton();
     SoundService().stopBgm(); // BGMをフェードアウト停止
