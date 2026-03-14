@@ -5,14 +5,13 @@
 
 ---
 
-## 🤖 CLAUDEへの引き継ぎ事項 (2026-03-13)
-Antigravityからの引き継ぎです。
-- **直近の実装・確認事項**: 
-  - `?battle=<encoded>` 付きのURLによる直接起動とBase64 padding問題の修正およびブラウザでの全画面フロー（URLパース→デコード→対戦画面）の結合テストを完了しました。
-  - `flutter analyze`, `flutter test` はコンテナ内で実行し、**すべてエラーゼロでパス（141 tests passed）** しています。
+## 🤖 現在の作業状態 (2026-03-13)
+- **直近の実装**:
+  - audioplayers Web AutoPlayポリシー対応完了（`SoundService.unlockAudio()` 追加、タイトルBGM条件分岐）
+  - `flutter analyze` エラー0、`flutter test` 141件パス、`flutter build web` 成功
 - **次に取り組むべきタスク**:
-  - `audioplayers` のWeb環境でのBGM・SE再生のテストおよび必要に応じた修正。
-  - 残るバグの修正と、その後はWeb MVP版のデプロイ作業（GitHub Pages or Firebase等）をお願いします。
+  - `feature/web-mvp` → `master` マージ → GitHub Pages デプロイ
+  - デプロイ後の最終動作確認（OGPプレビュー、URL対戦フロー）
 
 ---
 
@@ -50,20 +49,23 @@ Antigravityからの引き継ぎです。
 | ホーム画面に「Friend」ボタン追加 | ✅ |
 | 不要パッケージ除去（`qr_flutter`, `mobile_scanner`, `share_plus`, `app_links`） | ✅ |
 
-### 🔶 進行中: ブラウザ結合テスト
+### ✅ 完了: ブラウザ結合テスト
 
 - [x] `flutter run -d chrome` で全画面フローを確認
   - タイトル → ホーム → Friend → URLシェア → URL入力 → プレビュー → バトル
   - `?battle=<encoded>` 付きURLで直接開いて対戦遷移するか確認（Base64 padding問題修正済・確認済）
-- [ ] audioplayers のWeb動作確認（BGM・SE再生）
-- [ ] バグ修正（発見次第対応）
+- [x] audioplayers のWeb動作確認（BGM・SE再生）
+  - Web AutoPlayポリシー対応: `unlockAudio()` メカニズム追加、タイトルBGM自動再生を条件分岐
+  - `flutter build web` でサウンドアセット9種の正常バンドルを確認済み
+- [x] バグ修正（AutoPlayポリシー対応で完了）
 
-### 🔲 未着手: デプロイ
+### 🔶 進行中: デプロイ
 
-- [ ] GitHub Pages または Firebase Hosting にデプロイ
-- [ ] `QrBattleService.baseUrl` にデプロイ先URLを設定
-- [ ] OGPメタタグ・favicon設定（SNS共有時のプレビュー表示用）
-- [ ] 最終動作確認
+- [ ] `feature/web-mvp` → `master` ブランチへマージ
+- [ ] GitHub Pages デプロイの確認（GitHub Actions ワークフロー `deploy.yml` は設定済み）
+- [x] `QrBattleService.baseUrl` にデプロイ先URLを設定（`Uri.base.origin` フォールバック実装済み）
+- [x] OGPメタタグ・favicon設定（SNS共有時のプレビュー表示用）— 設定済み
+- [ ] 最終動作確認（デプロイ後にOGPプレビュー・URL対戦フローをチェック）
 
 ---
 
