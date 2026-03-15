@@ -37,9 +37,8 @@ class _ShareScreenState extends State<ShareScreen> {
     // 実機キャラクターの場合
     final deviceInfo = DeviceInfoService();
     final specs = await deviceInfo.getDeviceSpecs();
-    final batterySpecs = specs.withBattery(100);
     final exp = sl.experienceService.loadExperience();
-    final character = CharacterGenerator.generate(batterySpecs, experience: exp);
+    final character = CharacterGenerator.generate(specs, experience: exp);
     encoded = sl.qrBattleService.encodePlayerCharacter(character);
     return sl.qrBattleService.generateShareUrl(encoded);
   }

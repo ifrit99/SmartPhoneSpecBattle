@@ -34,7 +34,7 @@ class Character {
     this.experience = const Experience(),
     this.seed = 0,
     this.statusEffects = const [],
-    this.batteryLevel = 100, // デフォルト100%
+    this.batteryLevel = 50, // デフォルト50%（中立値: Web版ではバッテリー取得不可のため）
     this.headIndex = 0,
     this.bodyIndex = 0,
     this.armIndex = 0,
