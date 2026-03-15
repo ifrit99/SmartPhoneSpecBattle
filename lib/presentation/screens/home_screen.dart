@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../data/device_info_service.dart';
 import '../../data/sound_service.dart';
@@ -36,9 +35,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   
-  StreamSubscription<int>? _batterySubscription;
-  int _currentBatteryLevel = 100;
-
   @override
   void initState() {
     super.initState();
@@ -50,27 +46,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
     _initGame();
-    _startBatteryMonitoring();
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
-    _batterySubscription?.cancel();
     super.dispose();
-  }
-
-  void _startBatteryMonitoring() {
-    _batterySubscription = _deviceInfo.batteryLevelStream.listen((level) {
-      if (mounted) {
-        setState(() {
-          _currentBatteryLevel = level;
-          if (_playerCharacter != null) {
-            _playerCharacter = _playerCharacter!.copyWith(batteryLevel: level);
-          }
-        });
-      }
-    });
   }
 
   Future<void> _initGame() async {
@@ -93,13 +74,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (equippedId != null) {
       final equipped = _sl.gachaService.findById(equippedId);
       if (equipped != null) {
-        return equipped.withBattery(_currentBatteryLevel).character;
+        return equipped.character;
       }
     }
 
     final specs = await _deviceInfo.getDeviceSpecs();
-    final batterySpecs = specs.withBattery(_currentBatteryLevel);
-    return CharacterGenerator.generate(batterySpecs, experience: experience);
+    return CharacterGenerator.generate(specs, experience: experience);
   }
 
   void _startBattle() {
@@ -243,7 +223,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ],
               ),
               ),
-              _buildBatteryIndicator(),
+              const SizedBox.shrink(),
             ],
           ),
           const SizedBox(height: 32),
@@ -412,60 +392,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildBatteryIndicator() {
-    Color batteryColor = Colors.greenAccent;
-    IconData batteryIcon = Icons.battery_full;
-
-    if (_currentBatteryLevel <= 20) {
-      batteryColor = Colors.redAccent;
-      batteryIcon = Icons.battery_alert;
-    } else if (_currentBatteryLevel <= 50) {
-      batteryColor = Colors.amberAccent;
-      batteryIcon = Icons.battery_std;
-    }
-
-    // SPD補正値の計算
-    final spdBonus = ((_currentBatteryLevel - 50) * 0.002 * 100).round();
-    final bonusText = spdBonus >= 0 ? '+$spdBonus%' : '$spdBonus%';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.white10,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white24),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Row(
-            children: [
-              Icon(batteryIcon, color: batteryColor, size: 16),
-              const SizedBox(width: 4),
-              Text(
-                '$_currentBatteryLevel%',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'SPD $bonusText',
-            style: TextStyle(
-              color: batteryColor,
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -830,7 +756,7 @@ class _EnemyPreviewSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${device.osLabel}  ／  RAM ${device.ramMB ~/ 1024}GB  ／  空き${device.storageFreeGB}GB  ／  🔋${device.batteryLevel}%',
+                  '${device.osLabel}  ／  RAM ${device.ramMB ~/ 1024}GB  ／  空き${device.storageFreeGB}GB',
                   style: const TextStyle(color: Colors.white38, fontSize: 11),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,

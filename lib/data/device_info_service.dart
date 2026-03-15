@@ -1,5 +1,4 @@
 // 条件付きインポート: Web環境ではstub、ネイティブ環境ではnativeを使用
-import 'package:battery_plus/battery_plus.dart';
 import 'platform_info_stub.dart'
     if (dart.library.io) 'platform_info_native.dart';
 
@@ -23,7 +22,7 @@ class DeviceSpecs {
     this.cpuCores = 4,
     this.ramMB = 4096,
     this.storageFreeGB = 32,
-    this.batteryLevel = 100,
+    this.batteryLevel = 50, // Web版では中立値固定。ネイティブアプリで復活予定
     this.screenWidth = 375,
     this.screenHeight = 812,
   });
@@ -65,19 +64,10 @@ class DeviceSpecs {
 
 /// デバイスのハードウェア情報を取得するサービス
 class DeviceInfoService {
-  final Battery _battery = Battery();
-
   /// デバイス情報を収集して返す
   Future<DeviceSpecs> getDeviceSpecs() async {
     final info = getPlatformInfo();
     final cpuCores = info.cpuCores;
-
-    int batteryLevel = 100;
-    try {
-      batteryLevel = await _battery.batteryLevel;
-    } catch (e) {
-      // Webやシミュレータ、取得失敗時は100とする
-    }
 
     return DeviceSpecs(
       osVersion: info.osVersion.isNotEmpty ? info.osVersion : '14.0',
@@ -85,29 +75,10 @@ class DeviceInfoService {
       cpuCores: cpuCores,
       ramMB: _estimateRam(cpuCores),
       storageFreeGB: 32, // デフォルト値
-      batteryLevel: batteryLevel,
+      batteryLevel: 50,  // Web版では中立値固定
       screenWidth: 0,     // 後でWidgetから設定
       screenHeight: 0,    // 後でWidgetから設定
     );
-  }
-
-  /// バッテリー残量のストリーム
-  Stream<int> get batteryLevelStream async* {
-    // 最初の値を返す
-    try {
-      yield await _battery.batteryLevel;
-    } catch (_) {
-      yield 100;
-    }
-    
-    // 定期的にポーリング（30秒ごと）
-    await for (final _ in Stream.periodic(const Duration(seconds: 30))) {
-      try {
-        yield await _battery.batteryLevel;
-      } catch (_) {
-        yield 100;
-      }
-    }
   }
 
   /// デバイスのRAM容量をCPUコア数から推定する
