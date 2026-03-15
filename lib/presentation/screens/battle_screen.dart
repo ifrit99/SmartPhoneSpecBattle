@@ -79,6 +79,7 @@ class _BattleScreenState extends State<BattleScreen>
   void dispose() {
     _shakeController.dispose();
     _flashController.dispose();
+    _sound.stopBgmImmediate(); // 画面離脱時にBGMを確実に停止
     super.dispose();
   }
 
@@ -86,7 +87,8 @@ class _BattleScreenState extends State<BattleScreen>
     final engine = BattleEngine();
     _result = engine.executeBattle(widget.player, widget.enemy);
 
-    // バトル開始音を再生
+    // バトルBGM + 開始SEを再生
+    _sound.playBgm();
     _sound.playBattleStart();
 
     // ログを順次表示するアニメーション
@@ -183,6 +185,8 @@ class _BattleScreenState extends State<BattleScreen>
 
     // ログ再生完了
     if (mounted) {
+      // バトルBGMを停止し、結果SEを再生
+      await _sound.stopBgmImmediate();
       if (_result.playerWon) {
         _sound.playVictory();
       } else {
@@ -195,6 +199,14 @@ class _BattleScreenState extends State<BattleScreen>
   }
 
   void _skipToEnd() {
+    // バトルBGMを停止し、結果SEを再生
+    _sound.stopBgmImmediate();
+    if (_result.playerWon) {
+      _sound.playVictory();
+    } else {
+      _sound.playDefeat();
+    }
+
     setState(() {
       _displayedLog = List.from(_result.log);
       _currentLogIndex = _result.log.length;

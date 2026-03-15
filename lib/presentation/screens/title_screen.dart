@@ -36,6 +36,8 @@ class _TitleScreenState extends State<TitleScreen>
   final _random = Random();
 
   bool _navigating = false;
+  /// Web: 初回タップでAudioContextアンロック+BGM開始済みか
+  bool _webAudioReady = !kIsWeb;
 
   @override
   void initState() {
@@ -88,9 +90,10 @@ class _TitleScreenState extends State<TitleScreen>
       vsync: this,
     )..repeat();
 
-    // BGM再生開始（Web ではユーザージェスチャー前の自動再生がブロックされるためスキップ）
+    // ネイティブ: BGM即座に再生開始
+    // Web: AutoPlayポリシーにより初回タップまで待機
     if (!kIsWeb) {
-      SoundService().playTitleBgm();
+      SoundService().playBgm();
     }
 
     // 演出シーケンスの開始
@@ -123,13 +126,19 @@ class _TitleScreenState extends State<TitleScreen>
   }
 
   void _onTap() async {
+    // Web: 初回タップで AudioContext をアンロックし BGM を開始
+    // 2回目のタップでホーム画面へ遷移する
+    if (!_webAudioReady) {
+      await SoundService().unlockAudio();
+      SoundService().playBgm();
+      setState(() {
+        _webAudioReady = true;
+      });
+      return; // BGMを楽しんでもらってから次のタップで遷移
+    }
+
     if (_navigating) return;
     _navigating = true;
-
-    // Web: 初回タップで AudioContext をアンロック（以降の SE 再生を有効化）
-    if (kIsWeb) {
-      await SoundService().unlockAudio();
-    }
 
     SoundService().playButton();
     SoundService().stopBgm(); // BGMをフェードアウト停止

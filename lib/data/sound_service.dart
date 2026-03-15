@@ -6,12 +6,17 @@ import 'package:flutter/foundation.dart';
 /// Web 環境では、ブラウザの AutoPlay ポリシーにより、
 /// ユーザージェスチャー（タップ/クリック）前の音声再生はブロックされる。
 /// 最初のユーザー操作で [unlockAudio] を呼ぶことで AudioContext を有効化する。
+///
+/// ## Web SE 再生方式
+/// Web の AudioPlayer は同一インスタンスでソースを切り替えると
+/// 2回目以降がサイレントに失敗する問題があるため、
+/// Web では再生のたびに新しい AudioPlayer を生成し、再生完了後に破棄する。
 class SoundService {
   static final SoundService _instance = SoundService._internal();
   factory SoundService() => _instance;
   SoundService._internal();
 
-  // 効果音用プレイヤー（複数音の同時再生を可能にするため複数インスタンス）
+  // ネイティブ用: 効果音プレイヤー（複数音の同時再生用）
   final AudioPlayer _player1 = AudioPlayer();
   final AudioPlayer _player2 = AudioPlayer();
   int _playerIndex = 0;
@@ -34,6 +39,13 @@ class SoundService {
   /// ミュートのトグル
   void toggleMute() {
     _isMuted = !_isMuted;
+    if (_isMuted) {
+      // ミュート時はBGMも即座に一時停止
+      _bgmPlayer.pause();
+    } else {
+      // ミュート解除時はBGMを再開
+      _bgmPlayer.resume();
+    }
   }
 
   /// ミュートの設定
@@ -46,11 +58,13 @@ class SoundService {
   Future<void> unlockAudio() async {
     if (_audioUnlocked) return;
     try {
-      // 無音の再生を試みることで AudioContext を resume させる
-      await _player1.setVolume(0);
-      await _player1.play(AssetSource('sounds/button.wav'));
-      await _player1.stop();
-      await _player1.setVolume(1.0);
+      // 一時的なプレイヤーで無音再生し AudioContext を resume させる
+      // （メインの _player1/_player2 を汚染しない）
+      final tempPlayer = AudioPlayer();
+      await tempPlayer.setVolume(0);
+      await tempPlayer.play(AssetSource('sounds/button.wav'));
+      await tempPlayer.stop();
+      await tempPlayer.dispose();
       _audioUnlocked = true;
       debugPrint('[SoundService] Web AudioContext unlocked');
     } catch (e) {
@@ -61,13 +75,37 @@ class SoundService {
   /// アセットの効果音を再生する（ファイル未存在時は無視）
   Future<void> _play(String fileName) async {
     if (_isMuted) return;
+    if (kIsWeb) {
+      // Web: 毎回新しいプレイヤーを生成し、再生完了後に破棄
+      // audioplayers の Web 実装はソース切り替えで失敗するため
+      await _playWeb(fileName);
+    } else {
+      // ネイティブ: 既存の2プレイヤー交互方式（低オーバーヘッド）
+      await _playNative(fileName);
+    }
+  }
+
+  /// Web用: 使い捨てプレイヤーでSEを再生
+  Future<void> _playWeb(String fileName) async {
     try {
-      // 交互にプレイヤーを使うことで連続した音の重なりを防ぐ
-      final player = _playerIndex.isEven ? _player1 : _player2;
-      _playerIndex++;
+      final player = AudioPlayer();
+      player.onPlayerComplete.listen((_) {
+        player.dispose();
+      });
       await player.play(AssetSource('sounds/$fileName'));
     } catch (e) {
-      // サウンドファイルが見つからない場合やプラットフォーム非対応の場合
+      debugPrint('[SoundService] Failed to play $fileName (web): $e');
+    }
+  }
+
+  /// ネイティブ用: 2プレイヤー交互再生
+  Future<void> _playNative(String fileName) async {
+    try {
+      final player = _playerIndex.isEven ? _player1 : _player2;
+      _playerIndex++;
+      await player.stop();
+      await player.play(AssetSource('sounds/$fileName'));
+    } catch (e) {
       debugPrint('[SoundService] Failed to play $fileName: $e');
     }
   }
@@ -96,16 +134,21 @@ class SoundService {
   /// ボタン操作音
   Future<void> playButton() => _play('button.wav');
 
-  /// タイトルBGMをループ再生する
-  Future<void> playTitleBgm() async {
+  /// BGMをループ再生する（タイトル・バトル共通）
+  Future<void> playBgm() async {
     if (_isMuted) return;
     try {
+      await _bgmPlayer.stop();
+      await _bgmPlayer.setVolume(1.0);
       await _bgmPlayer.setReleaseMode(ReleaseMode.loop);
       await _bgmPlayer.play(AssetSource('sounds/Crimson_Gauntlet.mp3'));
-    } catch (_) {
-      // 無視
+    } catch (e) {
+      debugPrint('[SoundService] Failed to play BGM: $e');
     }
   }
+
+  /// 後方互換: タイトルBGM再生（playBgm へ委譲）
+  Future<void> playTitleBgm() => playBgm();
 
   /// 現在再生中のBGMをフェードアウトして止める
   Future<void> stopBgm() async {
@@ -123,6 +166,14 @@ class SoundService {
     } finally {
       _isFadingOut = false;
     }
+  }
+
+  /// BGMを即座に停止する（フェードなし）
+  Future<void> stopBgmImmediate() async {
+    try {
+      await _bgmPlayer.stop();
+      await _bgmPlayer.setVolume(1.0);
+    } catch (_) {}
   }
 
   /// BGMを一時停止する（アプリがバックグラウンドに移行した時）
