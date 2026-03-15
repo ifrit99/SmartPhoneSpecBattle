@@ -8,9 +8,14 @@ import 'package:flutter/foundation.dart';
 /// 最初のユーザー操作で [unlockAudio] を呼ぶことで AudioContext を有効化する。
 ///
 /// ## Web SE 再生方式
-/// Web の AudioPlayer は同一インスタンスでソースを切り替えると
-/// 2回目以降がサイレントに失敗する問題があるため、
-/// Web では再生のたびに新しい AudioPlayer を生成し、再生完了後に破棄する。
+/// Web の AudioPlayer は同一インスタンスで **異なるソース** を切り替えると
+/// 2回目以降がサイレントに失敗する問題がある。
+/// また、使い捨て AudioPlayer 方式ではブラウザの audio 要素数上限に到達し
+/// 数秒後にすべてのSEが無音になる。
+///
+/// 解決策: SEファイルごとに専用の AudioPlayer を1つ保持し、
+/// 同じソースを stop() → play() で再利用する。
+/// これにより「ソース切替問題」と「リソース枯渇問題」の両方を回避する。
 class SoundService {
   static final SoundService _instance = SoundService._internal();
   factory SoundService() => _instance;
@@ -20,6 +25,10 @@ class SoundService {
   final AudioPlayer _player1 = AudioPlayer();
   final AudioPlayer _player2 = AudioPlayer();
   int _playerIndex = 0;
+
+  // Web用: SEファイルごとの専用プレイヤー（遅延作成）
+  // 同一ソースの stop→play なので Web でも確実に再生される
+  final Map<String, AudioPlayer> _webPlayers = {};
 
   // BGM用プレイヤー
   final AudioPlayer _bgmPlayer = AudioPlayer();
@@ -85,13 +94,17 @@ class SoundService {
     }
   }
 
-  /// Web用: 使い捨てプレイヤーでSEを再生
+  /// Web用: SEファイルごとの専用プレイヤーで再生
+  /// 同じソースを stop→play するのでソース切替問題を回避しつつ、
+  /// プレイヤー数も SE 種類数（8個）で固定されリソース枯渇しない。
   Future<void> _playWeb(String fileName) async {
     try {
-      final player = AudioPlayer();
-      player.onPlayerComplete.listen((_) {
-        player.dispose();
-      });
+      var player = _webPlayers[fileName];
+      if (player == null) {
+        player = AudioPlayer();
+        _webPlayers[fileName] = player;
+      }
+      await player.stop();
       await player.play(AssetSource('sounds/$fileName'));
     } catch (e) {
       debugPrint('[SoundService] Failed to play $fileName (web): $e');
@@ -196,5 +209,9 @@ class SoundService {
     await _player1.dispose();
     await _player2.dispose();
     await _bgmPlayer.dispose();
+    for (final player in _webPlayers.values) {
+      await player.dispose();
+    }
+    _webPlayers.clear();
   }
 }
