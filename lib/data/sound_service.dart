@@ -27,8 +27,10 @@ class SoundService {
   int _playerIndex = 0;
 
   // Web用: SEファイルごとの専用プレイヤー（遅延作成）
-  // 同一ソースの stop→play なので Web でも確実に再生される
+  // 初回のみ play() でソースを設定し、2回目以降は seek+resume で再利用する
   final Map<String, AudioPlayer> _webPlayers = {};
+  // ソース設定済みのファイルを追跡（2回目以降は seek+resume で再生）
+  final Set<String> _webSourceSet = {};
 
   // BGM用プレイヤー
   final AudioPlayer _bgmPlayer = AudioPlayer();
@@ -85,8 +87,7 @@ class SoundService {
   Future<void> _play(String fileName) async {
     if (_isMuted) return;
     if (kIsWeb) {
-      // Web: 毎回新しいプレイヤーを生成し、再生完了後に破棄
-      // audioplayers の Web 実装はソース切り替えで失敗するため
+      // Web: SEファイルごとの専用プレイヤーで seek+resume 再利用
       await _playWeb(fileName);
     } else {
       // ネイティブ: 既存の2プレイヤー交互方式（低オーバーヘッド）
@@ -95,8 +96,14 @@ class SoundService {
   }
 
   /// Web用: SEファイルごとの専用プレイヤーで再生
-  /// 同じソースを stop→play するのでソース切替問題を回避しつつ、
-  /// プレイヤー数も SE 種類数（8個）で固定されリソース枯渇しない。
+  ///
+  /// audioplayers_web は `play(AssetSource(...))` を呼ぶたびに内部で
+  /// 新しい HTML `<audio>` 要素を生成する。同じ AudioPlayer でも
+  /// 繰り返し play() するとリソースが枯渇し無音になる。
+  ///
+  /// 解決策: 初回のみ play() でソースを設定し、2回目以降は
+  /// stop() → seek(0) → resume() で同一ソースを再利用する。
+  /// これにより `<audio>` 要素は SE 種類数（8個）で固定される。
   Future<void> _playWeb(String fileName) async {
     try {
       var player = _webPlayers[fileName];
@@ -104,8 +111,17 @@ class SoundService {
         player = AudioPlayer();
         _webPlayers[fileName] = player;
       }
-      await player.stop();
-      await player.play(AssetSource('sounds/$fileName'));
+
+      if (!_webSourceSet.contains(fileName)) {
+        // 初回: ソースを設定して再生（<audio> 要素が1つ作られる）
+        await player.play(AssetSource('sounds/$fileName'));
+        _webSourceSet.add(fileName);
+      } else {
+        // 2回目以降: 既存の <audio> 要素を再利用
+        await player.stop();
+        await player.seek(Duration.zero);
+        await player.resume();
+      }
     } catch (e) {
       debugPrint('[SoundService] Failed to play $fileName (web): $e');
     }
@@ -213,5 +229,6 @@ class SoundService {
       await player.dispose();
     }
     _webPlayers.clear();
+    _webSourceSet.clear();
   }
 }
