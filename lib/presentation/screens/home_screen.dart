@@ -185,45 +185,36 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             _buildCurrencyHeader(_playerCurrency!),
             const SizedBox(height: 16),
           ],
-          // ヘッダー（タイトル + バッテリー）
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // ヘッダー（タイトル）
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Flexible(
-                child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      'SPEC BATTLE',
-                      style: TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: 4,
-                        shadows: [
-                          Shadow(
-                            color: const Color(0xFF6C5CE7).withValues(alpha: 0.5),
-                            blurRadius: 20,
-                          ),
-                        ],
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  'SPEC BATTLE',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: 4,
+                    shadows: [
+                      Shadow(
+                        color: const Color(0xFF6C5CE7).withValues(alpha: 0.5),
+                        blurRadius: 20,
                       ),
-                    ),
+                    ],
                   ),
-                  const Text(
-                    'スペック対戦ゲーム',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white38,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                ],
+                ),
               ),
+              const Text(
+                'スペック対戦ゲーム',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.white38,
+                  letterSpacing: 2,
+                ),
               ),
-              const SizedBox.shrink(),
             ],
           ),
           const SizedBox(height: 32),
