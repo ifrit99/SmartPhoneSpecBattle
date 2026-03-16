@@ -36,32 +36,55 @@ class SoundService {
   final AudioPlayer _bgmPlayer = AudioPlayer();
   bool _isFadingOut = false;
 
-  bool _isMuted = false;
+  bool _isBgmMuted = false;
+  bool _isSeMuted = false;
 
   /// Web 環境で AudioContext がアンロック済みか
   bool _audioUnlocked = !kIsWeb; // ネイティブは常にアンロック済み
 
-  /// ミュート状態
-  bool get isMuted => _isMuted;
+  /// BGMミュート状態
+  bool get isBgmMuted => _isBgmMuted;
+
+  /// SEミュート状態
+  bool get isSeMuted => _isSeMuted;
+
+  /// 全体ミュート状態（後方互換）
+  bool get isMuted => _isBgmMuted && _isSeMuted;
 
   /// AudioContext がアンロック済みか（Web のみ関連）
   bool get isAudioUnlocked => _audioUnlocked;
 
-  /// ミュートのトグル
-  void toggleMute() {
-    _isMuted = !_isMuted;
-    if (_isMuted) {
-      // ミュート時はBGMも即座に一時停止
+  /// BGMミュートのトグル
+  void toggleBgmMute() {
+    _isBgmMuted = !_isBgmMuted;
+    if (_isBgmMuted) {
       _bgmPlayer.pause();
     } else {
-      // ミュート解除時はBGMを再開
       _bgmPlayer.resume();
     }
   }
 
-  /// ミュートの設定
+  /// SEミュートのトグル
+  void toggleSeMute() {
+    _isSeMuted = !_isSeMuted;
+  }
+
+  /// 全体ミュートのトグル（後方互換）
+  void toggleMute() {
+    final newState = !isMuted;
+    _isBgmMuted = newState;
+    _isSeMuted = newState;
+    if (_isBgmMuted) {
+      _bgmPlayer.pause();
+    } else {
+      _bgmPlayer.resume();
+    }
+  }
+
+  /// ミュートの設定（後方互換）
   void setMute(bool value) {
-    _isMuted = value;
+    _isBgmMuted = value;
+    _isSeMuted = value;
   }
 
   /// Web の AudioContext をユーザージェスチャー内で有効化する。
@@ -85,7 +108,7 @@ class SoundService {
 
   /// アセットの効果音を再生する（ファイル未存在時は無視）
   Future<void> _play(String fileName) async {
-    if (_isMuted) return;
+    if (_isSeMuted) return;
     if (kIsWeb) {
       // Web: SEファイルごとの専用プレイヤーで seek+resume 再利用
       await _playWeb(fileName);
@@ -110,14 +133,17 @@ class SoundService {
       if (player == null) {
         player = AudioPlayer();
         _webPlayers[fileName] = player;
+        debugPrint('[SoundService] Created web player for $fileName');
       }
 
       if (!_webSourceSet.contains(fileName)) {
         // 初回: ソースを設定して再生（<audio> 要素が1つ作られる）
+        debugPrint('[SoundService] Web first play: $fileName');
         await player.play(AssetSource('sounds/$fileName'));
         _webSourceSet.add(fileName);
       } else {
         // 2回目以降: 既存の <audio> 要素を再利用
+        debugPrint('[SoundService] Web replay (seek+resume): $fileName');
         await player.stop();
         await player.seek(Duration.zero);
         await player.resume();
@@ -165,7 +191,7 @@ class SoundService {
 
   /// BGMをループ再生する（タイトル・バトル共通）
   Future<void> playBgm() async {
-    if (_isMuted) return;
+    if (_isBgmMuted) return;
     try {
       await _bgmPlayer.stop();
       await _bgmPlayer.setVolume(1.0);
@@ -214,7 +240,7 @@ class SoundService {
 
   /// BGMを再開する（アプリがフォアグラウンドに復帰した時）
   Future<void> resumeBgm() async {
-    if (_isMuted) return;
+    if (_isBgmMuted) return;
     try {
       await _bgmPlayer.resume();
     } catch (_) {}

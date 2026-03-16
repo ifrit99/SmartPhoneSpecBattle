@@ -235,29 +235,85 @@ class _BattleScreenState extends State<BattleScreen>
                 _buildActionButtons(),
               ],
             ),
-            // ミュートボタン（右上に配置）
+            // BGM/SEミュートボタン（右上に配置）
             Positioned(
               top: 8,
               right: 8,
               child: StatefulBuilder(
                 builder: (context, setIconState) {
-                  return GestureDetector(
-                    onTap: () {
-                      _sound.toggleMute();
-                      setIconState(() {});
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.black38,
-                        borderRadius: BorderRadius.circular(8),
+                  return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // BGMミュートボタン
+                      GestureDetector(
+                        onTap: () {
+                          _sound.toggleBgmMute();
+                          setIconState(() {});
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.black38,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _sound.isBgmMuted
+                                    ? Icons.music_off
+                                    : Icons.music_note,
+                                color: Colors.white54,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 2),
+                              const Text(
+                                'BGM',
+                                style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 9,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                      child: Icon(
-                        _sound.isMuted ? Icons.volume_off : Icons.volume_up,
-                        color: Colors.white54,
-                        size: 20,
+                      const SizedBox(width: 6),
+                      // SEミュートボタン
+                      GestureDetector(
+                        onTap: () {
+                          _sound.toggleSeMute();
+                          setIconState(() {});
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.black38,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                _sound.isSeMuted
+                                    ? Icons.volume_off
+                                    : Icons.volume_up,
+                                color: Colors.white54,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 2),
+                              const Text(
+                                'SE',
+                                style: TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 9,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   );
                 },
               ),
