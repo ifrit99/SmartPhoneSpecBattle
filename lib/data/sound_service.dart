@@ -1,6 +1,9 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 
+import 'web_se_player_stub.dart'
+    if (dart.library.js_interop) 'web_se_player_web.dart';
+
 /// ゲーム内のサウンドエフェクトを一元管理するサービス（シングルトン）
 ///
 /// Web 環境では、ブラウザの AutoPlay ポリシーにより、
@@ -8,14 +11,14 @@ import 'package:flutter/foundation.dart';
 /// 最初のユーザー操作で [unlockAudio] を呼ぶことで AudioContext を有効化する。
 ///
 /// ## Web SE 再生方式
-/// Web の AudioPlayer は同一インスタンスで **異なるソース** を切り替えると
-/// 2回目以降がサイレントに失敗する問題がある。
-/// また、使い捨て AudioPlayer 方式ではブラウザの audio 要素数上限に到達し
-/// 数秒後にすべてのSEが無音になる。
+/// audioplayers_web は SE 再生に根本的な問題がある:
+///   - play(AssetSource(...)) を繰り返すと内部で <audio> 要素が蓄積しリソース枯渇
+///   - seek() + resume() が Web 環境で確実に動作しない
 ///
-/// 解決策: SEファイルごとに専用の AudioPlayer を1つ保持し、
-/// 同じソースを stop() → play() で再利用する。
-/// これにより「ソース切替問題」と「リソース枯渇問題」の両方を回避する。
+/// 解決策: Web の SE 再生のみ JavaScript の Audio API を直接使用する。
+/// SEファイルごとに Audio オブジェクトを1つ保持し、
+/// currentTime = 0 → play() で確実に再利用する。
+/// BGM は audioplayers のまま（ループ再生が安定しているため）。
 class SoundService {
   static final SoundService _instance = SoundService._internal();
   factory SoundService() => _instance;
@@ -26,13 +29,10 @@ class SoundService {
   final AudioPlayer _player2 = AudioPlayer();
   int _playerIndex = 0;
 
-  // Web用: SEファイルごとの専用プレイヤー（遅延作成）
-  // 初回のみ play() でソースを設定し、2回目以降は seek+resume で再利用する
-  final Map<String, AudioPlayer> _webPlayers = {};
-  // ソース設定済みのファイルを追跡（2回目以降は seek+resume で再生）
-  final Set<String> _webSourceSet = {};
+  // Web用: HTML5 Audio APIを直接使用するSEプレイヤー
+  final WebSePlayer _webSePlayer = WebSePlayer();
 
-  // BGM用プレイヤー
+  // BGM用プレイヤー（Web/ネイティブ共通で audioplayers を使用）
   final AudioPlayer _bgmPlayer = AudioPlayer();
   bool _isFadingOut = false;
 
@@ -93,7 +93,6 @@ class SoundService {
     if (_audioUnlocked) return;
     try {
       // 一時的なプレイヤーで無音再生し AudioContext を resume させる
-      // （メインの _player1/_player2 を汚染しない）
       final tempPlayer = AudioPlayer();
       await tempPlayer.setVolume(0);
       await tempPlayer.play(AssetSource('sounds/button.wav'));
@@ -110,46 +109,11 @@ class SoundService {
   Future<void> _play(String fileName) async {
     if (_isSeMuted) return;
     if (kIsWeb) {
-      // Web: SEファイルごとの専用プレイヤーで seek+resume 再利用
-      await _playWeb(fileName);
+      // Web: HTML5 Audio API を直接使用（audioplayers をバイパス）
+      await _webSePlayer.play(fileName);
     } else {
       // ネイティブ: 既存の2プレイヤー交互方式（低オーバーヘッド）
       await _playNative(fileName);
-    }
-  }
-
-  /// Web用: SEファイルごとの専用プレイヤーで再生
-  ///
-  /// audioplayers_web は `play(AssetSource(...))` を呼ぶたびに内部で
-  /// 新しい HTML `<audio>` 要素を生成する。同じ AudioPlayer でも
-  /// 繰り返し play() するとリソースが枯渇し無音になる。
-  ///
-  /// 解決策: 初回のみ play() でソースを設定し、2回目以降は
-  /// stop() → seek(0) → resume() で同一ソースを再利用する。
-  /// これにより `<audio>` 要素は SE 種類数（8個）で固定される。
-  Future<void> _playWeb(String fileName) async {
-    try {
-      var player = _webPlayers[fileName];
-      if (player == null) {
-        player = AudioPlayer();
-        _webPlayers[fileName] = player;
-        debugPrint('[SoundService] Created web player for $fileName');
-      }
-
-      if (!_webSourceSet.contains(fileName)) {
-        // 初回: ソースを設定して再生（<audio> 要素が1つ作られる）
-        debugPrint('[SoundService] Web first play: $fileName');
-        await player.play(AssetSource('sounds/$fileName'));
-        _webSourceSet.add(fileName);
-      } else {
-        // 2回目以降: 既存の <audio> 要素を再利用
-        debugPrint('[SoundService] Web replay (seek+resume): $fileName');
-        await player.stop();
-        await player.seek(Duration.zero);
-        await player.resume();
-      }
-    } catch (e) {
-      debugPrint('[SoundService] Failed to play $fileName (web): $e');
     }
   }
 
@@ -251,10 +215,6 @@ class SoundService {
     await _player1.dispose();
     await _player2.dispose();
     await _bgmPlayer.dispose();
-    for (final player in _webPlayers.values) {
-      await player.dispose();
-    }
-    _webPlayers.clear();
-    _webSourceSet.clear();
+    _webSePlayer.disposeAll();
   }
 }
