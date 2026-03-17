@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'package:flutter/foundation.dart';
@@ -19,7 +20,7 @@ class WebSePlayer {
   /// SEファイルごとにキャッシュされた JS Audio オブジェクト
   final Map<String, JSObject> _cache = {};
 
-  /// SE を再生する
+  /// SE を再生する（fire-and-forget: JS の play() Promise は待機しない）
   ///
   /// 初回は Audio オブジェクトを生成してキャッシュし、
   /// 2回目以降は currentTime = 0 → play() で即座に再利用する。
@@ -34,20 +35,24 @@ class WebSePlayer {
       }
       // currentTime = 0 で先頭に巻き戻し
       audio.setProperty('currentTime'.toJS, (0).toJS);
-      // play() を呼び出し（Promise を返すが、エラーを無視可能にする）
+      // play() は fire-and-forget（ゲームループをブロックしない）
       final promise = audio.callMethod<JSPromise<JSAny?>>('play'.toJS);
-      promise.toDart.catchError((e) {
+      unawaited(promise.toDart.catchError((e) {
         debugPrint('[WebSePlayer] play() rejected for $fileName: $e');
         return null;
-      });
-      debugPrint('[WebSePlayer] Playing $fileName');
+      }));
     } catch (e) {
       debugPrint('[WebSePlayer] Error playing $fileName: $e');
     }
   }
 
-  /// 全ての Audio オブジェクトを解放する
+  /// 全ての Audio オブジェクトを停止し解放する
   void disposeAll() {
+    for (final audio in _cache.values) {
+      try {
+        audio.callMethod<JSAny?>('pause'.toJS);
+      } catch (_) {}
+    }
     _cache.clear();
   }
 }

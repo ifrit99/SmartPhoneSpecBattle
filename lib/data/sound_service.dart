@@ -48,9 +48,6 @@ class SoundService {
   /// SEミュート状態
   bool get isSeMuted => _isSeMuted;
 
-  /// 全体ミュート状態（後方互換）
-  bool get isMuted => _isBgmMuted && _isSeMuted;
-
   /// AudioContext がアンロック済みか（Web のみ関連）
   bool get isAudioUnlocked => _audioUnlocked;
 
@@ -67,24 +64,6 @@ class SoundService {
   /// SEミュートのトグル
   void toggleSeMute() {
     _isSeMuted = !_isSeMuted;
-  }
-
-  /// 全体ミュートのトグル（後方互換）
-  void toggleMute() {
-    final newState = !isMuted;
-    _isBgmMuted = newState;
-    _isSeMuted = newState;
-    if (_isBgmMuted) {
-      _bgmPlayer.pause();
-    } else {
-      _bgmPlayer.resume();
-    }
-  }
-
-  /// ミュートの設定（後方互換）
-  void setMute(bool value) {
-    _isBgmMuted = value;
-    _isSeMuted = value;
   }
 
   /// Web の AudioContext をユーザージェスチャー内で有効化する。
