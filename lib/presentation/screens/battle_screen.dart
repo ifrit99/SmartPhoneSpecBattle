@@ -244,74 +244,26 @@ class _BattleScreenState extends State<BattleScreen>
                   return Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // BGMミュートボタン
-                      GestureDetector(
+                      _buildMuteButton(
+                        label: 'BGM',
+                        isMuted: _sound.isBgmMuted,
+                        onIcon: Icons.music_note,
+                        offIcon: Icons.music_off,
                         onTap: () {
                           _sound.toggleBgmMute();
                           setIconState(() {});
                         },
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.black38,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                _sound.isBgmMuted
-                                    ? Icons.music_off
-                                    : Icons.music_note,
-                                color: Colors.white54,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 2),
-                              const Text(
-                                'BGM',
-                                style: TextStyle(
-                                  color: Colors.white54,
-                                  fontSize: 9,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ),
                       const SizedBox(width: 6),
-                      // SEミュートボタン
-                      GestureDetector(
+                      _buildMuteButton(
+                        label: 'SE',
+                        isMuted: _sound.isSeMuted,
+                        onIcon: Icons.volume_up,
+                        offIcon: Icons.volume_off,
                         onTap: () {
                           _sound.toggleSeMute();
                           setIconState(() {});
                         },
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.black38,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                _sound.isSeMuted
-                                    ? Icons.volume_off
-                                    : Icons.volume_up,
-                                color: Colors.white54,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 2),
-                              const Text(
-                                'SE',
-                                style: TextStyle(
-                                  color: Colors.white54,
-                                  fontSize: 9,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ),
                     ],
                   );
@@ -596,6 +548,44 @@ class _BattleScreenState extends State<BattleScreen>
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  /// BGM/SE共通のミュートトグルボタン
+  Widget _buildMuteButton({
+    required String label,
+    required bool isMuted,
+    required IconData onIcon,
+    required IconData offIcon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: Colors.black38,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isMuted ? offIcon : onIcon,
+              color: Colors.white54,
+              size: 18,
+            ),
+            const SizedBox(width: 2),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white54,
+                fontSize: 9,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
