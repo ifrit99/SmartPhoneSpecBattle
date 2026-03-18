@@ -1,8 +1,10 @@
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../../data/local_storage_service.dart';
 import '../../data/sound_service.dart';
 import 'home_screen.dart';
+import 'onboarding_screen.dart';
 
 /// タイトル画面
 /// アプリ起動時に表示され、タップでホーム画面へ遷移する。
@@ -143,11 +145,15 @@ class _TitleScreenState extends State<TitleScreen>
     SoundService().playButton();
     SoundService().stopBgm(); // BGMをフェードアウト停止
 
-    // ホーム画面へ遷移（タイトル画面はスタックから除去）
+    // 初回起動ならオンボーディングへ、2回目以降はホームへ直行
+    final isFirstTime = !LocalStorageService().isOnboardingCompleted();
+    final Widget destination = isFirstTime
+        ? const OnboardingScreen()
+        : const HomeScreen();
+
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const HomeScreen(),
+        pageBuilder: (context, animation, secondaryAnimation) => destination,
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },

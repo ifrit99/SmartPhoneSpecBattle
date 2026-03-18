@@ -17,6 +17,8 @@ import 'gacha_screen.dart';
 import 'inventory_screen.dart';
 import 'qr_menu_screen.dart';
 
+import '../../data/local_storage_service.dart';
+
 /// ホーム画面
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -29,6 +31,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Character? _playerCharacter;
   PlayerCurrency? _playerCurrency;
   bool _loading = true;
+  bool _isFirstBattle = false;
   final _sl = ServiceLocator();
   final DeviceInfoService _deviceInfo = DeviceInfoService();
 
@@ -57,11 +60,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _initGame() async {
     final character = await _buildPlayerCharacter();
     final currency = _sl.currencyService.load();
+    final firstBattle = !LocalStorageService().isFirstBattleCompleted();
 
     if (!mounted) return;
     setState(() {
       _playerCharacter = character;
       _playerCurrency = currency;
+      _isFirstBattle = firstBattle;
       _loading = false;
     });
   }
@@ -301,6 +306,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
           const SizedBox(height: 32),
 
+          // 初回限定CTAバナー
+          if (_isFirstBattle) ...[
+            _buildFirstBattleBanner(),
+            const SizedBox(height: 16),
+          ],
+
           // バトル開始ボタン
           AnimatedBuilder(
             animation: _pulseAnimation,
@@ -520,6 +531,82 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
         Text(label, style: const TextStyle(color: Colors.white38, fontSize: 10)),
       ],
+    );
+  }
+
+  Widget _buildFirstBattleBanner() {
+    return GestureDetector(
+      onTap: _startBattle,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              const Color(0xFFFFD700).withValues(alpha: 0.15),
+              const Color(0xFFFFA502).withValues(alpha: 0.08),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: const Color(0xFFFFD700).withValues(alpha: 0.4),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFFD700).withValues(alpha: 0.1),
+              blurRadius: 12,
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFD700), Color(0xFFFFA502)],
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFFD700).withValues(alpha: 0.3),
+                    blurRadius: 12,
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.play_arrow, color: Colors.white, size: 28),
+            ),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'はじめてのバトル！',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFFFD700),
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'あなたのスマホの実力を試してみよう',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.white54,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios, color: Color(0xFFFFD700), size: 16),
+          ],
+        ),
+      ),
     );
   }
 
