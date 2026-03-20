@@ -3,7 +3,9 @@ import '../../domain/models/character.dart';
 import '../../domain/services/battle_engine.dart';
 import '../../domain/services/currency_service.dart';
 import '../../domain/services/enemy_generator.dart';
+import '../../data/local_storage_service.dart';
 import '../../domain/services/service_locator.dart';
+import '../widgets/first_battle_complete_dialog.dart';
 import '../widgets/pixel_character.dart';
 
 /// バトルリザルト画面
@@ -41,6 +43,7 @@ class _ResultScreenState extends State<ResultScreen>
   int _levelAfter = 1;
   bool get _leveledUp => _levelAfter > _levelBefore;
   int _coinsGained = 0;
+  bool _isFirstBattle = false;
 
   @override
   void initState() {
@@ -104,6 +107,13 @@ class _ResultScreenState extends State<ResultScreen>
     // 勝利した場合は敵の端末名を図鑑に記録
     if (widget.result.playerWon && widget.enemyDeviceName != null) {
       await sl.storage.saveDefeatedEnemy(widget.enemyDeviceName!);
+    }
+
+    // 初回バトル完了フラグをチェック＆セット
+    final storage = LocalStorageService();
+    if (!storage.isFirstBattleCompleted()) {
+      _isFirstBattle = true;
+      await storage.setFirstBattleCompleted();
     }
 
     if (mounted) setState(() {});
@@ -288,9 +298,17 @@ class _ResultScreenState extends State<ResultScreen>
               onPressed: () async {
                 // 保存完了を待ってからホーム画面に戻る
                 await _saveFuture;
-                if (mounted) {
-                  Navigator.of(context).popUntil((route) => route.isFirst);
+                if (!mounted) return;
+
+                // 初回バトル完了時のみ次アクション案内を表示
+                String? nextAction;
+                if (_isFirstBattle) {
+                  nextAction = await FirstBattleCompleteDialog.show(context);
+                  if (!mounted) return;
                 }
+
+                // ResultScreen → BattleScreen にpop（nextActionを伝搬）
+                Navigator.of(context).pop(nextAction);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: won ? const Color(0xFF00B894) : const Color(0xFF2D3748),

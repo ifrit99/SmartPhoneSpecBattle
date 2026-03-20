@@ -18,6 +18,8 @@ class LocalStorageService {
   static const String _keyGachaRoster = 'gacha_roster';
   static const String _keyEquippedGachaCharacter = 'equipped_gacha_character';
   static const String _keySeed = 'character_seed';
+  static const String _keyOnboardingCompleted = 'onboarding_completed';
+  static const String _keyFirstBattleCompleted = 'first_battle_completed';
 
   SharedPreferences? _prefs;
 
@@ -132,6 +134,24 @@ class LocalStorageService {
 
   /// 装備中のガチャキャラクターIDを取得
   String? getEquippedGachaCharacterId() => _store.getString(_keyEquippedGachaCharacter);
+
+  // --- オンボーディング ---
+
+  /// オンボーディング完了フラグを取得
+  bool isOnboardingCompleted() => _store.getBool(_keyOnboardingCompleted) ?? false;
+
+  /// オンボーディング完了フラグを保存
+  Future<void> setOnboardingCompleted() async {
+    await _store.setBool(_keyOnboardingCompleted, true);
+  }
+
+  /// 初回バトル完了フラグを取得
+  bool isFirstBattleCompleted() => _store.getBool(_keyFirstBattleCompleted) ?? false;
+
+  /// 初回バトル完了フラグを保存
+  Future<void> setFirstBattleCompleted() async {
+    await _store.setBool(_keyFirstBattleCompleted, true);
+  }
 
   /// 全データをクリア
   Future<void> clearAll() async {
