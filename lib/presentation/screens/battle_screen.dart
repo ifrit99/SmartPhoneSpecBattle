@@ -515,8 +515,8 @@ class _BattleScreenState extends State<BattleScreen>
           if (_battleComplete)
             Expanded(
               child: ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).push(
+                onPressed: () async {
+                  final nextAction = await Navigator.of(context).push<String?>(
                     MaterialPageRoute(
                       builder: (context) => ResultScreen(
                         result: _result,
@@ -527,6 +527,9 @@ class _BattleScreenState extends State<BattleScreen>
                       ),
                     ),
                   );
+                  if (mounted) {
+                    Navigator.of(context).pop(nextAction);
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _result.playerWon

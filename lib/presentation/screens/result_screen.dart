@@ -7,8 +7,6 @@ import '../../data/local_storage_service.dart';
 import '../../domain/services/service_locator.dart';
 import '../widgets/first_battle_complete_dialog.dart';
 import '../widgets/pixel_character.dart';
-import 'gacha_screen.dart';
-import 'qr_menu_screen.dart';
 
 /// バトルリザルト画面
 class ResultScreen extends StatefulWidget {
@@ -303,30 +301,14 @@ class _ResultScreenState extends State<ResultScreen>
                 if (!mounted) return;
 
                 // 初回バトル完了時のみ次アクション案内を表示
+                String? nextAction;
                 if (_isFirstBattle) {
-                  final action = await FirstBattleCompleteDialog.show(context);
+                  nextAction = await FirstBattleCompleteDialog.show(context);
                   if (!mounted) return;
-
-                  // ホームに一旦戻す
-                  Navigator.of(context).popUntil((route) => route.isFirst);
-
-                  // 選択されたアクション先に遷移
-                  if (action == 'gacha') {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const GachaScreen(),
-                      ),
-                    );
-                  } else if (action == 'friend') {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => const FriendBattleMenuScreen(),
-                      ),
-                    );
-                  }
-                } else {
-                  Navigator.of(context).popUntil((route) => route.isFirst);
                 }
+
+                // ResultScreen → BattleScreen にpop（nextActionを伝搬）
+                Navigator.of(context).pop(nextAction);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: won ? const Color(0xFF00B894) : const Color(0xFF2D3748),

@@ -113,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
     ).then((confirmed) {
       if (confirmed == true && mounted) {
-        Navigator.of(context).push(
+        Navigator.of(context).push<String?>(
           MaterialPageRoute(
             builder: (context) => BattleScreen(
               player: player,
@@ -122,7 +122,23 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               enemyDifficulty: profile.deviceSpec.difficulty,
             ),
           ),
-        ).then((_) => _reloadData());
+        ).then((nextAction) async {
+          await _reloadData();
+          if (!mounted) return;
+          if (nextAction == 'gacha') {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const GachaScreen(),
+              ),
+            ).then((_) => _reloadData());
+          } else if (nextAction == 'friend') {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => const FriendBattleMenuScreen(),
+              ),
+            ).then((_) => _reloadData());
+          }
+        });
       }
     });
   }
@@ -131,11 +147,13 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Future<void> _reloadData() async {
     final character = await _buildPlayerCharacter();
     final currency = _sl.currencyService.load();
+    final firstBattle = !LocalStorageService().isFirstBattleCompleted();
 
     if (!mounted) return;
     setState(() {
       _playerCharacter = character;
       _playerCurrency = currency;
+      _isFirstBattle = firstBattle;
     });
   }
 

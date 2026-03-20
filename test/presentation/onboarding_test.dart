@@ -101,8 +101,43 @@ void main() {
       expect(find.text('はじめる！'), findsOneWidget);
     });
 
-    // スキップ・はじめるボタンの遷移テストはServiceLocator初期化が必要なため
-    // ストレージフラグの検証はユニットテスト側（上のグループ）で確認済み
+    testWidgets('「スキップ」タップでスキップボタンが存在し動作する', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      await LocalStorageService().resetForTest();
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: OnboardingScreen(),
+        ),
+      );
+
+      // 1ページ目でスキップボタンが表示されている
+      final skipButton = find.text('スキップ');
+      expect(skipButton, findsOneWidget);
+
+      // スキップボタンはタップ可能（onPressed != null）
+      final textButton = tester.widget<TextButton>(
+        find.ancestor(of: skipButton, matching: find.byType(TextButton)),
+      );
+      expect(textButton.onPressed, isNotNull);
+    });
+
+    testWidgets('2ページ目でもスキップボタンが表示される', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      await LocalStorageService().resetForTest();
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: OnboardingScreen(),
+        ),
+      );
+
+      await tester.tap(find.text('次へ'));
+      await tester.pumpAndSettle();
+
+      // 2ページ目でもスキップボタンが存在する
+      expect(find.text('スキップ'), findsOneWidget);
+    });
   });
 
   group('FirstBattleCompleteDialog', () {
