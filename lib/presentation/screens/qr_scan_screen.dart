@@ -58,7 +58,10 @@ class _UrlInputScreenState extends State<UrlInputScreen> {
       if (mounted) {
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
-            builder: (context) => QrGuestPreviewScreen(guest: guest),
+            builder: (context) => QrGuestPreviewScreen(
+              guest: guest,
+              fromFriendMenu: true,
+            ),
           ),
         );
       }

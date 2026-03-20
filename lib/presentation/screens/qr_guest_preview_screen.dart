@@ -11,12 +11,21 @@ import '../widgets/pixel_character.dart';
 import '../widgets/stat_bar.dart';
 import 'battle_screen.dart';
 import 'gacha_screen.dart';
+import 'qr_menu_screen.dart';
 
 /// URLから読み取ったゲストキャラクターのプレビュー画面
 class QrGuestPreviewScreen extends StatefulWidget {
   final QrBattleGuest guest;
 
-  const QrGuestPreviewScreen({super.key, required this.guest});
+  /// フレンドメニュー経由で遷移してきたかどうか
+  /// true の場合、friend選択時はpopで既存メニューに戻る
+  final bool fromFriendMenu;
+
+  const QrGuestPreviewScreen({
+    super.key,
+    required this.guest,
+    this.fromFriendMenu = false,
+  });
 
   @override
   State<QrGuestPreviewScreen> createState() => _QrGuestPreviewScreenState();
@@ -52,9 +61,16 @@ class _QrGuestPreviewScreenState extends State<QrGuestPreviewScreen> {
         MaterialPageRoute(builder: (context) => const GachaScreen()),
       );
     } else if (nextAction == 'friend') {
-      // FriendBattleMenuScreenが既にスタックにある場合（UrlInput経由）は
-      // popで戻るだけで十分。重複pushを避ける。
-      Navigator.of(context).pop();
+      if (widget.fromFriendMenu) {
+        // フレンドメニュー経由：既存のFriendBattleMenuScreenへpopで戻る
+        Navigator.of(context).pop();
+      } else {
+        // ディープリンク経由：FriendBattleMenuScreenへ遷移
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(
+              builder: (context) => const FriendBattleMenuScreen()),
+        );
+      }
     } else {
       // 通常のバトル終了：プレビュー画面を閉じて前の画面に戻る
       Navigator.of(context).pop();
