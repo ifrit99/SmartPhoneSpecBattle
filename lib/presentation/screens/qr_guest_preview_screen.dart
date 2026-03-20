@@ -10,6 +10,8 @@ import '../theme/app_colors.dart';
 import '../widgets/pixel_character.dart';
 import '../widgets/stat_bar.dart';
 import 'battle_screen.dart';
+import 'gacha_screen.dart';
+import 'qr_menu_screen.dart';
 
 /// URLから読み取ったゲストキャラクターのプレビュー画面
 class QrGuestPreviewScreen extends StatefulWidget {
@@ -33,7 +35,7 @@ class _QrGuestPreviewScreenState extends State<QrGuestPreviewScreen> {
     if (!mounted) return;
     setState(() => _loading = false);
 
-    Navigator.of(context).pushReplacement(
+    final nextAction = await Navigator.of(context).push<String?>(
       MaterialPageRoute(
         builder: (context) => BattleScreen(
           player: player,
@@ -42,6 +44,22 @@ class _QrGuestPreviewScreenState extends State<QrGuestPreviewScreen> {
         ),
       ),
     );
+
+    if (!mounted) return;
+
+    // 初回バトル後の案内アクションを処理
+    if (nextAction == 'gacha') {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const GachaScreen()),
+      );
+    } else if (nextAction == 'friend') {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (context) => const FriendBattleMenuScreen()),
+      );
+    } else {
+      // 通常のバトル終了：プレビュー画面を閉じて前の画面に戻る
+      Navigator.of(context).pop();
+    }
   }
 
   Future<Character> _getEquippedPlayer() async {

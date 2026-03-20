@@ -3,8 +3,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:spec_battle_game/data/local_storage_service.dart';
+import 'package:spec_battle_game/domain/services/service_locator.dart';
+import 'package:spec_battle_game/presentation/screens/home_screen.dart';
 import 'package:spec_battle_game/presentation/screens/onboarding_screen.dart';
 import 'package:spec_battle_game/presentation/widgets/first_battle_complete_dialog.dart';
+
+/// 画面遷移を記録するNavigatorObserver
+class _TestNavigatorObserver extends NavigatorObserver {
+  final List<Route<dynamic>> replacedRoutes = [];
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
+    if (newRoute != null) replacedRoutes.add(newRoute);
+  }
+}
 
 void main() {
   group('LocalStorageService - オンボーディングフラグ', () {
@@ -101,25 +113,70 @@ void main() {
       expect(find.text('はじめる！'), findsOneWidget);
     });
 
-    testWidgets('「スキップ」タップでスキップボタンが存在し動作する', (tester) async {
+    testWidgets('「スキップ」タップでフラグ保存とHomeScreenへの遷移が行われる', (tester) async {
       SharedPreferences.setMockInitialValues({});
       await LocalStorageService().resetForTest();
+      await ServiceLocator().init();
+
+      final observer = _TestNavigatorObserver();
 
       await tester.pumpWidget(
-        const MaterialApp(
-          home: OnboardingScreen(),
+        MaterialApp(
+          home: const OnboardingScreen(),
+          navigatorObservers: [observer],
         ),
       );
 
-      // 1ページ目でスキップボタンが表示されている
-      final skipButton = find.text('スキップ');
-      expect(skipButton, findsOneWidget);
+      // フラグが未設定であることを確認
+      expect(LocalStorageService().isOnboardingCompleted(), isFalse);
 
-      // スキップボタンはタップ可能（onPressed != null）
-      final textButton = tester.widget<TextButton>(
-        find.ancestor(of: skipButton, matching: find.byType(TextButton)),
+      // スキップをタップ
+      await tester.tap(find.text('スキップ'));
+      await tester.pump(); // 遷移開始（HomeScreenのアニメーションがrepeatのためpumpAndSettleは不可）
+      await tester.pump(const Duration(milliseconds: 500)); // FadeTransition完了
+
+      // フラグが保存されたことを確認
+      expect(LocalStorageService().isOnboardingCompleted(), isTrue);
+
+      // HomeScreenへの遷移が行われたことを確認
+      expect(observer.replacedRoutes.length, 1);
+      expect(find.byType(HomeScreen), findsOneWidget);
+    });
+
+    testWidgets('「はじめる！」タップでフラグ保存とHomeScreenへの遷移が行われる', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      await LocalStorageService().resetForTest();
+      await ServiceLocator().init();
+
+      final observer = _TestNavigatorObserver();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: const OnboardingScreen(),
+          navigatorObservers: [observer],
+        ),
       );
-      expect(textButton.onPressed, isNotNull);
+
+      // 3ページ目まで進む
+      await tester.tap(find.text('次へ'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('次へ'));
+      await tester.pumpAndSettle();
+
+      // フラグが未設定であることを確認
+      expect(LocalStorageService().isOnboardingCompleted(), isFalse);
+
+      // 「はじめる！」をタップ
+      await tester.tap(find.text('はじめる！'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      // フラグが保存されたことを確認
+      expect(LocalStorageService().isOnboardingCompleted(), isTrue);
+
+      // HomeScreenへの遷移が行われたことを確認
+      expect(observer.replacedRoutes.length, 1);
+      expect(find.byType(HomeScreen), findsOneWidget);
     });
 
     testWidgets('2ページ目でもスキップボタンが表示される', (tester) async {
