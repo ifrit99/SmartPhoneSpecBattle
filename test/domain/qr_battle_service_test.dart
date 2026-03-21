@@ -179,6 +179,16 @@ void main() {
       final uri = Uri.parse('https://example.com/?other=value');
       expect(QrBattleService.extractBattleParam(uri), isNull);
     });
+
+    test('baseUrl指定時に既存クエリやフラグメントが混入しない', () {
+      // baseUrl明示の場合はそのまま使用される
+      final svc = QrBattleService(baseUrl: 'https://example.com/app');
+      final encoded = svc.encodePlayerCharacter(_makeCharacter());
+      final url = svc.generateShareUrl(encoded);
+      expect(url, startsWith('https://example.com/app/?battle='));
+      // クエリが1つだけであること
+      expect('?battle='.allMatches(url).length, 1);
+    });
   });
 
   group('QrBattleService - 改ざん検知', () {
