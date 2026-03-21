@@ -40,9 +40,10 @@ class QrBattleService {
     if (baseUrl.isNotEmpty) {
       base = baseUrl;
     } else {
-      // Uri.base はパスを含む完全なURL（例: https://host/SmartPhoneSpecBattle/）
-      // 末尾スラッシュを除去して統一
-      base = Uri.base.toString().replaceAll(RegExp(r'/+$'), '');
+      // Uri.base からquery/fragmentを除去し、パスのみ保持する
+      // （共有リンク経由で開いた場合に既存の?battle=が混入するのを防ぐ）
+      final clean = Uri.base.replace(query: '', fragment: '');
+      base = clean.toString().replaceAll(RegExp(r'[?#/]+$'), '');
     }
     // base64urlパディングを除去してURL安全にする
     // base64url文字（A-Za-z0-9_-）はURLクエリ内で安全にそのまま使用可能
