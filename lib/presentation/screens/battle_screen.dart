@@ -17,13 +17,15 @@ class BattleScreen extends StatefulWidget {
   final Character enemy;
   final String? enemyDeviceName;
   final EnemyDifficulty enemyDifficulty;
+  final bool isCpuBattle;
 
   const BattleScreen({
-    super.key, 
-    required this.player, 
+    super.key,
+    required this.player,
     required this.enemy,
     this.enemyDeviceName,
     this.enemyDifficulty = EnemyDifficulty.normal,
+    this.isCpuBattle = true,
   });
 
   @override
@@ -524,6 +526,7 @@ class _BattleScreenState extends State<BattleScreen>
                         enemy: widget.enemy,
                         enemyDeviceName: widget.enemyDeviceName,
                         enemyDifficulty: widget.enemyDifficulty,
+                        isCpuBattle: widget.isCpuBattle,
                       ),
                     ),
                   );

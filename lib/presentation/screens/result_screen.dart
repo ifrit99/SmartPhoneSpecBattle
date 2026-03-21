@@ -17,6 +17,7 @@ class ResultScreen extends StatefulWidget {
   final Character enemy;
   final String? enemyDeviceName;
   final EnemyDifficulty enemyDifficulty;
+  final bool isCpuBattle;
 
   const ResultScreen({
     super.key,
@@ -25,6 +26,7 @@ class ResultScreen extends StatefulWidget {
     required this.enemy,
     this.enemyDeviceName,
     this.enemyDifficulty = EnemyDifficulty.normal,
+    this.isCpuBattle = true,
   });
 
   @override
@@ -119,8 +121,10 @@ class _ResultScreenState extends State<ResultScreen>
       await storage.setFirstBattleCompleted();
     }
 
-    // デイリーバトル報酬を付与（その日の初回CPU戦完了時）
-    _dailyBattleReward = await sl.dailyRewardService.claimBattleReward();
+    // デイリーバトル報酬を付与（CPU対戦時のみ、その日の初回完了時）
+    if (widget.isCpuBattle) {
+      _dailyBattleReward = await sl.dailyRewardService.claimBattleReward();
+    }
 
     if (mounted) setState(() {});
   }

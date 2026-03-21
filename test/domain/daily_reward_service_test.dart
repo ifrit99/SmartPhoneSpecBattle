@@ -110,6 +110,26 @@ void main() {
     });
   });
 
+  group('DailyRewardService - CPU対戦のみバトル報酬が付与される', () {
+    test('claimBattleRewardを呼ばなければバトル報酬は付与されない（QR対戦想定）', () async {
+      // QR対戦ではclaimBattleRewardを呼ばないため、ジェムは加算されない
+      expect(currencyService.load().premiumGems, 0);
+      // バトル報酬は未消費のまま
+      expect(service.canClaimBattleReward(), isTrue);
+    });
+
+    test('QR対戦後もCPU対戦でバトル報酬を受取可能', () async {
+      // QR対戦ではclaimBattleRewardを呼ばない（isCpuBattle=falseの分岐）
+      // → バトル報酬は温存される
+
+      // その後CPU対戦で報酬を受け取る
+      final result = await service.claimBattleReward();
+      expect(result, isNotNull);
+      expect(result!.gemsAwarded, 15);
+      expect(currencyService.load().premiumGems, 15);
+    });
+  });
+
   group('DailyRewardService - LocalStorage失敗時のフォールバック', () {
     test('日付が保存されていない場合は受取可能と判定される', () {
       // setUp で空のSharedPreferencesなので、日付未保存 → 受取可能
