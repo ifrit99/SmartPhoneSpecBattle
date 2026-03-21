@@ -4,7 +4,9 @@ import '../../domain/services/battle_engine.dart';
 import '../../domain/services/currency_service.dart';
 import '../../domain/services/enemy_generator.dart';
 import '../../data/local_storage_service.dart';
+import '../../domain/services/daily_reward_service.dart';
 import '../../domain/services/service_locator.dart';
+import '../widgets/daily_reward_dialog.dart';
 import '../widgets/first_battle_complete_dialog.dart';
 import '../widgets/pixel_character.dart';
 
@@ -44,6 +46,7 @@ class _ResultScreenState extends State<ResultScreen>
   bool get _leveledUp => _levelAfter > _levelBefore;
   int _coinsGained = 0;
   bool _isFirstBattle = false;
+  DailyRewardResult? _dailyBattleReward;
 
   @override
   void initState() {
@@ -115,6 +118,9 @@ class _ResultScreenState extends State<ResultScreen>
       _isFirstBattle = true;
       await storage.setFirstBattleCompleted();
     }
+
+    // デイリーバトル報酬を付与（その日の初回CPU戦完了時）
+    _dailyBattleReward = await sl.dailyRewardService.claimBattleReward();
 
     if (mounted) setState(() {});
   }
@@ -244,6 +250,8 @@ class _ResultScreenState extends State<ResultScreen>
                 _infoRow('ターン数', '${widget.result.turnsPlayed}'),
                 _infoRow('獲得経験値', '+${widget.result.expGained} EXP'),
                 _infoRow('獲得コイン', '+$_coinsGained Coin'),
+                if (_dailyBattleReward != null)
+                  _infoRow('デイリー報酬', '+${_dailyBattleReward!.gemsAwarded} Gems 💎'),
               ],
             ),
           ),
@@ -299,6 +307,12 @@ class _ResultScreenState extends State<ResultScreen>
                 // 保存完了を待ってからホーム画面に戻る
                 await _saveFuture;
                 if (!mounted) return;
+
+                // デイリーバトル報酬ポップアップ
+                if (_dailyBattleReward != null) {
+                  await DailyRewardDialog.showBattleReward(context, _dailyBattleReward!);
+                  if (!mounted) return;
+                }
 
                 // 初回バトル完了時のみ次アクション案内を表示
                 String? nextAction;

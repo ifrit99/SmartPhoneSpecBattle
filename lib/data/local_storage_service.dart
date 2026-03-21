@@ -20,6 +20,8 @@ class LocalStorageService {
   static const String _keySeed = 'character_seed';
   static const String _keyOnboardingCompleted = 'onboarding_completed';
   static const String _keyFirstBattleCompleted = 'first_battle_completed';
+  static const String _keyLastLoginRewardDate = 'daily.lastLoginRewardDate';
+  static const String _keyLastBattleRewardDate = 'daily.lastBattleRewardDate';
 
   SharedPreferences? _prefs;
 
@@ -151,6 +153,24 @@ class LocalStorageService {
   /// 初回バトル完了フラグを保存
   Future<void> setFirstBattleCompleted() async {
     await _store.setBool(_keyFirstBattleCompleted, true);
+  }
+
+  // --- デイリー報酬 ---
+
+  /// ログイン報酬の最終受取日を取得
+  String? getLastLoginRewardDate() => _store.getString(_keyLastLoginRewardDate);
+
+  /// ログイン報酬の最終受取日を保存
+  Future<void> setLastLoginRewardDate(String dateStr) async {
+    await _store.setString(_keyLastLoginRewardDate, dateStr);
+  }
+
+  /// バトル報酬の最終受取日を取得
+  String? getLastBattleRewardDate() => _store.getString(_keyLastBattleRewardDate);
+
+  /// バトル報酬の最終受取日を保存
+  Future<void> setLastBattleRewardDate(String dateStr) async {
+    await _store.setString(_keyLastBattleRewardDate, dateStr);
   }
 
   /// 全データをクリア
