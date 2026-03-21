@@ -36,7 +36,14 @@ class QrBattleService {
   /// base64urlのパディング(`=`)を除去してURLに安全に埋め込む。
   /// [extractBattleParam] 側でパディングを復元するため、ペアで使用する。
   String generateShareUrl(String encoded) {
-    final base = baseUrl.isNotEmpty ? baseUrl : Uri.base.origin;
+    String base;
+    if (baseUrl.isNotEmpty) {
+      base = baseUrl;
+    } else {
+      // Uri.base はパスを含む完全なURL（例: https://host/SmartPhoneSpecBattle/）
+      // 末尾スラッシュを除去して統一
+      base = Uri.base.toString().replaceAll(RegExp(r'/+$'), '');
+    }
     // base64urlパディングを除去してURL安全にする
     // base64url文字（A-Za-z0-9_-）はURLクエリ内で安全にそのまま使用可能
     final safeEncoded = _stripBase64Padding(encoded);
