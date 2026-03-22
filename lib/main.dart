@@ -10,6 +10,9 @@ import 'presentation/screens/qr_guest_preview_screen.dart';
 /// グローバルナビゲーターキー（URL対戦からの画面遷移に使用）
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+/// グローバルRouteObserver（RouteAwareによる画面復帰検知に使用）
+final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
+
 /// 起動時のURL対戦パラメータ（Webのみ）
 QrBattleGuest? _initialBattleGuest;
 
@@ -89,6 +92,7 @@ class _SpecBattleAppState extends State<SpecBattleApp>
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: navigatorKey,
+      navigatorObservers: [routeObserver],
       title: 'Spec Battle',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

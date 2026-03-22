@@ -19,6 +19,7 @@ import 'qr_menu_screen.dart';
 
 import '../../data/local_storage_service.dart';
 import '../../domain/services/daily_reward_service.dart';
+import '../../main.dart' show routeObserver;
 import '../widgets/daily_reward_dialog.dart';
 
 /// ホーム画面
@@ -29,7 +30,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, WidgetsBindingObserver, RouteAware {
   Character? _playerCharacter;
   PlayerCurrency? _playerCurrency;
   bool _loading = true;
@@ -57,10 +58,26 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is ModalRoute<void>) {
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  @override
   void dispose() {
+    routeObserver.unsubscribe(this);
     WidgetsBinding.instance.removeObserver(this);
     _pulseController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    // 他画面からpopでホームに戻ってきた時に保留中のポップアップを表示
+    _showPendingLoginReward();
   }
 
   @override
