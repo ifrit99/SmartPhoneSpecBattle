@@ -35,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
   bool _loading = true;
   bool _isFirstBattle = false;
   bool _canClaimBattleReward = false;
+  DailyRewardResult? _pendingLoginReward;
   final _sl = ServiceLocator();
   final DeviceInfoService _deviceInfo = DeviceInfoService();
 
@@ -85,7 +86,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       _canClaimBattleReward = battleRewardAvailable;
     });
 
-    await DailyRewardDialog.showLoginReward(context, loginResult);
+    // ホームが前面の場合のみポップアップを即時表示、それ以外は保留
+    final route = ModalRoute.of(context);
+    if (route != null && route.isCurrent) {
+      await DailyRewardDialog.showLoginReward(context, loginResult);
+    } else {
+      _pendingLoginReward = loginResult;
+    }
+  }
+
+  /// 保留中のログイン報酬ポップアップがあれば表示する
+  Future<void> _showPendingLoginReward() async {
+    final pending = _pendingLoginReward;
+    if (pending == null) return;
+    _pendingLoginReward = null;
+    if (!mounted) return;
+    await DailyRewardDialog.showLoginReward(context, pending);
   }
 
   Future<void> _initGame() async {
@@ -198,6 +214,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
       _isFirstBattle = firstBattle;
       _canClaimBattleReward = battleRewardAvailable;
     });
+
+    // 保留中のログイン報酬ポップアップを表示
+    await _showPendingLoginReward();
   }
 
   void _openCharacterDetail() {
