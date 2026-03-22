@@ -29,7 +29,7 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, WidgetsBindingObserver {
   Character? _playerCharacter;
   PlayerCurrency? _playerCurrency;
   bool _loading = true;
@@ -51,13 +51,41 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+    WidgetsBinding.instance.addObserver(this);
     _initGame();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pulseController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkLoginRewardOnResume();
+    }
+  }
+
+  /// アプリ復帰時にログイン報酬の再判定を行う（日付跨ぎ対応）
+  Future<void> _checkLoginRewardOnResume() async {
+    if (!_sl.dailyRewardService.canClaimLoginReward()) return;
+
+    final loginResult = await _sl.dailyRewardService.claimLoginReward();
+    if (loginResult == null) return;
+
+    // 通貨とバトル報酬ステータスも更新
+    final currency = _sl.currencyService.load();
+    final battleRewardAvailable = _sl.dailyRewardService.canClaimBattleReward();
+    if (!mounted) return;
+    setState(() {
+      _playerCurrency = currency;
+      _canClaimBattleReward = battleRewardAvailable;
+    });
+
+    await DailyRewardDialog.showLoginReward(context, loginResult);
   }
 
   Future<void> _initGame() async {
