@@ -49,6 +49,7 @@ class _QrGuestPreviewScreenState extends State<QrGuestPreviewScreen> {
           player: player,
           enemy: widget.guest.battleCharacter,
           enemyDeviceName: widget.guest.deviceName ?? 'フレンドの端末',
+          isCpuBattle: false,
         ),
       ),
     );

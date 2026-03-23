@@ -62,4 +62,12 @@ class CurrencyService {
     await save(updated);
     return updated;
   }
+
+  /// ジェムを加算して保存する
+  Future<PlayerCurrency> addGems(int amount) async {
+    final current = load();
+    final updated = current.addGems(amount);
+    await save(updated);
+    return updated;
+  }
 }

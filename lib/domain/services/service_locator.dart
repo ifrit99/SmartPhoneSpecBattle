@@ -1,4 +1,5 @@
 import '../../data/local_storage_service.dart';
+import 'daily_reward_service.dart';
 import 'experience_service.dart';
 import 'currency_service.dart';
 import 'gacha_service.dart';
@@ -18,6 +19,7 @@ class ServiceLocator {
   late final CurrencyService currencyService;
   late final GachaService gachaService;
   late final QrBattleService qrBattleService;
+  late final DailyRewardService dailyRewardService;
 
   /// 全サービスの初期化（アプリ起動時に1回だけ呼ぶ）
   Future<void> init() async {
@@ -30,6 +32,7 @@ class ServiceLocator {
     currencyService = CurrencyService(storage);
     gachaService = GachaService(currencyService, storage);
     qrBattleService = QrBattleService();
+    dailyRewardService = DailyRewardService(storage, currencyService);
 
     _initialized = true;
   }

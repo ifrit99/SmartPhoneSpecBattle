@@ -18,6 +18,9 @@ import 'inventory_screen.dart';
 import 'qr_menu_screen.dart';
 
 import '../../data/local_storage_service.dart';
+import '../../domain/services/daily_reward_service.dart';
+import '../../main.dart' show routeObserver;
+import '../widgets/daily_reward_dialog.dart';
 
 /// ホーム画面
 class HomeScreen extends StatefulWidget {
@@ -27,11 +30,13 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, WidgetsBindingObserver, RouteAware {
   Character? _playerCharacter;
   PlayerCurrency? _playerCurrency;
   bool _loading = true;
   bool _isFirstBattle = false;
+  bool _canClaimBattleReward = false;
+  DailyRewardResult? _pendingLoginReward;
   final _sl = ServiceLocator();
   final DeviceInfoService _deviceInfo = DeviceInfoService();
 
@@ -48,27 +53,96 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+    WidgetsBinding.instance.addObserver(this);
     _initGame();
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is ModalRoute<void>) {
+      routeObserver.subscribe(this, route);
+    }
+  }
+
+  @override
   void dispose() {
+    routeObserver.unsubscribe(this);
+    WidgetsBinding.instance.removeObserver(this);
     _pulseController.dispose();
     super.dispose();
   }
 
+  @override
+  void didPopNext() {
+    // 他画面からpopでホームに戻ってきた時に保留中のポップアップを表示
+    _showPendingLoginReward();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkLoginRewardOnResume();
+    }
+  }
+
+  /// アプリ復帰時にログイン報酬の再判定を行う（日付跨ぎ対応）
+  Future<void> _checkLoginRewardOnResume() async {
+    if (!_sl.dailyRewardService.canClaimLoginReward()) return;
+
+    final loginResult = await _sl.dailyRewardService.claimLoginReward();
+    if (loginResult == null) return;
+
+    // 通貨とバトル報酬ステータスも更新
+    final currency = _sl.currencyService.load();
+    final battleRewardAvailable = _sl.dailyRewardService.canClaimBattleReward();
+    if (!mounted) return;
+    setState(() {
+      _playerCurrency = currency;
+      _canClaimBattleReward = battleRewardAvailable;
+    });
+
+    // ホームが前面の場合のみポップアップを即時表示、それ以外は保留
+    final route = ModalRoute.of(context);
+    if (route != null && route.isCurrent) {
+      await DailyRewardDialog.showLoginReward(context, loginResult);
+    } else {
+      _pendingLoginReward = loginResult;
+    }
+  }
+
+  /// 保留中のログイン報酬ポップアップがあれば表示する
+  Future<void> _showPendingLoginReward() async {
+    final pending = _pendingLoginReward;
+    if (pending == null) return;
+    _pendingLoginReward = null;
+    if (!mounted) return;
+    await DailyRewardDialog.showLoginReward(context, pending);
+  }
+
   Future<void> _initGame() async {
     final character = await _buildPlayerCharacter();
-    final currency = _sl.currencyService.load();
     final firstBattle = !LocalStorageService().isFirstBattleCompleted();
+
+    // ログイン報酬を付与（その日の初回起動時）
+    final loginResult = await _sl.dailyRewardService.claimLoginReward();
+    final battleRewardAvailable = _sl.dailyRewardService.canClaimBattleReward();
+    final currency = _sl.currencyService.load();
 
     if (!mounted) return;
     setState(() {
       _playerCharacter = character;
       _playerCurrency = currency;
       _isFirstBattle = firstBattle;
+      _canClaimBattleReward = battleRewardAvailable;
       _loading = false;
     });
+
+    // ログイン報酬ポップアップを表示
+    if (loginResult != null && mounted) {
+      await DailyRewardDialog.showLoginReward(context, loginResult);
+    }
   }
 
   /// 装備中のキャラクターまたは実機スペックからCharacterを構築する
@@ -148,13 +222,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final character = await _buildPlayerCharacter();
     final currency = _sl.currencyService.load();
     final firstBattle = !LocalStorageService().isFirstBattleCompleted();
+    final battleRewardAvailable = _sl.dailyRewardService.canClaimBattleReward();
 
     if (!mounted) return;
     setState(() {
       _playerCharacter = character;
       _playerCurrency = currency;
       _isFirstBattle = firstBattle;
+      _canClaimBattleReward = battleRewardAvailable;
     });
+
+    // 保留中のログイン報酬ポップアップを表示
+    await _showPendingLoginReward();
   }
 
   void _openCharacterDetail() {
@@ -252,7 +331,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           // 戦績カード
           _buildRecordCard(record),
           const SizedBox(height: 16),
-          
+
+          // デイリー報酬カード
+          _buildDailyRewardCard(),
+          const SizedBox(height: 16),
+
           // アクションボタン領域 (Party, Gacha)
           Row(
             children: [
@@ -624,6 +707,110 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             const Icon(Icons.arrow_forward_ios, color: Color(0xFFFFD700), size: 16),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDailyRewardCard() {
+    final loginClaimed = !_sl.dailyRewardService.canClaimLoginReward();
+    final battleClaimed = !_canClaimBattleReward;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B2838),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFFE056FD).withValues(alpha: 0.3),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.card_giftcard, color: Color(0xFFE056FD), size: 18),
+              SizedBox(width: 6),
+              Text(
+                'デイリー報酬',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _dailyRewardItem(
+                  icon: Icons.wb_sunny,
+                  label: 'ログイン',
+                  gems: DailyRewardService.loginRewardGems,
+                  claimed: loginClaimed,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _dailyRewardItem(
+                  icon: Icons.flash_on,
+                  label: 'バトル1回',
+                  gems: DailyRewardService.battleRewardGems,
+                  claimed: battleClaimed,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dailyRewardItem({
+    required IconData icon,
+    required String label,
+    required int gems,
+    required bool claimed,
+  }) {
+    final color = claimed ? Colors.white24 : const Color(0xFFE056FD);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: claimed
+            ? Colors.white.withValues(alpha: 0.03)
+            : const Color(0xFFE056FD).withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  claimed ? '受取済' : '💎 +$gems',
+                  style: TextStyle(
+                    color: claimed ? Colors.white24 : const Color(0xFFE056FD),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (claimed)
+            const Icon(Icons.check_circle, color: Colors.white24, size: 18),
+        ],
       ),
     );
   }
