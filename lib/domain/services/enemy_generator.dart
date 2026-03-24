@@ -58,30 +58,31 @@ class EnemyDeviceSpec {
 }
 
 /// 難易度ごとの架空デバイスカタログ
+/// ※ 実在の商標を避けるため、すべて架空のブランド・機種名を使用
 const _easyDevices = [
   EnemyDeviceSpec(
-    deviceName: 'Galaxy J2 Prime',
+    deviceName: 'Stellar J2 Lite',
     osLabel: 'Android 6.0',
     osVersion: '6',
     cpuCores: 4, ramMB: 1536, storageFreeGB: 8, batteryLevel: 50,
     difficulty: EnemyDifficulty.easy,
   ),
   EnemyDeviceSpec(
-    deviceName: 'Redmi 4A',
+    deviceName: 'Blazemi 4A',
     osLabel: 'Android 6.0',
     osVersion: '6',
     cpuCores: 4, ramMB: 2048, storageFreeGB: 8, batteryLevel: 50,
     difficulty: EnemyDifficulty.easy,
   ),
   EnemyDeviceSpec(
-    deviceName: 'AQUOS sense2',
+    deviceName: 'Clario sense2',
     osLabel: 'Android 8.1',
     osVersion: '8',
     cpuCores: 4, ramMB: 3072, storageFreeGB: 12, batteryLevel: 50,
     difficulty: EnemyDifficulty.easy,
   ),
   EnemyDeviceSpec(
-    deviceName: 'iPhone 6s',
+    deviceName: 'FruitPhone 6s',
     osLabel: 'iOS 12.5',
     osVersion: '12',
     cpuCores: 2, ramMB: 2048, storageFreeGB: 10, batteryLevel: 50,
@@ -91,28 +92,28 @@ const _easyDevices = [
 
 const _normalDevices = [
   EnemyDeviceSpec(
-    deviceName: 'Pixel 5a',
+    deviceName: 'Prism 5a',
     osLabel: 'Android 12.0',
     osVersion: '12',
     cpuCores: 8, ramMB: 6144, storageFreeGB: 48, batteryLevel: 50,
     difficulty: EnemyDifficulty.normal,
   ),
   EnemyDeviceSpec(
-    deviceName: 'Galaxy A54',
+    deviceName: 'Stellar A54',
     osLabel: 'Android 13.0',
     osVersion: '13',
     cpuCores: 8, ramMB: 8192, storageFreeGB: 64, batteryLevel: 50,
     difficulty: EnemyDifficulty.normal,
   ),
   EnemyDeviceSpec(
-    deviceName: 'iPhone 13',
+    deviceName: 'FruitPhone 13',
     osLabel: 'iOS 16.0',
     osVersion: '16',
     cpuCores: 6, ramMB: 4096, storageFreeGB: 50, batteryLevel: 50,
     difficulty: EnemyDifficulty.normal,
   ),
   EnemyDeviceSpec(
-    deviceName: 'Xperia 10 V',
+    deviceName: 'Nexia 10 V',
     osLabel: 'Android 13.0',
     osVersion: '13',
     cpuCores: 8, ramMB: 6144, storageFreeGB: 56, batteryLevel: 50,
@@ -122,28 +123,28 @@ const _normalDevices = [
 
 const _hardDevices = [
   EnemyDeviceSpec(
-    deviceName: 'Galaxy S24',
+    deviceName: 'Stellar S24',
     osLabel: 'Android 14.0',
     osVersion: '14',
     cpuCores: 8, ramMB: 8192, storageFreeGB: 128, batteryLevel: 50,
     difficulty: EnemyDifficulty.hard,
   ),
   EnemyDeviceSpec(
-    deviceName: 'Pixel 9 Pro',
+    deviceName: 'Prism 9 Pro',
     osLabel: 'Android 15.0',
     osVersion: '15',
     cpuCores: 9, ramMB: 16384, storageFreeGB: 180, batteryLevel: 50,
     difficulty: EnemyDifficulty.hard,
   ),
   EnemyDeviceSpec(
-    deviceName: 'iPhone 16 Pro',
+    deviceName: 'FruitPhone 16 Pro',
     osLabel: 'iOS 18.0',
     osVersion: '18',
     cpuCores: 6, ramMB: 8192, storageFreeGB: 200, batteryLevel: 50,
     difficulty: EnemyDifficulty.hard,
   ),
   EnemyDeviceSpec(
-    deviceName: 'Xperia 1 VI',
+    deviceName: 'Nexia 1 VI',
     osLabel: 'Android 14.0',
     osVersion: '14',
     cpuCores: 8, ramMB: 12288, storageFreeGB: 150, batteryLevel: 50,
@@ -153,28 +154,28 @@ const _hardDevices = [
 
 const _bossDevices = [
   EnemyDeviceSpec(
-    deviceName: 'Galaxy S24 Ultra',
+    deviceName: 'Stellar S24 Ultra',
     osLabel: 'Android 15.0',
     osVersion: '15',
     cpuCores: 12, ramMB: 16384, storageFreeGB: 512, batteryLevel: 50,
     difficulty: EnemyDifficulty.boss,
   ),
   EnemyDeviceSpec(
-    deviceName: 'iPhone 16 Pro Max',
+    deviceName: 'FruitPhone 16 Pro Max',
     osLabel: 'iOS 18.2',
     osVersion: '18',
     cpuCores: 6, ramMB: 8192, storageFreeGB: 512, batteryLevel: 50,
     difficulty: EnemyDifficulty.boss,
   ),
   EnemyDeviceSpec(
-    deviceName: 'Pixel 9 Pro XL',
+    deviceName: 'Prism 9 Pro XL',
     osLabel: 'Android 15.0',
     osVersion: '15',
     cpuCores: 9, ramMB: 16384, storageFreeGB: 512, batteryLevel: 50,
     difficulty: EnemyDifficulty.boss,
   ),
   EnemyDeviceSpec(
-    deviceName: 'ROG Phone 9 Pro',
+    deviceName: 'Forge Phone 9 Pro',
     osLabel: 'Android 15.0',
     osVersion: '15',
     cpuCores: 12, ramMB: 24576, storageFreeGB: 512, batteryLevel: 50,
