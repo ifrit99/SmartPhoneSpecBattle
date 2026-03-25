@@ -13,6 +13,7 @@ class LocalStorageService {
   static const String _keyBattleCount = 'battle_count';
   static const String _keyWinCount = 'win_count';
   static const String _keyDefeatedEnemies = 'defeated_enemies';
+  static const String _keyDefeatedEnemiesMigrated = 'defeated_enemies_migrated';
   static const String _keyCoins = 'coins';
   static const String _keyPremiumGems = 'premium_gems';
   static const String _keyGachaRoster = 'gacha_roster';
@@ -89,17 +90,46 @@ class LocalStorageService {
 
   // --- 図鑑（対戦履歴） ---
 
-  /// 撃破した敵のリストに追記
-  Future<void> saveDefeatedEnemy(String deviceName) async {
+  /// 撃破した敵のID をリストに追記
+  Future<void> saveDefeatedEnemy(String enemyId) async {
     final currentList = getDefeatedEnemies();
-    if (!currentList.contains(deviceName)) {
-      currentList.add(deviceName);
+    if (!currentList.contains(enemyId)) {
+      currentList.add(enemyId);
       await _store.setStringList(_keyDefeatedEnemies, currentList);
     }
   }
 
-  /// 撃破した敵のリストを取得
+  /// 撃破した敵のIDリストを取得
   List<String> getDefeatedEnemies() => _store.getStringList(_keyDefeatedEnemies) ?? [];
+
+  /// 旧デバイス名ベースの図鑑データをIDベースにマイグレーションする。
+  /// [nameToIdMap] は旧デバイス名→IDの対応表。
+  /// 一度実行済みなら再実行しない。
+  Future<void> migrateDefeatedEnemies(Map<String, String> nameToIdMap) async {
+    if (_store.getBool(_keyDefeatedEnemiesMigrated) ?? false) return;
+
+    final currentList = getDefeatedEnemies();
+    if (currentList.isEmpty) {
+      await _store.setBool(_keyDefeatedEnemiesMigrated, true);
+      return;
+    }
+
+    // 旧データの中にIDでないもの（＝旧デバイス名）があれば変換する
+    final migrated = <String>{};
+    for (final entry in currentList) {
+      final mapped = nameToIdMap[entry];
+      if (mapped != null) {
+        // 旧デバイス名 → 新ID に変換
+        migrated.add(mapped);
+      } else {
+        // すでにIDか、マッピングにない未知のエントリはそのまま残す
+        migrated.add(entry);
+      }
+    }
+
+    await _store.setStringList(_keyDefeatedEnemies, migrated.toList());
+    await _store.setBool(_keyDefeatedEnemiesMigrated, true);
+  }
 
   // --- 通貨 ---
 

@@ -36,7 +36,8 @@ extension EnemyDifficultyExtension on EnemyDifficulty {
 
 /// 架空デバイスの仕様（敵のフレーバー情報）
 class EnemyDeviceSpec {
-  final String deviceName;   // 端末名（例: "Galaxy S8"）
+  final String id;           // 永続化用の固定ID（変更不可）
+  final String deviceName;   // 端末名（表示用、将来変更しても影響なし）
   final String osLabel;      // OS表示（例: "Android 8.0"）
   final String osVersion;    // 属性決定に使うバージョン文字列
   final int cpuCores;        // CPUコア数 → ATK に影響
@@ -46,6 +47,7 @@ class EnemyDeviceSpec {
   final EnemyDifficulty difficulty;
 
   const EnemyDeviceSpec({
+    required this.id,
     required this.deviceName,
     required this.osLabel,
     required this.osVersion,
@@ -61,6 +63,7 @@ class EnemyDeviceSpec {
 /// ※ 実在の商標を避けるため、すべて架空のブランド・機種名を使用
 const _easyDevices = [
   EnemyDeviceSpec(
+    id: 'easy_01',
     deviceName: 'Stellar J2 Lite',
     osLabel: 'Android 6.0',
     osVersion: '6',
@@ -68,6 +71,7 @@ const _easyDevices = [
     difficulty: EnemyDifficulty.easy,
   ),
   EnemyDeviceSpec(
+    id: 'easy_02',
     deviceName: 'Blazemi 4A',
     osLabel: 'Android 6.0',
     osVersion: '6',
@@ -75,6 +79,7 @@ const _easyDevices = [
     difficulty: EnemyDifficulty.easy,
   ),
   EnemyDeviceSpec(
+    id: 'easy_03',
     deviceName: 'Clario sense2',
     osLabel: 'Android 8.1',
     osVersion: '8',
@@ -82,6 +87,7 @@ const _easyDevices = [
     difficulty: EnemyDifficulty.easy,
   ),
   EnemyDeviceSpec(
+    id: 'easy_04',
     deviceName: 'FruitPhone 6s',
     osLabel: 'iOS 12.5',
     osVersion: '12',
@@ -92,6 +98,7 @@ const _easyDevices = [
 
 const _normalDevices = [
   EnemyDeviceSpec(
+    id: 'normal_01',
     deviceName: 'Prism 5a',
     osLabel: 'Android 12.0',
     osVersion: '12',
@@ -99,6 +106,7 @@ const _normalDevices = [
     difficulty: EnemyDifficulty.normal,
   ),
   EnemyDeviceSpec(
+    id: 'normal_02',
     deviceName: 'Stellar A54',
     osLabel: 'Android 13.0',
     osVersion: '13',
@@ -106,6 +114,7 @@ const _normalDevices = [
     difficulty: EnemyDifficulty.normal,
   ),
   EnemyDeviceSpec(
+    id: 'normal_03',
     deviceName: 'FruitPhone 13',
     osLabel: 'iOS 16.0',
     osVersion: '16',
@@ -113,6 +122,7 @@ const _normalDevices = [
     difficulty: EnemyDifficulty.normal,
   ),
   EnemyDeviceSpec(
+    id: 'normal_04',
     deviceName: 'Nexia 10 V',
     osLabel: 'Android 13.0',
     osVersion: '13',
@@ -123,6 +133,7 @@ const _normalDevices = [
 
 const _hardDevices = [
   EnemyDeviceSpec(
+    id: 'hard_01',
     deviceName: 'Stellar S24',
     osLabel: 'Android 14.0',
     osVersion: '14',
@@ -130,6 +141,7 @@ const _hardDevices = [
     difficulty: EnemyDifficulty.hard,
   ),
   EnemyDeviceSpec(
+    id: 'hard_02',
     deviceName: 'Prism 9 Pro',
     osLabel: 'Android 15.0',
     osVersion: '15',
@@ -137,6 +149,7 @@ const _hardDevices = [
     difficulty: EnemyDifficulty.hard,
   ),
   EnemyDeviceSpec(
+    id: 'hard_03',
     deviceName: 'FruitPhone 16 Pro',
     osLabel: 'iOS 18.0',
     osVersion: '18',
@@ -144,6 +157,7 @@ const _hardDevices = [
     difficulty: EnemyDifficulty.hard,
   ),
   EnemyDeviceSpec(
+    id: 'hard_04',
     deviceName: 'Nexia 1 VI',
     osLabel: 'Android 14.0',
     osVersion: '14',
@@ -154,6 +168,7 @@ const _hardDevices = [
 
 const _bossDevices = [
   EnemyDeviceSpec(
+    id: 'boss_01',
     deviceName: 'Stellar S24 Ultra',
     osLabel: 'Android 15.0',
     osVersion: '15',
@@ -161,6 +176,7 @@ const _bossDevices = [
     difficulty: EnemyDifficulty.boss,
   ),
   EnemyDeviceSpec(
+    id: 'boss_02',
     deviceName: 'FruitPhone 16 Pro Max',
     osLabel: 'iOS 18.2',
     osVersion: '18',
@@ -168,6 +184,7 @@ const _bossDevices = [
     difficulty: EnemyDifficulty.boss,
   ),
   EnemyDeviceSpec(
+    id: 'boss_03',
     deviceName: 'Prism 9 Pro XL',
     osLabel: 'Android 15.0',
     osVersion: '15',
@@ -175,6 +192,7 @@ const _bossDevices = [
     difficulty: EnemyDifficulty.boss,
   ),
   EnemyDeviceSpec(
+    id: 'boss_04',
     deviceName: 'Forge Phone 9 Pro',
     osLabel: 'Android 15.0',
     osVersion: '15',
@@ -266,5 +284,14 @@ class EnemyGenerator {
       ..._hardDevices,
       ..._bossDevices,
     ];
+  }
+
+  /// IDからデバイスを検索する（見つからなければ null）
+  static EnemyDeviceSpec? findById(String id) {
+    final devices = allEnemyDevices;
+    for (final d in devices) {
+      if (d.id == id) return d;
+    }
+    return null;
   }
 }

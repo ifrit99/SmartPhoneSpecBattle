@@ -15,7 +15,7 @@ class ResultScreen extends StatefulWidget {
   final BattleResult result;
   final Character player;
   final Character enemy;
-  final String? enemyDeviceName;
+  final String? enemyDeviceId;
   final EnemyDifficulty enemyDifficulty;
   final bool isCpuBattle;
 
@@ -24,7 +24,7 @@ class ResultScreen extends StatefulWidget {
     required this.result,
     required this.player,
     required this.enemy,
-    this.enemyDeviceName,
+    this.enemyDeviceId,
     this.enemyDifficulty = EnemyDifficulty.normal,
     this.isCpuBattle = true,
   });
@@ -110,8 +110,8 @@ class _ResultScreenState extends State<ResultScreen>
     await sl.experienceService.recordBattle(widget.result.playerWon);
 
     // 勝利した場合は敵の端末名を図鑑に記録
-    if (widget.result.playerWon && widget.enemyDeviceName != null) {
-      await sl.storage.saveDefeatedEnemy(widget.enemyDeviceName!);
+    if (widget.result.playerWon && widget.enemyDeviceId != null) {
+      await sl.storage.saveDefeatedEnemy(widget.enemyDeviceId!);
     }
 
     // 初回バトル完了フラグをチェック＆セット

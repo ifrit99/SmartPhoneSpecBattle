@@ -15,7 +15,7 @@ import 'result_screen.dart';
 class BattleScreen extends StatefulWidget {
   final Character player;
   final Character enemy;
-  final String? enemyDeviceName;
+  final String? enemyDeviceId;
   final EnemyDifficulty enemyDifficulty;
   final bool isCpuBattle;
 
@@ -23,7 +23,7 @@ class BattleScreen extends StatefulWidget {
     super.key,
     required this.player,
     required this.enemy,
-    this.enemyDeviceName,
+    this.enemyDeviceId,
     this.enemyDifficulty = EnemyDifficulty.normal,
     this.isCpuBattle = true,
   });
@@ -524,7 +524,7 @@ class _BattleScreenState extends State<BattleScreen>
                         result: _result,
                         player: widget.player,
                         enemy: widget.enemy,
-                        enemyDeviceName: widget.enemyDeviceName,
+                        enemyDeviceId: widget.enemyDeviceId,
                         enemyDifficulty: widget.enemyDifficulty,
                         isCpuBattle: widget.isCpuBattle,
                       ),

@@ -71,7 +71,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
       itemCount: allDevices.length,
       itemBuilder: (context, index) {
         final device = allDevices[index];
-        final isDefeated = _defeatedEnemies.contains(device.deviceName);
+        final isDefeated = _defeatedEnemies.contains(device.id);
         return _buildEnemyCard(device, isDefeated);
       },
     );
