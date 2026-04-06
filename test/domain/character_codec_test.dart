@@ -99,13 +99,13 @@ void main() {
       final encoded = CharacterCodec.encode(
         original,
         rarity: Rarity.sr,
-        deviceName: 'Galaxy S25',
+        deviceName: 'Stellar S25',
       );
       final decoded = CharacterCodec.decode(encoded);
 
       expect(decoded.isGacha, true);
       expect(decoded.rarity, Rarity.sr);
-      expect(decoded.deviceName, 'Galaxy S25');
+      expect(decoded.deviceName, 'Stellar S25');
       expect(decoded.character.name, 'ギャラクシー・ナイト');
     });
 
@@ -163,11 +163,11 @@ void main() {
     });
 
     test('ASCII英数字のみのキャラ名', () {
-      final original = _makeCharacter(name: 'Pixel-9-Pro');
+      final original = _makeCharacter(name: 'Orion-9-Pro');
       final encoded = CharacterCodec.encode(original);
       final decoded = CharacterCodec.decode(encoded);
 
-      expect(decoded.character.name, 'Pixel-9-Pro');
+      expect(decoded.character.name, 'Orion-9-Pro');
     });
   });
 
@@ -333,7 +333,7 @@ void main() {
       final encoded = CharacterCodec.encode(
         original,
         rarity: Rarity.ssr,
-        deviceName: 'iPhone 17 Pro Max Ultra',
+        deviceName: 'FruitPhone 17 Pro Max Ultra',
       );
 
       expect(encoded, isNot(contains('+')));
@@ -346,7 +346,7 @@ void main() {
       final encoded = CharacterCodec.encode(
         original,
         rarity: Rarity.sr,
-        deviceName: 'Galaxy S25',
+        deviceName: 'Stellar S25',
       );
 
       final binarySize = base64Url.decode(encoded).length;
