@@ -1,29 +1,21 @@
 {
   "permissions": {
     "allow": [
-      "Read",
-      "Write",
-      "Edit",
-      "Glob",
-      "Grep",
-      "Bash(git:*)",
-      "Bash(flutter:*)",
-      "Bash(dart:*)",
       "Bash(python3:*)",
-      "Bash(ls:*)",
-      "Bash(cat:*)",
-      "Bash(echo:*)",
-      "Bash(mkdir:*)",
-      "Bash(cp:*)",
-      "Bash(mv:*)",
-      "Bash(jq:*)",
-      "Bash(curl:*)",
-      "Bash(which:*)",
-      "Bash(xcrun:*)",
+      "Bash(flutter pub get:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(flutter test:*)",
+      "Bash(xcrun --sdk macosx --show-sdk-path:*)",
       "Bash(xcode-select:*)",
-      "Bash(screencapture:*)",
-      "Bash(true)",
-      "Bash(false)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git pull)",
+      "Bash(git stash push -m \"WIP: Phase4-2 QR UI実装（未コミット）\")",
+      "Bash(git status -u)",
+      "Bash(flutter devices 2>&1)",
+      "Bash(screencapture -x /tmp/spec_battle_web_chrome.png 2>&1)",
+      "Bash(curl -s http://localhost:8080 | head -20)",
+      "Bash(git checkout:*)"
     ]
   }
 }
