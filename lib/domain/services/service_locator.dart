@@ -43,6 +43,27 @@ const _oldDeviceNameToIdMap = <String, String>{
   'Forge Phone 9 Pro': 'boss_04',
 };
 
+/// 旧デバイス名（実在名）→ 新デバイス名（架空名）の対応表（ガチャデータマイグレーション用）
+const _oldGachaDeviceNameMap = <String, String>{
+  'Galaxy A03': 'Stellar A03',
+  'Redmi 9A': 'Blazemi 9A',
+  'AQUOS wish': 'Clario wish',
+  'arrows We': 'Dart We',
+  'iPhone SE (2nd)': 'FruitPhone SE (2nd)',
+  'Pixel 6a': 'Prism 6a',
+  'Galaxy A55': 'Stellar A55',
+  'iPhone 14': 'FruitPhone 14',
+  'Xperia 10 VI': 'Nexia 10 VI',
+  'OPPO Reno11 A': 'VivoNova 11 A',
+  'Galaxy S25': 'Stellar S25',
+  'Pixel 9 Pro': 'Prism 9 Pro',
+  'iPhone 16 Pro': 'FruitPhone 16 Pro',
+  'Xperia 1 VII': 'Nexia 1 VII',
+  'Galaxy S25 Ultra': 'Stellar S25 Ultra',
+  'iPhone 17 Pro Max': 'FruitPhone 17 Pro Max',
+  'ROG Phone 10 Pro': 'Forge Phone 10 Pro',
+};
+
 /// アプリ全体で共有するサービスインスタンスを一元管理するロケータ
 class ServiceLocator {
   static final ServiceLocator _instance = ServiceLocator._internal();
@@ -68,6 +89,8 @@ class ServiceLocator {
 
     // 旧デバイス名ベースの図鑑データをIDベースにマイグレーション
     await storage.migrateDefeatedEnemies(_oldDeviceNameToIdMap);
+    // 旧デバイス名のガチャインベントリを架空名にマイグレーション
+    await storage.migrateGachaRoster(_oldGachaDeviceNameMap);
 
     experienceService = ExperienceService(storage);
     currencyService = CurrencyService(storage);

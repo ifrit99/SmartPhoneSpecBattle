@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,6 +16,7 @@ class LocalStorageService {
   static const String _keyWinCount = 'win_count';
   static const String _keyDefeatedEnemies = 'defeated_enemies';
   static const String _keyDefeatedEnemiesMigrated = 'defeated_enemies_migrated';
+  static const String _keyGachaRosterMigrated = 'gacha_roster_migrated';
   static const String _keyCoins = 'coins';
   static const String _keyPremiumGems = 'premium_gems';
   static const String _keyGachaRoster = 'gacha_roster';
@@ -129,6 +132,32 @@ class LocalStorageService {
 
     await _store.setStringList(_keyDefeatedEnemies, migrated.toList());
     await _store.setBool(_keyDefeatedEnemiesMigrated, true);
+  }
+
+  /// 旧デバイス名のガチャインベントリを新デバイス名にマイグレーションする。
+  /// [deviceNameMap] は旧デバイス名→新デバイス名の対応表。
+  /// 一度実行済みなら再実行しない。
+  Future<void> migrateGachaRoster(Map<String, String> deviceNameMap) async {
+    if (_store.getBool(_keyGachaRosterMigrated) ?? false) return;
+
+    final jsonList = getGachaCharacters();
+    if (jsonList.isEmpty) {
+      await _store.setBool(_keyGachaRosterMigrated, true);
+      return;
+    }
+
+    final migrated = <String>[];
+    for (final jsonStr in jsonList) {
+      final map = jsonDecode(jsonStr) as Map<String, dynamic>;
+      final oldName = map['deviceName'] as String?;
+      if (oldName != null && deviceNameMap.containsKey(oldName)) {
+        map['deviceName'] = deviceNameMap[oldName];
+      }
+      migrated.add(jsonEncode(map));
+    }
+
+    await saveGachaCharacters(migrated);
+    await _store.setBool(_keyGachaRosterMigrated, true);
   }
 
   // --- 通貨 ---
