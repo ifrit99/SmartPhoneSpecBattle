@@ -192,7 +192,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin, 
             builder: (context) => BattleScreen(
               player: player,
               enemy: profile.character,
-              enemyDeviceName: profile.deviceSpec.deviceName,
+              enemyDeviceId: profile.deviceSpec.id,
               enemyDifficulty: profile.deviceSpec.difficulty,
             ),
           ),

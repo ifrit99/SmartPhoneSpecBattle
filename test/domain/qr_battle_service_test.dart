@@ -41,7 +41,7 @@ Character _makeCharacter({
 /// テスト用のGachaCharacterを生成するヘルパー
 GachaCharacter _makeGachaCharacter({
   String name = 'ガチャ戦士',
-  String deviceName = 'Galaxy S25',
+  String deviceName = 'Stellar S25',
   Rarity rarity = Rarity.sr,
 }) {
   final character = _makeCharacter(name: name);
@@ -86,7 +86,7 @@ void main() {
     test('ガチャキャラをエンコード→デコードしてゲスト敵を生成できる', () {
       final gachaChar = _makeGachaCharacter(
         name: 'ギャラクシー・ナイト',
-        deviceName: 'Galaxy S25',
+        deviceName: 'Stellar S25',
         rarity: Rarity.sr,
       );
       final encoded = service.encodeGachaCharacter(gachaChar);
@@ -94,21 +94,21 @@ void main() {
 
       expect(guest.isGacha, true);
       expect(guest.rarity, Rarity.sr);
-      expect(guest.deviceName, 'Galaxy S25');
+      expect(guest.deviceName, 'Stellar S25');
       expect(guest.name, 'ギャラクシー・ナイト');
     });
 
     test('ガチャキャラのdisplayLabelに[レアリティ]とデバイス名が含まれる', () {
       final gachaChar = _makeGachaCharacter(
         name: 'テスト',
-        deviceName: 'iPhone 16',
+        deviceName: 'FruitPhone 16',
         rarity: Rarity.ssr,
       );
       final encoded = service.encodeGachaCharacter(gachaChar);
       final guest = service.decodeAsGuest(encoded);
 
       expect(guest.displayLabel, contains('[SSR]'));
-      expect(guest.displayLabel, contains('iPhone 16'));
+      expect(guest.displayLabel, contains('FruitPhone 16'));
     });
   });
 
@@ -220,13 +220,13 @@ void main() {
     test('ガチャキャラ（デバイス名あり）: [レアリティ] デバイス名 — キャラ名', () {
       final gachaChar = _makeGachaCharacter(
         name: 'フレイムナイト',
-        deviceName: 'Pixel 9',
+        deviceName: 'Orion 9',
         rarity: Rarity.r,
       );
       final encoded = service.encodeGachaCharacter(gachaChar);
       final guest = service.decodeAsGuest(encoded);
 
-      expect(guest.displayLabel, '[R] Pixel 9 — フレイムナイト');
+      expect(guest.displayLabel, '[R] Orion 9 — フレイムナイト');
     });
 
     test('ガチャキャラ（デバイス名なし）: [レアリティ] キャラ名', () {

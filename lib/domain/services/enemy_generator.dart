@@ -36,7 +36,8 @@ extension EnemyDifficultyExtension on EnemyDifficulty {
 
 /// 架空デバイスの仕様（敵のフレーバー情報）
 class EnemyDeviceSpec {
-  final String deviceName;   // 端末名（例: "Galaxy S8"）
+  final String id;           // 永続化用の固定ID（変更不可）
+  final String deviceName;   // 端末名（表示用、将来変更しても影響なし）
   final String osLabel;      // OS表示（例: "Android 8.0"）
   final String osVersion;    // 属性決定に使うバージョン文字列
   final int cpuCores;        // CPUコア数 → ATK に影響
@@ -46,6 +47,7 @@ class EnemyDeviceSpec {
   final EnemyDifficulty difficulty;
 
   const EnemyDeviceSpec({
+    required this.id,
     required this.deviceName,
     required this.osLabel,
     required this.osVersion,
@@ -58,30 +60,35 @@ class EnemyDeviceSpec {
 }
 
 /// 難易度ごとの架空デバイスカタログ
+/// ※ 実在の商標を避けるため、すべて架空のブランド・機種名を使用
 const _easyDevices = [
   EnemyDeviceSpec(
-    deviceName: 'Galaxy J2 Prime',
+    id: 'easy_01',
+    deviceName: 'Stellar J2 Lite',
     osLabel: 'Android 6.0',
     osVersion: '6',
     cpuCores: 4, ramMB: 1536, storageFreeGB: 8, batteryLevel: 50,
     difficulty: EnemyDifficulty.easy,
   ),
   EnemyDeviceSpec(
-    deviceName: 'Redmi 4A',
+    id: 'easy_02',
+    deviceName: 'Blazemi 4A',
     osLabel: 'Android 6.0',
     osVersion: '6',
     cpuCores: 4, ramMB: 2048, storageFreeGB: 8, batteryLevel: 50,
     difficulty: EnemyDifficulty.easy,
   ),
   EnemyDeviceSpec(
-    deviceName: 'AQUOS sense2',
+    id: 'easy_03',
+    deviceName: 'Clario sense2',
     osLabel: 'Android 8.1',
     osVersion: '8',
     cpuCores: 4, ramMB: 3072, storageFreeGB: 12, batteryLevel: 50,
     difficulty: EnemyDifficulty.easy,
   ),
   EnemyDeviceSpec(
-    deviceName: 'iPhone 6s',
+    id: 'easy_04',
+    deviceName: 'FruitPhone 6s',
     osLabel: 'iOS 12.5',
     osVersion: '12',
     cpuCores: 2, ramMB: 2048, storageFreeGB: 10, batteryLevel: 50,
@@ -91,28 +98,32 @@ const _easyDevices = [
 
 const _normalDevices = [
   EnemyDeviceSpec(
-    deviceName: 'Pixel 5a',
+    id: 'normal_01',
+    deviceName: 'Prism 5a',
     osLabel: 'Android 12.0',
     osVersion: '12',
     cpuCores: 8, ramMB: 6144, storageFreeGB: 48, batteryLevel: 50,
     difficulty: EnemyDifficulty.normal,
   ),
   EnemyDeviceSpec(
-    deviceName: 'Galaxy A54',
+    id: 'normal_02',
+    deviceName: 'Stellar A54',
     osLabel: 'Android 13.0',
     osVersion: '13',
     cpuCores: 8, ramMB: 8192, storageFreeGB: 64, batteryLevel: 50,
     difficulty: EnemyDifficulty.normal,
   ),
   EnemyDeviceSpec(
-    deviceName: 'iPhone 13',
+    id: 'normal_03',
+    deviceName: 'FruitPhone 13',
     osLabel: 'iOS 16.0',
     osVersion: '16',
     cpuCores: 6, ramMB: 4096, storageFreeGB: 50, batteryLevel: 50,
     difficulty: EnemyDifficulty.normal,
   ),
   EnemyDeviceSpec(
-    deviceName: 'Xperia 10 V',
+    id: 'normal_04',
+    deviceName: 'Nexia 10 V',
     osLabel: 'Android 13.0',
     osVersion: '13',
     cpuCores: 8, ramMB: 6144, storageFreeGB: 56, batteryLevel: 50,
@@ -122,28 +133,32 @@ const _normalDevices = [
 
 const _hardDevices = [
   EnemyDeviceSpec(
-    deviceName: 'Galaxy S24',
+    id: 'hard_01',
+    deviceName: 'Stellar S24',
     osLabel: 'Android 14.0',
     osVersion: '14',
     cpuCores: 8, ramMB: 8192, storageFreeGB: 128, batteryLevel: 50,
     difficulty: EnemyDifficulty.hard,
   ),
   EnemyDeviceSpec(
-    deviceName: 'Pixel 9 Pro',
+    id: 'hard_02',
+    deviceName: 'Prism 9 Pro',
     osLabel: 'Android 15.0',
     osVersion: '15',
     cpuCores: 9, ramMB: 16384, storageFreeGB: 180, batteryLevel: 50,
     difficulty: EnemyDifficulty.hard,
   ),
   EnemyDeviceSpec(
-    deviceName: 'iPhone 16 Pro',
+    id: 'hard_03',
+    deviceName: 'FruitPhone 16 Pro',
     osLabel: 'iOS 18.0',
     osVersion: '18',
     cpuCores: 6, ramMB: 8192, storageFreeGB: 200, batteryLevel: 50,
     difficulty: EnemyDifficulty.hard,
   ),
   EnemyDeviceSpec(
-    deviceName: 'Xperia 1 VI',
+    id: 'hard_04',
+    deviceName: 'Nexia 1 VI',
     osLabel: 'Android 14.0',
     osVersion: '14',
     cpuCores: 8, ramMB: 12288, storageFreeGB: 150, batteryLevel: 50,
@@ -153,28 +168,32 @@ const _hardDevices = [
 
 const _bossDevices = [
   EnemyDeviceSpec(
-    deviceName: 'Galaxy S24 Ultra',
+    id: 'boss_01',
+    deviceName: 'Stellar S24 Ultra',
     osLabel: 'Android 15.0',
     osVersion: '15',
     cpuCores: 12, ramMB: 16384, storageFreeGB: 512, batteryLevel: 50,
     difficulty: EnemyDifficulty.boss,
   ),
   EnemyDeviceSpec(
-    deviceName: 'iPhone 16 Pro Max',
+    id: 'boss_02',
+    deviceName: 'FruitPhone 16 Pro Max',
     osLabel: 'iOS 18.2',
     osVersion: '18',
     cpuCores: 6, ramMB: 8192, storageFreeGB: 512, batteryLevel: 50,
     difficulty: EnemyDifficulty.boss,
   ),
   EnemyDeviceSpec(
-    deviceName: 'Pixel 9 Pro XL',
+    id: 'boss_03',
+    deviceName: 'Prism 9 Pro XL',
     osLabel: 'Android 15.0',
     osVersion: '15',
     cpuCores: 9, ramMB: 16384, storageFreeGB: 512, batteryLevel: 50,
     difficulty: EnemyDifficulty.boss,
   ),
   EnemyDeviceSpec(
-    deviceName: 'ROG Phone 9 Pro',
+    id: 'boss_04',
+    deviceName: 'Forge Phone 9 Pro',
     osLabel: 'Android 15.0',
     osVersion: '15',
     cpuCores: 12, ramMB: 24576, storageFreeGB: 512, batteryLevel: 50,
@@ -265,5 +284,14 @@ class EnemyGenerator {
       ..._hardDevices,
       ..._bossDevices,
     ];
+  }
+
+  /// IDからデバイスを検索する（見つからなければ null）
+  static EnemyDeviceSpec? findById(String id) {
+    final devices = allEnemyDevices;
+    for (final d in devices) {
+      if (d.id == id) return d;
+    }
+    return null;
   }
 }
