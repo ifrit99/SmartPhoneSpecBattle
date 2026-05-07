@@ -14,9 +14,10 @@
 
 ### 主要パッケージ (Dependencies)
 - `shared_preferences` (^2.2.0): キャラクターデータや設定、対戦履歴のローカル永続化
-- `battery_plus` (^7.0.0): デバイスのバッテリー残量をリアルタイム取得し、バトル中のキャラクターステータス（素早さ等）に動的反映
 - `audioplayers` (^6.1.0): バトル開始時や攻撃・スキル発動時などの効果音（BGM/SE）の再生制御
 - `cupertino_icons` (^1.0.8): iOSスタイルの汎用アイコン群
+
+現在の実装では `battery_plus` は無効化されており、バッテリー値は固定値で扱う。
 
 ## Docker環境での開発・検証
 セキュリティの担保や独立した開発環境の構築を目的として、Docker環境を利用できます。
@@ -46,3 +47,7 @@ flutter test
 ```bash
 docker compose down
 ```
+
+## ナレッジレイヤー
+- `docs/` : プロジェクト概要・設計判断・バグ/レビュー知見を蓄積する継続運用ドキュメント群（Git追跡）。入り口は [`docs/project-overview.md`](docs/project-overview.md)。
+- `.local/` : 個人用の一時メモ・調査スクラッチ。`.gitignore` 済みで共有しない。整理した内容は `docs/` へ移す。

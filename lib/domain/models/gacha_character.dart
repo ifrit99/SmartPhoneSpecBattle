@@ -11,11 +11,14 @@ import '../../data/device_info_service.dart';
 
 /// ガチャで入手したキャラクター（Characterをcompositionで保持）
 class GachaCharacter {
+  static const int maxAwakeningLevel = 5;
+
   final String id;
   final String deviceName;
   final Rarity rarity;
   final DateTime obtainedAt;
   final Character character;
+  final int awakeningLevel;
 
   const GachaCharacter({
     required this.id,
@@ -23,6 +26,7 @@ class GachaCharacter {
     required this.rarity,
     required this.obtainedAt,
     required this.character,
+    this.awakeningLevel = 0,
   });
 
   /// EmulatedDeviceSpecからGachaCharacterを生成
@@ -66,6 +70,35 @@ class GachaCharacter {
     );
   }
 
+  bool get canAwaken => awakeningLevel < maxAwakeningLevel;
+  String get awakeningLabel => awakeningLevel > 0 ? '+$awakeningLevel' : '';
+
+  /// 同一レアリティ・同一端末は重複時に覚醒対象として扱う。
+  bool isSameSeries(GachaCharacter other) {
+    return deviceName == other.deviceName && rarity == other.rarity;
+  }
+
+  /// 重複入手時の覚醒。最大Lv到達後は変化しない。
+  GachaCharacter awaken() {
+    if (!canAwaken) return this;
+
+    final nextLevel = awakeningLevel + 1;
+    final boosted = _boostStats(character.baseStats, 1.06);
+    final awakenedCharacter = character.copyWith(
+      baseStats: boosted,
+      currentStats: boosted.levelUp(character.level),
+    );
+
+    return GachaCharacter(
+      id: id,
+      deviceName: deviceName,
+      rarity: rarity,
+      obtainedAt: obtainedAt,
+      character: awakenedCharacter,
+      awakeningLevel: nextLevel,
+    );
+  }
+
   /// 経験値を加算した新しいGachaCharacterを返す
   GachaCharacter gainExp(int amount) {
     return GachaCharacter(
@@ -74,6 +107,7 @@ class GachaCharacter {
       rarity: rarity,
       obtainedAt: obtainedAt,
       character: character.gainExp(amount),
+      awakeningLevel: awakeningLevel,
     );
   }
 
@@ -85,6 +119,17 @@ class GachaCharacter {
       rarity: rarity,
       obtainedAt: obtainedAt,
       character: character.copyWith(batteryLevel: batteryLevel),
+      awakeningLevel: awakeningLevel,
+    );
+  }
+
+  static Stats _boostStats(Stats stats, double multiplier) {
+    return Stats(
+      hp: (stats.hp * multiplier).round(),
+      maxHp: (stats.maxHp * multiplier).round(),
+      atk: (stats.atk * multiplier).round(),
+      def: (stats.def * multiplier).round(),
+      spd: (stats.spd * multiplier).round(),
     );
   }
 
@@ -96,6 +141,7 @@ class GachaCharacter {
       'deviceName': deviceName,
       'rarity': rarity.label,
       'obtainedAt': obtainedAt.toIso8601String(),
+      'awakeningLevel': awakeningLevel,
       'name': c.name,
       'element': c.element.name,
       'baseHp': c.baseStats.hp,
@@ -106,6 +152,7 @@ class GachaCharacter {
       'level': c.experience.level,
       'currentExp': c.experience.currentExp,
       'expToNext': c.experience.expToNext,
+      'batteryLevel': c.batteryLevel,
       'seed': c.seed,
       'headIndex': c.headIndex,
       'bodyIndex': c.bodyIndex,
@@ -119,7 +166,7 @@ class GachaCharacter {
   factory GachaCharacter.fromJson(Map<String, dynamic> json) {
     final elementValue = json['element'];
     final element = elementValue is int
-        ? ElementType.values[elementValue]  // 旧データとの後方互換
+        ? ElementType.values[elementValue] // 旧データとの後方互換
         : ElementType.values.byName(elementValue as String);
     final experience = Experience(
       level: json['level'] as int,
@@ -145,6 +192,7 @@ class GachaCharacter {
       currentStats: baseStats.levelUp(experience.level),
       skills: skills,
       experience: experience,
+      batteryLevel: json['batteryLevel'] as int? ?? 50,
       seed: json['seed'] as int,
       headIndex: json['headIndex'] as int,
       bodyIndex: json['bodyIndex'] as int,
@@ -159,6 +207,7 @@ class GachaCharacter {
       rarity: rarityFromString(json['rarity'] as String),
       obtainedAt: DateTime.parse(json['obtainedAt'] as String),
       character: character,
+      awakeningLevel: json['awakeningLevel'] as int? ?? 0,
     );
   }
 
