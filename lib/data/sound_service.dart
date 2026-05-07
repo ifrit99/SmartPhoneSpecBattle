@@ -1,6 +1,7 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 
+import 'local_storage_service.dart';
 import 'web_se_player_stub.dart'
     if (dart.library.js_interop) 'web_se_player_web.dart';
 
@@ -25,17 +26,18 @@ class SoundService {
   SoundService._internal();
 
   // ネイティブ用: 効果音プレイヤー（複数音の同時再生用）
-  final AudioPlayer _player1 = AudioPlayer();
-  final AudioPlayer _player2 = AudioPlayer();
+  AudioPlayer? _player1;
+  AudioPlayer? _player2;
   int _playerIndex = 0;
 
   // Web用: HTML5 Audio APIを直接使用するSEプレイヤー
   final WebSePlayer _webSePlayer = WebSePlayer();
 
   // BGM用プレイヤー（Web/ネイティブ共通で audioplayers を使用）
-  final AudioPlayer _bgmPlayer = AudioPlayer();
+  AudioPlayer? _bgmPlayer;
   bool _isFadingOut = false;
 
+  LocalStorageService? _storage;
   bool _isBgmMuted = false;
   bool _isSeMuted = false;
 
@@ -51,37 +53,70 @@ class SoundService {
   /// AudioContext がアンロック済みか（Web のみ関連）
   bool get isAudioUnlocked => _audioUnlocked;
 
-  /// BGMミュートのトグル
-  void toggleBgmMute() {
-    _isBgmMuted = !_isBgmMuted;
+  AudioPlayer get _nativePlayer1 => _player1 ??= AudioPlayer();
+  AudioPlayer get _nativePlayer2 => _player2 ??= AudioPlayer();
+  AudioPlayer get _bgm => _bgmPlayer ??= AudioPlayer();
+
+  /// 保存済みのサウンド設定を読み込む。
+  Future<void> init(LocalStorageService storage) async {
+    _storage = storage;
+    _isBgmMuted = storage.isBgmMuted();
+    _isSeMuted = storage.isSeMuted();
     if (_isBgmMuted) {
-      _bgmPlayer.pause();
+      await pauseBgm();
+    }
+  }
+
+  /// BGMミュートのトグル
+  Future<void> toggleBgmMute() => setBgmMuted(!_isBgmMuted);
+
+  Future<void> setBgmMuted(bool muted) async {
+    _isBgmMuted = muted;
+    await _storage?.setBgmMuted(muted);
+    if (_isBgmMuted) {
+      await pauseBgm();
     } else {
-      _bgmPlayer.resume();
+      await resumeBgm();
     }
   }
 
   /// SEミュートのトグル
-  void toggleSeMute() {
-    _isSeMuted = !_isSeMuted;
+  Future<void> toggleSeMute() => setSeMuted(!_isSeMuted);
+
+  Future<void> setSeMuted(bool muted) async {
+    _isSeMuted = muted;
+    await _storage?.setSeMuted(muted);
   }
 
   /// Web の AudioContext をユーザージェスチャー内で有効化する。
   /// タイトル画面の初回タップ等で呼び出すこと。
   Future<void> unlockAudio() async {
     if (_audioUnlocked) return;
+    AudioPlayer? tempPlayer;
     try {
       // 一時的なプレイヤーで無音再生し AudioContext を resume させる
-      final tempPlayer = AudioPlayer();
+      tempPlayer = AudioPlayer();
       await tempPlayer.setVolume(0);
-      await tempPlayer.play(AssetSource('sounds/button.wav'));
-      await tempPlayer.stop();
-      await tempPlayer.dispose();
+      await tempPlayer
+          .play(AssetSource('sounds/button.wav'))
+          .timeout(const Duration(milliseconds: 900));
+      await tempPlayer.stop().timeout(const Duration(milliseconds: 300));
       _audioUnlocked = true;
       debugPrint('[SoundService] Web AudioContext unlocked');
     } catch (e) {
       debugPrint('[SoundService] Failed to unlock AudioContext: $e');
+    } finally {
+      try {
+        await tempPlayer?.dispose().timeout(const Duration(milliseconds: 300));
+      } catch (_) {
+        // dispose失敗でタイトル画面の進行を止めない
+      }
     }
+  }
+
+  @visibleForTesting
+  void setAudioUnlockedForTest(bool unlocked) {
+    _audioUnlocked = unlocked;
   }
 
   /// アセットの効果音を再生する（ファイル未存在時は無視）
@@ -99,10 +134,11 @@ class SoundService {
   /// ネイティブ用: 2プレイヤー交互再生
   Future<void> _playNative(String fileName) async {
     try {
-      final player = _playerIndex.isEven ? _player1 : _player2;
+      final useFirstPlayer = _playerIndex.isEven;
       _playerIndex++;
-      await player.stop();
-      await player.play(AssetSource('sounds/$fileName'));
+      final audioPlayer = useFirstPlayer ? _nativePlayer1 : _nativePlayer2;
+      await audioPlayer.stop();
+      await audioPlayer.play(AssetSource('sounds/$fileName'));
     } catch (e) {
       debugPrint('[SoundService] Failed to play $fileName: $e');
     }
@@ -136,10 +172,10 @@ class SoundService {
   Future<void> playBgm() async {
     if (_isBgmMuted) return;
     try {
-      await _bgmPlayer.stop();
-      await _bgmPlayer.setVolume(1.0);
-      await _bgmPlayer.setReleaseMode(ReleaseMode.loop);
-      await _bgmPlayer.play(AssetSource('sounds/Crimson_Gauntlet.mp3'));
+      await _bgm.stop();
+      await _bgm.setVolume(1.0);
+      await _bgm.setReleaseMode(ReleaseMode.loop);
+      await _bgm.play(AssetSource('sounds/Crimson_Gauntlet.mp3'));
     } catch (e) {
       debugPrint('[SoundService] Failed to play BGM: $e');
     }
@@ -150,15 +186,16 @@ class SoundService {
 
   /// 現在再生中のBGMをフェードアウトして止める
   Future<void> stopBgm() async {
+    if (_bgmPlayer == null) return;
     if (_isFadingOut) return;
     _isFadingOut = true;
     try {
       for (int i = 10; i >= 0; i--) {
         await Future.delayed(const Duration(milliseconds: 100));
-        await _bgmPlayer.setVolume(i / 10);
+        await _bgm.setVolume(i / 10);
       }
-      await _bgmPlayer.stop();
-      await _bgmPlayer.setVolume(1.0);
+      await _bgm.stop();
+      await _bgm.setVolume(1.0);
     } catch (_) {
       // プラットフォーム非対応の場合は無視
     } finally {
@@ -168,32 +205,35 @@ class SoundService {
 
   /// BGMを即座に停止する（フェードなし）
   Future<void> stopBgmImmediate() async {
+    if (_bgmPlayer == null) return;
     try {
-      await _bgmPlayer.stop();
-      await _bgmPlayer.setVolume(1.0);
+      await _bgm.stop();
+      await _bgm.setVolume(1.0);
     } catch (_) {}
   }
 
   /// BGMを一時停止する（アプリがバックグラウンドに移行した時）
   Future<void> pauseBgm() async {
+    if (_bgmPlayer == null) return;
     try {
-      await _bgmPlayer.pause();
+      await _bgm.pause().timeout(const Duration(milliseconds: 300));
     } catch (_) {}
   }
 
   /// BGMを再開する（アプリがフォアグラウンドに復帰した時）
   Future<void> resumeBgm() async {
     if (_isBgmMuted) return;
+    if (_bgmPlayer == null) return;
     try {
-      await _bgmPlayer.resume();
+      await _bgm.resume().timeout(const Duration(milliseconds: 300));
     } catch (_) {}
   }
 
   /// リソースを解放する（アプリ終了時に呼ぶ）
   Future<void> dispose() async {
-    await _player1.dispose();
-    await _player2.dispose();
-    await _bgmPlayer.dispose();
+    await _player1?.dispose();
+    await _player2?.dispose();
+    await _bgmPlayer?.dispose();
     _webSePlayer.disposeAll();
   }
 }

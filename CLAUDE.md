@@ -11,10 +11,11 @@
 - `docs/architecture.md`: アーキテクチャと設計方針（3層レイヤー構造）、状態管理とWidget分割の基準
 - `docs/coding_rules.md`: 命名規則、Null Safety、コード構造の実装ルール
 - `docs/TODO.md`: 現在の実装状況のサマリーと、次に取り組むべき残タスク
-- `docs/SPECIFICATION.md`: ゲーム仕様書（バトルシステム・キャラクター等の詳細仕様）
+- `docs/SPECIFICATION.md`: 旧仕様書のアーカイブ（現行仕様の参照先は `docs/product_spec.md`）
 - `docs/product_spec.md`: 現行プロダクトの仕様整理（要件定義の土台）
 - `docs/gacha_browser_test_cases.md`: ガチャ機能のブラウザ結合テストケース
 - `docs/device_info.md`: デバイス情報取得状況（プラットフォーム別取得可否・ステータス反映）
+- `docs/plans/`: Planner/Generator/Evaluator ワークフロー用の計画・評価ドキュメント（運用ルールは `docs/plans/TEMPLATES.md` を参照）
 - `PHASE4_SPEC_DRAFT.md`: 将来の機能拡張案（ガチャ・QR対戦等）の詳細仕様
 
 **※注意:** 新規ドキュメントを作成する場合は `docs/` ディレクトリ内に配置し、このファイルから適宜リンクを追加してください。

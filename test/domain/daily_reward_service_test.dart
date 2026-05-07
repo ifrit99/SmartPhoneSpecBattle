@@ -35,6 +35,10 @@ void main() {
       expect(result, isNotNull);
       expect(result!.type, DailyRewardType.login);
       expect(result.gemsAwarded, 10);
+      expect(result.baseGems, 10);
+      expect(result.bonusGems, 0);
+      expect(result.loginStreakDays, 1);
+      expect(result.loginCycleDay, 1);
       expect(currencyService.load().premiumGems, 10);
     });
 
@@ -57,6 +61,79 @@ void main() {
       expect(service.canClaimLoginReward(), isTrue);
       final result = await service.claimLoginReward();
       expect(result, isNotNull);
+    });
+
+    test('前日に受け取っていると連続ログイン日数が伸びる', () async {
+      final fakeToday = DateTime(2026, 5, 5);
+      service = DailyRewardService(
+        storage,
+        currencyService,
+        now: () => fakeToday,
+      );
+
+      await storage.setLastLoginRewardDate('2026-05-04');
+      await storage.setLoginStreakDays(1);
+
+      final result = await service.claimLoginReward();
+
+      expect(result, isNotNull);
+      expect(result!.loginStreakDays, 2);
+      expect(result.loginCycleDay, 2);
+      expect(result.gemsAwarded, 10);
+      expect(storage.getLoginStreakDays(), 2);
+    });
+
+    test('前日以外からの復帰は連続ログイン日数を1日に戻す', () async {
+      final fakeToday = DateTime(2026, 5, 5);
+      service = DailyRewardService(
+        storage,
+        currencyService,
+        now: () => fakeToday,
+      );
+
+      await storage.setLastLoginRewardDate('2026-05-02');
+      await storage.setLoginStreakDays(6);
+
+      final result = await service.claimLoginReward();
+
+      expect(result, isNotNull);
+      expect(result!.loginStreakDays, 1);
+      expect(result.loginCycleDay, 1);
+      expect(result.bonusGems, 0);
+      expect(storage.getLoginStreakDays(), 1);
+    });
+
+    test('3日目と7日目はストリークボーナスが加算される', () async {
+      final fakeToday = DateTime(2026, 5, 5);
+      service = DailyRewardService(
+        storage,
+        currencyService,
+        now: () => fakeToday,
+      );
+
+      await storage.setLastLoginRewardDate('2026-05-04');
+      await storage.setLoginStreakDays(2);
+      final day3 = await service.claimLoginReward();
+
+      expect(day3, isNotNull);
+      expect(day3!.loginCycleDay, 3);
+      expect(day3.bonusGems, DailyRewardService.streakDay3BonusGems);
+      expect(day3.gemsAwarded, 20);
+
+      service = DailyRewardService(
+        storage,
+        currencyService,
+        now: () => DateTime(2026, 5, 6),
+      );
+      await storage.setLastLoginRewardDate('2026-05-05');
+      await storage.setLoginStreakDays(6);
+      final day7 = await service.claimLoginReward();
+
+      expect(day7, isNotNull);
+      expect(day7!.loginCycleDay, 7);
+      expect(day7.bonusGems, DailyRewardService.streakDay7BonusGems);
+      expect(day7.gemsAwarded, 30);
+      expect(currencyService.load().premiumGems, 50);
     });
   });
 

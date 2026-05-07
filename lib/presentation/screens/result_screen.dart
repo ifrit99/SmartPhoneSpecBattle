@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../domain/models/character.dart';
+import '../../domain/enums/battle_tactic.dart';
+import '../../domain/services/boss_bounty_service.dart';
 import '../../domain/services/battle_engine.dart';
-import '../../domain/services/currency_service.dart';
-import '../../domain/services/enemy_generator.dart';
-import '../../data/local_storage_service.dart';
 import '../../domain/services/daily_reward_service.dart';
+import '../../domain/services/enemy_generator.dart';
+import '../../domain/services/rival_road_service.dart';
 import '../../domain/services/service_locator.dart';
+import '../../domain/services/battle_result_service.dart';
 import '../widgets/daily_reward_dialog.dart';
 import '../widgets/first_battle_complete_dialog.dart';
 import '../widgets/pixel_character.dart';
@@ -48,7 +51,16 @@ class _ResultScreenState extends State<ResultScreen>
   bool get _leveledUp => _levelAfter > _levelBefore;
   int _coinsGained = 0;
   bool _isFirstBattle = false;
+  bool _finishing = false;
+  bool _canOpenGacha = false;
+  int _claimableAchievementCount = 0;
+  int _claimableDailyMissionCount = 0;
   DailyRewardResult? _dailyBattleReward;
+  BossBountyResult? _bossBountyReward;
+  EnemyDiscoveryBonus? _enemyDiscoveryBonus;
+  BossRecordUpdate? _bossRecordUpdate;
+  RivalRoadClearResult? _rivalRoadClearResult;
+  int _seasonPassXpGained = 0;
 
   @override
   void initState() {
@@ -73,60 +85,135 @@ class _ResultScreenState extends State<ResultScreen>
       CurvedAnimation(parent: _levelUpController, curve: Curves.easeInOut),
     );
 
+    _canOpenGacha = _hasGachaPullAvailable();
+
     // バトル結果を永続化する（Futureを保持して遷移前に完了を保証）
     _saveFuture = _saveResult();
   }
 
   /// バトル結果をLocalStorageに保存する
   Future<void> _saveResult() async {
-    final sl = ServiceLocator();
+    final persisted = await ServiceLocator().battleResultService.persistResult(
+          battleResult: widget.result,
+          enemyDifficulty: widget.enemyDifficulty,
+          isCpuBattle: widget.isCpuBattle,
+          enemyDeviceId: widget.enemyDeviceId,
+          playerName: widget.player.name,
+          enemyName: widget.enemy.name,
+        );
 
-    // 経験値を加算して保存（レベルアップ判定）
-    final currentExp = sl.experienceService.loadExperience();
-    _levelBefore = currentExp.level;
-    final newExp = await sl.experienceService.addExp(currentExp, widget.result.expGained);
-    _levelAfter = newExp.level;
-
-    // ガチャキャラクターを装備している場合、そのキャラクターにも経験値を付与して保存
-    final equippedId = sl.storage.getEquippedGachaCharacterId();
-    if (equippedId != null) {
-      final equipped = sl.gachaService.findById(equippedId);
-      if (equipped != null) {
-        final updatedG = equipped.gainExp(widget.result.expGained);
-        await sl.gachaService.updateCharacter(updatedG);
-      }
-    }
-
-    // コインを計算して付与
-    final coins = CurrencyService.calcBattleCoins(
-      won: widget.result.playerWon,
-      playerLevel: _levelBefore,
-      difficulty: widget.enemyDifficulty,
-    );
-    await sl.currencyService.addCoins(coins);
-    _coinsGained = coins;
-
-    // 戦績を記録
-    await sl.experienceService.recordBattle(widget.result.playerWon);
-
-    // 勝利した場合は敵の端末名を図鑑に記録
-    if (widget.result.playerWon && widget.enemyDeviceId != null) {
-      await sl.storage.saveDefeatedEnemy(widget.enemyDeviceId!);
-    }
-
-    // 初回バトル完了フラグをチェック＆セット
-    final storage = LocalStorageService();
-    if (!storage.isFirstBattleCompleted()) {
-      _isFirstBattle = true;
-      await storage.setFirstBattleCompleted();
-    }
-
-    // デイリーバトル報酬を付与（CPU対戦時のみ、その日の初回完了時）
-    if (widget.isCpuBattle) {
-      _dailyBattleReward = await sl.dailyRewardService.claimBattleReward();
-    }
+    _applyPersistedResult(persisted);
 
     if (mounted) setState(() {});
+  }
+
+  void _applyPersistedResult(PersistedBattleResult persisted) {
+    _levelBefore = persisted.levelBefore;
+    _levelAfter = persisted.levelAfter;
+    _coinsGained = persisted.coinsGained;
+    _isFirstBattle = persisted.isFirstBattle;
+    _dailyBattleReward = persisted.dailyBattleReward;
+    _bossBountyReward = persisted.bossBountyReward;
+    _enemyDiscoveryBonus = persisted.enemyDiscoveryBonus;
+    _bossRecordUpdate = persisted.bossRecordUpdate;
+    _rivalRoadClearResult = persisted.rivalRoadClearResult;
+    _seasonPassXpGained = persisted.seasonPassXpGained;
+    _canOpenGacha = _hasGachaPullAvailable();
+    _claimableAchievementCount =
+        ServiceLocator().achievementService.claimableCount();
+    _claimableDailyMissionCount =
+        ServiceLocator().dailyMissionService.claimableCount();
+  }
+
+  bool _hasGachaPullAvailable() {
+    final currency = ServiceLocator().currencyService.load();
+    return currency.canAffordSingle() ||
+        currency.canAffordPremiumPull() ||
+        currency.canAffordEventLimitedPull();
+  }
+
+  Future<void> _finishAndPop({String? requestedAction}) async {
+    if (_finishing) return;
+    setState(() {
+      _finishing = true;
+    });
+
+    // 保存完了を待ってから次画面へ進む
+    await _saveFuture;
+    if (!mounted) return;
+
+    // デイリーバトル報酬ポップアップ
+    if (_dailyBattleReward != null) {
+      await DailyRewardDialog.showBattleReward(context, _dailyBattleReward!);
+      if (!mounted) return;
+    }
+
+    var nextAction = requestedAction;
+    if (nextAction == null && _isFirstBattle) {
+      nextAction = await FirstBattleCompleteDialog.show(context);
+      if (!mounted) return;
+    }
+
+    // ResultScreen → BattleScreen にpop（nextActionを伝搬）
+    Navigator.of(context).pop(nextAction);
+  }
+
+  Future<void> _copyResultSummary() async {
+    await _saveFuture;
+    if (!mounted) return;
+
+    await Clipboard.setData(ClipboardData(text: _buildShareText()));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('バトル結果をコピーしました')),
+    );
+  }
+
+  String _buildShareText() {
+    final lines = <String>[
+      'SPEC BATTLE',
+      '${widget.result.playerWon ? '勝利' : '敗北'}: ${widget.player.name} vs ${widget.enemy.name}',
+      'ターン: ${widget.result.turnsPlayed}',
+      '戦術: ${widget.result.playerTactic.label} / ${widget.result.supportCommand.label}',
+      '獲得: +${widget.result.expGained} EXP / +$_coinsGained Coin',
+    ];
+
+    if (_dailyBattleReward != null) {
+      lines.add('デイリー報酬: +${_dailyBattleReward!.gemsAwarded} Gems');
+    }
+    if (_seasonPassXpGained > 0) {
+      lines.add('シーズンポイント: +$_seasonPassXpGained SP');
+    }
+    if (_enemyDiscoveryBonus != null) {
+      lines.add(
+        '初回撃破ボーナス: +${_enemyDiscoveryBonus!.coinsAwarded} Coin / +${_enemyDiscoveryBonus!.gemsAwarded} Gems',
+      );
+    }
+    if (_bossBountyReward != null) {
+      lines.add(
+        'BOSS撃破報酬: +${_bossBountyReward!.coinsAwarded} Coin / +${_bossBountyReward!.gemsAwarded} Gems',
+      );
+    }
+    if (_rivalRoadClearResult != null) {
+      final stage = _rivalRoadClearResult!.stage;
+      if (_rivalRoadClearResult!.stageCleared) {
+        lines.add(
+          'ライバルロード: ${stage.title} CLEAR +${stage.rewardCoins} Coin / +${stage.rewardGems} Gems',
+        );
+      }
+      if (_rivalRoadClearResult!.bestTurnsUpdated) {
+        lines.add('ライバルロード最短: ${_rivalRoadClearResult!.bestTurns}ターン');
+      }
+    }
+    if (_bossRecordUpdate != null) {
+      final previous = _bossRecordUpdate!.previousBestTurns;
+      lines.add(
+        previous == null
+            ? 'BOSS自己ベスト: ${_bossRecordUpdate!.bestTurns}ターン'
+            : 'BOSS自己ベスト更新: $previous → ${_bossRecordUpdate!.bestTurns}ターン',
+      );
+    }
+    return lines.join('\n');
   }
 
   @override
@@ -208,8 +295,7 @@ class _ResultScreenState extends State<ResultScreen>
                   children: [
                     Column(
                       children: [
-                        PixelCharacter(
-                            character: widget.player, size: 60),
+                        PixelCharacter(character: widget.player, size: 60),
                         const SizedBox(height: 8),
                         SizedBox(
                           width: 80,
@@ -254,8 +340,77 @@ class _ResultScreenState extends State<ResultScreen>
                 _infoRow('ターン数', '${widget.result.turnsPlayed}'),
                 _infoRow('獲得経験値', '+${widget.result.expGained} EXP'),
                 _infoRow('獲得コイン', '+$_coinsGained Coin'),
+                if (_seasonPassXpGained > 0)
+                  _infoRow('シーズンポイント', '+$_seasonPassXpGained SP'),
                 if (_dailyBattleReward != null)
-                  _infoRow('デイリー報酬', '+${_dailyBattleReward!.gemsAwarded} Gems 💎'),
+                  _infoRow(
+                      'デイリー報酬', '+${_dailyBattleReward!.gemsAwarded} Gems 💎'),
+                if (_enemyDiscoveryBonus != null)
+                  _infoRow(
+                    '初回撃破ボーナス',
+                    '+${_enemyDiscoveryBonus!.coinsAwarded} Coin / +${_enemyDiscoveryBonus!.gemsAwarded} Gems',
+                  ),
+                if (_bossBountyReward != null)
+                  _infoRow(
+                    'BOSS撃破報酬',
+                    '+${_bossBountyReward!.coinsAwarded} Coin / +${_bossBountyReward!.gemsAwarded} Gems',
+                  ),
+                if (_rivalRoadClearResult != null)
+                  if (_rivalRoadClearResult!.stageCleared)
+                    _infoRow(
+                      'ライバルロード',
+                      '+${_rivalRoadClearResult!.stage.rewardCoins} Coin / +${_rivalRoadClearResult!.stage.rewardGems} Gems',
+                    ),
+                if (_rivalRoadClearResult != null &&
+                    _rivalRoadClearResult!.bestTurnsUpdated)
+                  _infoRow(
+                    'ロード最短更新',
+                    _rivalRoadClearResult!.previousBestTurns == null
+                        ? '${_rivalRoadClearResult!.bestTurns}ターン'
+                        : '${_rivalRoadClearResult!.previousBestTurns} → ${_rivalRoadClearResult!.bestTurns}ターン',
+                  ),
+                if (_bossRecordUpdate != null)
+                  _infoRow(
+                    'BOSS最短更新',
+                    _bossRecordUpdate!.previousBestTurns == null
+                        ? '${_bossRecordUpdate!.bestTurns}ターン'
+                        : '${_bossRecordUpdate!.previousBestTurns} → ${_bossRecordUpdate!.bestTurns}ターン',
+                  ),
+              ],
+            ),
+          ),
+
+          // 戦術サマリー
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1B2838),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.tune, color: Colors.white54, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '戦術: ${widget.result.playerTactic.label}',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                if (widget.result.playerTactic.hasRewardBonus && won)
+                  Text(
+                    'Coin x${widget.result.playerTactic.rewardMultiplier.toStringAsFixed(1)}',
+                    style: const TextStyle(
+                      color: Color(0xFFFFD700),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
               ],
             ),
           ),
@@ -269,7 +424,8 @@ class _ResultScreenState extends State<ResultScreen>
                 return Transform.scale(
                   scale: _levelUpGlowAnimation.value,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 24, vertical: 12),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFD700).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(12),
@@ -302,34 +458,190 @@ class _ResultScreenState extends State<ResultScreen>
             ),
           ],
 
+          if (_claimableAchievementCount > 0) ...[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFD700).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: const Color(0xFFFFD700).withValues(alpha: 0.45),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.workspace_premium,
+                    color: Color(0xFFFFD700),
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          '実績達成！',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '$_claimableAchievementCount件の報酬を受け取れます',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _finishing
+                        ? null
+                        : () => _finishAndPop(requestedAction: 'achievements'),
+                    child: const Text('開く'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          if (_claimableDailyMissionCount > 0) ...[
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF00CEC9).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: const Color(0xFF00CEC9).withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.task_alt,
+                    color: Color(0xFF00CEC9),
+                    size: 28,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'ミッション達成！',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          '$_claimableDailyMissionCount件のデイリー報酬を受け取れます',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _finishing
+                        ? null
+                        : () => _finishAndPop(requestedAction: 'missions'),
+                    child: const Text('受取へ'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           const SizedBox(height: 32),
+          if (widget.isCpuBattle) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _finishing
+                        ? null
+                        : () => _finishAndPop(requestedAction: 'battle'),
+                    icon: const Icon(Icons.replay),
+                    label: const Text('もう一戦'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFFFFD700),
+                      side: BorderSide(
+                        color: const Color(0xFFFFD700).withValues(alpha: 0.45),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                if (_canOpenGacha) ...[
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _finishing
+                          ? null
+                          : () => _finishAndPop(requestedAction: 'gacha'),
+                      icon: const Icon(Icons.auto_awesome),
+                      label: const Text('ガチャ'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.orangeAccent,
+                        side: BorderSide(
+                          color: Colors.orangeAccent.withValues(alpha: 0.45),
+                        ),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 12),
+          ],
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _finishing ? null : _copyResultSummary,
+              icon: const Icon(Icons.copy),
+              label: const Text('結果をコピー'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.white70,
+                side: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.22),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           // ホームに戻るボタン
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () async {
-                // 保存完了を待ってからホーム画面に戻る
-                await _saveFuture;
-                if (!mounted) return;
-
-                // デイリーバトル報酬ポップアップ
-                if (_dailyBattleReward != null) {
-                  await DailyRewardDialog.showBattleReward(context, _dailyBattleReward!);
-                  if (!mounted) return;
-                }
-
-                // 初回バトル完了時のみ次アクション案内を表示
-                String? nextAction;
-                if (_isFirstBattle) {
-                  nextAction = await FirstBattleCompleteDialog.show(context);
-                  if (!mounted) return;
-                }
-
-                // ResultScreen → BattleScreen にpop（nextActionを伝搬）
-                Navigator.of(context).pop(nextAction);
-              },
+              onPressed: _finishing ? null : _finishAndPop,
               style: ElevatedButton.styleFrom(
-                backgroundColor: won ? const Color(0xFF00B894) : const Color(0xFF2D3748),
+                backgroundColor:
+                    won ? const Color(0xFF00B894) : const Color(0xFF2D3748),
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -356,7 +668,8 @@ class _ResultScreenState extends State<ResultScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 14)),
+          Text(label,
+              style: const TextStyle(color: Colors.white54, fontSize: 14)),
           Text(value,
               style: const TextStyle(
                   color: Colors.white,

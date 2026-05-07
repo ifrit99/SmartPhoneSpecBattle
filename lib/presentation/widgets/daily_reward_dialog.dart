@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../domain/services/daily_reward_service.dart';
 
 /// デイリー報酬受取時のポップアップダイアログ
@@ -6,19 +7,27 @@ class DailyRewardDialog {
   DailyRewardDialog._();
 
   /// ログイン報酬のポップアップを表示
-  static Future<void> showLoginReward(BuildContext context, DailyRewardResult result) {
+  static Future<void> showLoginReward(
+      BuildContext context, DailyRewardResult result) {
+    final hasBonus = result.bonusGems > 0;
     return _show(
       context,
       title: 'ログインボーナス！',
-      message: '毎日のログインありがとう！',
+      message: hasBonus
+          ? '連続${result.loginStreakDays}日目のボーナス達成！'
+          : '連続${result.loginStreakDays}日目。7日目で大ボーナス！',
       gems: result.gemsAwarded,
+      bonusGems: result.bonusGems,
+      streakText:
+          'ログイン ${result.loginCycleDay}/${DailyRewardService.streakCycleDays}日目',
       icon: Icons.wb_sunny,
       iconColor: const Color(0xFFFFD700),
     );
   }
 
   /// バトル報酬のポップアップを表示
-  static Future<void> showBattleReward(BuildContext context, DailyRewardResult result) {
+  static Future<void> showBattleReward(
+      BuildContext context, DailyRewardResult result) {
     return _show(
       context,
       title: 'デイリーバトル報酬！',
@@ -34,6 +43,8 @@ class DailyRewardDialog {
     required String title,
     required String message,
     required int gems,
+    int bonusGems = 0,
+    String? streakText,
     required IconData icon,
     required Color iconColor,
   }) {
@@ -55,7 +66,10 @@ class DailyRewardDialog {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: iconColor.withValues(alpha: 0.15),
-                  border: Border.all(color: iconColor.withValues(alpha: 0.4), width: 2),
+                  border: Border.all(
+                    color: iconColor.withValues(alpha: 0.4),
+                    width: 2,
+                  ),
                 ),
                 child: Icon(icon, color: iconColor, size: 32),
               ),
@@ -73,11 +87,34 @@ class DailyRewardDialog {
               Text(
                 message,
                 style: const TextStyle(color: Colors.white54, fontSize: 14),
+                textAlign: TextAlign.center,
               ),
+              if (streakText != null) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(999),
+                    border:
+                        Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                  child: Text(
+                    streakText,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 20),
               // ジェム表示
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -86,26 +123,44 @@ class DailyRewardDialog {
                     ],
                   ),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE056FD).withValues(alpha: 0.4)),
+                  border: Border.all(
+                    color: const Color(0xFFE056FD).withValues(alpha: 0.4),
+                  ),
                 ),
-                child: Row(
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('💎', style: TextStyle(fontSize: 24)),
-                    const SizedBox(width: 8),
-                    Text(
-                      '+$gems',
-                      style: const TextStyle(
-                        color: Color(0xFFE056FD),
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Text('💎', style: TextStyle(fontSize: 24)),
+                        const SizedBox(width: 8),
+                        Text(
+                          '+$gems',
+                          style: const TextStyle(
+                            color: Color(0xFFE056FD),
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Text(
+                          'Gems',
+                          style: TextStyle(color: Colors.white54, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                    if (bonusGems > 0) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'ストリークボーナス +$bonusGems',
+                        style: const TextStyle(
+                          color: Color(0xFFFFD700),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Text(
-                      'Gems',
-                      style: TextStyle(color: Colors.white54, fontSize: 14),
-                    ),
+                    ],
                   ],
                 ),
               ),
@@ -118,7 +173,9 @@ class DailyRewardDialog {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: iconColor,
                     padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                   child: const Text(
                     '受け取る',

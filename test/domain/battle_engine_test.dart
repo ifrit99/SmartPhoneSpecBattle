@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:spec_battle_game/domain/enums/battle_tactic.dart';
 import 'package:spec_battle_game/domain/enums/element_type.dart';
 import 'package:spec_battle_game/domain/models/character.dart';
 import 'package:spec_battle_game/domain/models/stats.dart';
@@ -33,6 +34,61 @@ Character makeCharacter({
 
 void main() {
   group('BattleEngine.executeBattle', () {
+    test('未指定時の戦術はバランスになる', () {
+      final engine = BattleEngine();
+      final player = makeCharacter(name: 'プレイヤー', hp: 200, atk: 30, def: 10);
+      final enemy = makeCharacter(name: '敵', hp: 50, atk: 5, def: 5);
+
+      final result = engine.executeBattle(player, enemy);
+
+      expect(result.playerTactic, BattleTactic.balanced);
+    });
+
+    test('選択した戦術が結果とログに反映される', () {
+      final engine = BattleEngine();
+      final player = makeCharacter(name: 'プレイヤー', hp: 200, atk: 30, def: 10);
+      final enemy = makeCharacter(name: '敵', hp: 50, atk: 5, def: 5);
+
+      final result = engine.executeBattle(
+        player,
+        enemy,
+        playerTactic: BattleTactic.overclock,
+      );
+      final messages = result.log.map((e) => e.message).join('\n');
+
+      expect(result.playerTactic, BattleTactic.overclock);
+      expect(messages, contains('戦術: オーバークロック'));
+    });
+
+    test('選択したサポートコマンドが結果とログに反映される', () {
+      final engine = BattleEngine();
+      final player = makeCharacter(name: 'プレイヤー', hp: 200, atk: 30, def: 10);
+      final enemy = makeCharacter(name: '敵', hp: 80, atk: 8, def: 5);
+
+      final result = engine.executeBattle(
+        player,
+        enemy,
+        supportCommand: BattleSupportCommand.overdrive,
+      );
+      final messages = result.log.map((e) => e.message).join('\n');
+
+      expect(result.supportCommand, BattleSupportCommand.overdrive);
+      expect(messages, contains('サポート: 攻撃支援'));
+      expect(messages, contains('攻撃力+25%'));
+    });
+
+    test('支援なしではサポートログを追加しない', () {
+      final engine = BattleEngine();
+      final player = makeCharacter(name: 'プレイヤー', hp: 200, atk: 30, def: 10);
+      final enemy = makeCharacter(name: '敵', hp: 80, atk: 8, def: 5);
+
+      final result = engine.executeBattle(player, enemy);
+      final messages = result.log.map((e) => e.message).join('\n');
+
+      expect(result.supportCommand, BattleSupportCommand.none);
+      expect(messages, isNot(contains('サポート:')));
+    });
+
     test('バトル結果が返され、勝者が存在する', () {
       final engine = BattleEngine();
       final player = makeCharacter(name: 'プレイヤー', hp: 200, atk: 30, def: 10);
@@ -99,6 +155,150 @@ void main() {
 
       // HP が初期化されて強いプレイヤー扱いになるため、ログにフル HP での戦いが記録される
       expect(result.log, isNotEmpty);
+    });
+
+    test('50ターン到達時は残HP割合が高い側が勝つ', () {
+      const permaStun = StatusEffect(
+        id: 'perma_stun',
+        type: EffectType.stun,
+        duration: 999,
+        value: 0,
+        isPermanent: true,
+      );
+      final engine = BattleEngine();
+      final player = makeCharacter(
+        name: 'プレイヤー',
+        hp: 80,
+        atk: 1,
+        def: 999,
+        spd: 10,
+        statusEffects: const [permaStun],
+      );
+      final enemy = makeCharacter(
+        name: '敵',
+        hp: 120,
+        atk: 1,
+        def: 999,
+        spd: 10,
+        statusEffects: const [permaStun],
+      );
+
+      final result = engine.executeBattle(player, enemy);
+      final messages = result.log.map((e) => e.message).join('\n');
+
+      expect(result.turnsPlayed, 50);
+      expect(result.playerWon, isFalse);
+      expect(messages, contains('50ターン経過'));
+    });
+
+    test('50ターン到達時は残HP割合で勝敗を判定する', () {
+      const permaStun = StatusEffect(
+        id: 'perma_stun',
+        type: EffectType.stun,
+        duration: 999,
+        value: 0,
+        isPermanent: true,
+      );
+      const poison1 = StatusEffect(
+        id: 'poison_1',
+        type: EffectType.poison,
+        duration: 999,
+        value: 1,
+        isPermanent: true,
+      );
+      const poison1Short = StatusEffect(
+        id: 'poison_1_short',
+        type: EffectType.poison,
+        duration: 25,
+        value: 1,
+        isPermanent: false,
+      );
+      final engine = BattleEngine();
+      final player = makeCharacter(
+        name: 'プレイヤー',
+        hp: 100,
+        atk: 1,
+        def: 999,
+        spd: 10,
+        statusEffects: const [permaStun, poison1],
+      );
+      final enemy = makeCharacter(
+        name: '敵',
+        hp: 200,
+        atk: 1,
+        def: 999,
+        spd: 10,
+        statusEffects: const [permaStun, poison1, poison1Short],
+      );
+
+      final result = engine.executeBattle(player, enemy);
+      final messages = result.log.map((e) => e.message).join('\n');
+
+      expect(result.turnsPlayed, 50);
+      expect(result.playerWon, isTrue);
+      expect(result.finalPlayerHp, 50);
+      expect(result.finalEnemyHp, 50);
+      expect(messages, contains('残HP割合で勝敗を判定'));
+    });
+
+    test('50ターン到達時に同率なら敵勝利', () {
+      const permaStun = StatusEffect(
+        id: 'perma_stun',
+        type: EffectType.stun,
+        duration: 999,
+        value: 0,
+        isPermanent: true,
+      );
+      final engine = BattleEngine();
+      final player = makeCharacter(
+        name: 'プレイヤー',
+        hp: 100,
+        atk: 1,
+        def: 999,
+        spd: 10,
+        statusEffects: const [permaStun],
+      );
+      final enemy = makeCharacter(
+        name: '敵',
+        hp: 100,
+        atk: 1,
+        def: 999,
+        spd: 10,
+        statusEffects: const [permaStun],
+      );
+
+      final result = engine.executeBattle(player, enemy);
+      final messages = result.log.map((e) => e.message).join('\n');
+
+      expect(result.turnsPlayed, 50);
+      expect(result.playerWon, isFalse);
+      expect(messages, contains('防衛側有利で敵の勝利'));
+    });
+  });
+
+  group('BattleTactic', () {
+    test('報酬倍率が定義通りである', () {
+      expect(BattleTactic.balanced.rewardMultiplier, 1.0);
+      expect(BattleTactic.overclock.rewardMultiplier, 1.2);
+      expect(BattleTactic.firewall.rewardMultiplier, 1.0);
+      expect(BattleTactic.burst.rewardMultiplier, 1.1);
+    });
+
+    test('戦術ごとの行動重みが定義通りである', () {
+      expect(BattleTactic.firewall.defendChance,
+          greaterThan(BattleTactic.balanced.defendChance));
+      expect(BattleTactic.overclock.defendChance,
+          lessThan(BattleTactic.balanced.defendChance));
+      expect(BattleTactic.burst.skillChance,
+          greaterThan(BattleTactic.balanced.skillChance));
+    });
+
+    test('戦術ごとのダメージ補正が定義通りである', () {
+      expect(BattleTactic.overclock.outgoingDamageMultiplier, 1.15);
+      expect(BattleTactic.overclock.incomingDamageMultiplier, 1.1);
+      expect(BattleTactic.firewall.outgoingDamageMultiplier, 0.95);
+      expect(BattleTactic.firewall.incomingDamageMultiplier, 0.9);
+      expect(BattleTactic.burst.incomingDamageMultiplier, 1.05);
     });
   });
 

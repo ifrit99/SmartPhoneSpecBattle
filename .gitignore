@@ -43,4 +43,12 @@ app.*.map.json
 docs/reports/
 
 # 一時スクリプト
-clean_docker.command
+.gstack/
+
+# 一時メモ・スクラッチ領域（Git追跡しない）
+.local/
+
+# AIエージェント設定ファイル
+.claude/
+.mcp.json
+.superset/

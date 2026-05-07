@@ -30,6 +30,7 @@ class CurrencyService {
     required bool won,
     required int playerLevel,
     EnemyDifficulty difficulty = EnemyDifficulty.normal,
+    double rewardMultiplier = 1.0,
   }) {
     if (!won) {
       // 敗北時は少量のコイン
@@ -38,12 +39,12 @@ class CurrencyService {
 
     final base = 30 + playerLevel * 5;
     final difficultyBonus = switch (difficulty) {
-      EnemyDifficulty.easy   => 0,
+      EnemyDifficulty.easy => 0,
       EnemyDifficulty.normal => 10,
-      EnemyDifficulty.hard   => 25,
-      EnemyDifficulty.boss   => 50,
+      EnemyDifficulty.hard => 25,
+      EnemyDifficulty.boss => 50,
     };
-    return base + difficultyBonus;
+    return ((base + difficultyBonus) * rewardMultiplier).round();
   }
 
   /// コインを加算して保存する
@@ -59,6 +60,15 @@ class CurrencyService {
     final current = load();
     if (current.coins < amount) return null;
     final updated = current.spendCoins(amount);
+    await save(updated);
+    return updated;
+  }
+
+  /// ジェムを消費して保存する（不足時はnullを返す）
+  Future<PlayerCurrency?> spendGems(int amount) async {
+    final current = load();
+    if (current.premiumGems < amount) return null;
+    final updated = current.spendGems(amount);
     await save(updated);
     return updated;
   }

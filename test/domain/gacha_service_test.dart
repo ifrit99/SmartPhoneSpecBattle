@@ -2,6 +2,8 @@ import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spec_battle_game/domain/enums/rarity.dart';
+import 'package:spec_battle_game/domain/models/gacha_character.dart';
+import 'package:spec_battle_game/domain/services/daily_mission_service.dart';
 import 'package:spec_battle_game/domain/services/gacha_service.dart';
 import 'package:spec_battle_game/domain/services/currency_service.dart';
 import 'package:spec_battle_game/data/local_storage_service.dart';
@@ -171,6 +173,219 @@ void main() {
       }
     });
 
+    test('プレミアム解析: ジェム不足で null を返す', () async {
+      await currencyService.addGems(19);
+
+      final service = GachaService(currencyService, storage);
+      final result = await service.pullPremium();
+
+      expect(result, isNull);
+    });
+
+    test('プレミアム解析: 20ジェムでSR以上を1体取得しジェム消費される', () async {
+      await currencyService.addGems(25);
+
+      final service = GachaService(currencyService, storage, Random(42));
+      final result = await service.pullPremium();
+
+      expect(result, isNotNull);
+      expect(result!.characters.length, 1);
+      expect(result.updatedCurrency.premiumGems, 5);
+      expect(result.updatedCurrency.coins, 0);
+      expect(
+        [Rarity.sr, Rarity.ssr],
+        contains(result.characters.first.rarity),
+      );
+      expect(service.loadRoster().length, 1);
+    });
+
+    test('プレミアム解析: SSR時は日替わりピックアップを優先排出する', () async {
+      await currencyService.addGems(20);
+      final service = GachaService(
+        currencyService,
+        storage,
+        _FixedRandom(0),
+        null,
+        () => DateTime(2026, 5, 5),
+      );
+
+      final result = await service.pullPremium();
+
+      expect(result, isNotNull);
+      expect(result!.characters.first.rarity, Rarity.ssr);
+      expect(
+        result.characters.first.deviceName,
+        GachaService.featuredSsrDevice(date: DateTime(2026, 5, 5)).deviceName,
+      );
+    });
+
+    test('プレミアム解析: ピックアップSSRを外すと天井カウントが進む', () async {
+      await currencyService.addGems(20);
+      final service = GachaService(currencyService, storage, _FixedRandom(1));
+
+      final result = await service.pullPremium();
+
+      expect(result, isNotNull);
+      expect(result!.characters.first.rarity, Rarity.sr);
+      expect(storage.getPremiumFeaturedMisses(), 1);
+      expect(service.premiumFeaturedPullsUntilGuarantee, 5);
+      expect(service.isNextPremiumFeaturedGuaranteed, isFalse);
+    });
+
+    test('プレミアム解析: ピックアップSSRを引くと天井カウントをリセットする', () async {
+      await storage.setPremiumFeaturedMisses(4);
+      await currencyService.addGems(20);
+      final service = GachaService(
+        currencyService,
+        storage,
+        _FixedRandom(0),
+        null,
+        () => DateTime(2026, 5, 5),
+      );
+
+      final result = await service.pullPremium();
+
+      expect(result, isNotNull);
+      expect(
+        result!.characters.first.deviceName,
+        GachaService.featuredSsrDevice(date: DateTime(2026, 5, 5)).deviceName,
+      );
+      expect(storage.getPremiumFeaturedMisses(), 0);
+      expect(service.isNextPremiumFeaturedGuaranteed, isFalse);
+    });
+
+    test('プレミアム解析: 5回外すと次回はピックアップSSR確定', () async {
+      await currencyService.addGems(120);
+      final service = GachaService(
+        currencyService,
+        storage,
+        _FixedRandom(1),
+        null,
+        () => DateTime(2026, 5, 5),
+      );
+
+      for (var i = 0; i < GachaService.premiumFeaturedPityThreshold - 1; i++) {
+        final miss = await service.pullPremium();
+        expect(miss, isNotNull);
+        expect(miss!.characters.first.rarity, Rarity.sr);
+      }
+
+      expect(storage.getPremiumFeaturedMisses(), 5);
+      expect(service.isNextPremiumFeaturedGuaranteed, isTrue);
+      expect(service.premiumFeaturedPullsUntilGuarantee, 1);
+
+      final guaranteed = await service.pullPremium();
+
+      expect(guaranteed, isNotNull);
+      expect(guaranteed!.characters.first.rarity, Rarity.ssr);
+      expect(
+        guaranteed.characters.first.deviceName,
+        GachaService.featuredSsrDevice(date: DateTime(2026, 5, 5)).deviceName,
+      );
+      expect(storage.getPremiumFeaturedMisses(), 0);
+    });
+
+    test('日替わりピックアップSSRは日付で決定される', () {
+      final today = GachaService.featuredSsrDevice(
+        date: DateTime(2026, 5, 5),
+      );
+      final sameDay = GachaService.featuredSsrDevice(
+        date: DateTime(2026, 5, 5, 23, 59),
+      );
+      final nextDay = GachaService.featuredSsrDevice(
+        date: DateTime(2026, 5, 6),
+      );
+
+      expect(sameDay.deviceName, today.deviceName);
+      expect(nextDay.deviceName, isNot(today.deviceName));
+      expect(today.rarity, Rarity.ssr);
+      expect(nextDay.rarity, Rarity.ssr);
+    });
+
+    test('イベント限定SSRは週替わりで決定される', () {
+      final thisWeek = GachaService.eventLimitedSsrDevice(
+        date: DateTime(2026, 5, 5),
+      );
+      final sameWeek = GachaService.eventLimitedSsrDevice(
+        date: DateTime(2026, 5, 6),
+      );
+      final nextWeek = GachaService.eventLimitedSsrDevice(
+        date: DateTime(2026, 5, 12),
+      );
+
+      expect(sameWeek.deviceName, thisWeek.deviceName);
+      expect(nextWeek.deviceName, isNot(thisWeek.deviceName));
+      expect(thisWeek.rarity, Rarity.ssr);
+    });
+
+    test('イベント解析: 30ジェムでSR以上を1体取得しジェム消費される', () async {
+      await currencyService.addGems(35);
+
+      final service = GachaService(currencyService, storage, _FixedRandom(2));
+      final result = await service.pullEventLimited();
+
+      expect(result, isNotNull);
+      expect(result!.characters.length, 1);
+      expect(result.updatedCurrency.premiumGems, 5);
+      expect([Rarity.sr, Rarity.ssr], contains(result.characters.first.rarity));
+      expect(storage.getEventLimitedMisses(), 1);
+    });
+
+    test('イベント解析: 限定SSRを引くと天井カウントをリセットする', () async {
+      await storage.setEventLimitedMisses(2);
+      await currencyService.addGems(30);
+      final service = GachaService(
+        currencyService,
+        storage,
+        _FixedRandom(0),
+        null,
+        () => DateTime(2026, 5, 5),
+      );
+
+      final result = await service.pullEventLimited();
+
+      expect(result, isNotNull);
+      expect(result!.characters.first.rarity, Rarity.ssr);
+      expect(
+        result.characters.first.deviceName,
+        GachaService.eventLimitedSsrDevice(date: DateTime(2026, 5, 5))
+            .deviceName,
+      );
+      expect(storage.getEventLimitedMisses(), 0);
+    });
+
+    test('イベント解析: 3回外すと次回は限定SSR確定', () async {
+      await currencyService.addGems(120);
+      final service = GachaService(
+        currencyService,
+        storage,
+        _FixedRandom(2),
+        null,
+        () => DateTime(2026, 5, 5),
+      );
+
+      for (var i = 0; i < GachaService.eventLimitedPityThreshold - 1; i++) {
+        final miss = await service.pullEventLimited();
+        expect(miss, isNotNull);
+        expect(miss!.characters.first.rarity, Rarity.sr);
+      }
+
+      expect(storage.getEventLimitedMisses(), 3);
+      expect(service.isNextEventLimitedGuaranteed, isTrue);
+      expect(service.eventLimitedPullsUntilGuarantee, 1);
+
+      final guaranteed = await service.pullEventLimited();
+
+      expect(guaranteed, isNotNull);
+      expect(guaranteed!.characters.first.rarity, Rarity.ssr);
+      expect(
+        guaranteed.characters.first.deviceName,
+        GachaService.eventLimitedSsrDevice(date: DateTime(2026, 5, 5))
+            .deviceName,
+      );
+      expect(storage.getEventLimitedMisses(), 0);
+    });
+
     test('インベントリに保存される', () async {
       await currencyService.addCoins(200);
 
@@ -180,6 +395,53 @@ void main() {
 
       final roster = service.loadRoster();
       expect(roster.length, 2);
+    });
+
+    test('同一端末の重複は新規枠ではなく覚醒に変換される', () async {
+      await currencyService.addCoins(200);
+
+      final service = GachaService(currencyService, storage, _FixedRandom(40));
+      final first = await service.pullSingle();
+      final second = await service.pullSingle();
+
+      expect(first, isNotNull);
+      expect(second, isNotNull);
+      expect(first!.duplicateUpgrades, 0);
+      expect(second!.duplicateUpgrades, 1);
+      expect(second.characters.first.awakeningLevel, 1);
+
+      final roster = service.loadRoster();
+      expect(roster.length, 1);
+      expect(roster.first.id, first.characters.first.id);
+      expect(roster.first.awakeningLevel, 1);
+    });
+
+    test('重複覚醒は最大レベルで止まる', () async {
+      await currencyService.addCoins(700);
+
+      final service = GachaService(currencyService, storage, _FixedRandom(40));
+      GachaResult? result;
+      for (var i = 0; i < 7; i++) {
+        result = await service.pullSingle();
+      }
+
+      expect(result, isNotNull);
+      expect(result!.duplicateUpgrades, 0);
+      expect(result.duplicateRefundCoins,
+          GachaService.duplicateRefundCoinsFor(Rarity.n));
+      expect(result.updatedCurrency.coins,
+          GachaService.duplicateRefundCoinsFor(Rarity.n));
+
+      final roster = service.loadRoster();
+      expect(roster.length, 1);
+      expect(roster.first.awakeningLevel, GachaCharacter.maxAwakeningLevel);
+    });
+
+    test('覚醒上限後の重複はレアリティ別のコイン補填に変換される', () async {
+      expect(GachaService.duplicateRefundCoinsFor(Rarity.n), 25);
+      expect(GachaService.duplicateRefundCoinsFor(Rarity.r), 45);
+      expect(GachaService.duplicateRefundCoinsFor(Rarity.sr), 100);
+      expect(GachaService.duplicateRefundCoinsFor(Rarity.ssr), 180);
     });
 
     test('findById でキャラクターを検索できる', () async {
@@ -265,6 +527,27 @@ void main() {
       // もう引けない
       final r3 = await service.pullSingle();
       expect(r3, isNull);
+    });
+
+    test('ガチャ成功時にデイリーミッションのガチャ回数を記録する', () async {
+      await currencyService.addCoins(1000);
+      final dailyMissionService = DailyMissionService(
+        storage,
+        currencyService,
+        now: () => DateTime(2026, 5, 5),
+      );
+      final service = GachaService(
+        currencyService,
+        storage,
+        dailyMissionService,
+        _FixedRandom(40),
+      );
+
+      await service.pullSingle();
+      expect(storage.getDailyMissionGachaPulls(), 1);
+
+      await service.pullTen();
+      expect(storage.getDailyMissionGachaPulls(), 11);
     });
   });
 
