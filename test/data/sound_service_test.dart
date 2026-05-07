@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spec_battle_game/data/local_storage_service.dart';
 import 'package:spec_battle_game/data/sound_service.dart';
 
+bool _failAudioMethodCall = false;
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -21,9 +23,11 @@ void main() {
   late LocalStorageService storage;
 
   setUp(() async {
+    _failAudioMethodCall = false;
     SharedPreferences.setMockInitialValues({});
     storage = LocalStorageService();
     await storage.resetForTest();
+    SoundService().setAudioUnlockedForTest(true);
   });
 
   test('保存済みのBGM/SEミュート設定を読み込む', () async {
@@ -51,6 +55,25 @@ void main() {
     expect(storage.isBgmMuted(), isFalse);
     expect(storage.isSeMuted(), isFalse);
   });
+
+  test('unlockAudio失敗時は再試行できるよう未アンロックのままにする', () async {
+    final sound = SoundService()..setAudioUnlockedForTest(false);
+
+    _failAudioMethodCall = true;
+    await sound.unlockAudio();
+
+    expect(sound.isAudioUnlocked, isFalse);
+
+    _failAudioMethodCall = false;
+    await sound.unlockAudio();
+
+    expect(sound.isAudioUnlocked, isTrue);
+  });
 }
 
-Future<Object?> _mockAudioMethodCall(MethodCall call) async => null;
+Future<Object?> _mockAudioMethodCall(MethodCall call) async {
+  if (_failAudioMethodCall) {
+    throw PlatformException(code: 'unlock-failed');
+  }
+  return null;
+}

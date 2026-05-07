@@ -101,6 +101,7 @@ class SoundService {
           .play(AssetSource('sounds/button.wav'))
           .timeout(const Duration(milliseconds: 900));
       await tempPlayer.stop().timeout(const Duration(milliseconds: 300));
+      _audioUnlocked = true;
       debugPrint('[SoundService] Web AudioContext unlocked');
     } catch (e) {
       debugPrint('[SoundService] Failed to unlock AudioContext: $e');
@@ -110,8 +111,12 @@ class SoundService {
       } catch (_) {
         // dispose失敗でタイトル画面の進行を止めない
       }
-      _audioUnlocked = true;
     }
+  }
+
+  @visibleForTesting
+  void setAudioUnlockedForTest(bool unlocked) {
+    _audioUnlocked = unlocked;
   }
 
   /// アセットの効果音を再生する（ファイル未存在時は無視）
