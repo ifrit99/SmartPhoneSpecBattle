@@ -116,6 +116,41 @@ void main() {
     expect(findMission('win_1').claimed, isFalse);
   });
 
+  test('claimAllAvailableを並列実行しても報酬は二重加算されない', () async {
+    await service.recordBattle(won: true);
+    await service.recordGachaPulls(1);
+
+    final results = await Future.wait([
+      service.claimAllAvailable(),
+      service.claimAllAvailable(),
+    ]);
+
+    final successful = results.whereType<DailyMissionClaimAllResult>().toList();
+    expect(successful.length, 1);
+    expect(successful.first.claimedCount, 3);
+    expect(storage.getCoins(), 200);
+    expect(storage.getPremiumGems(), 5);
+    expect(
+      storage.getClaimedDailyMissions(),
+      containsAll(['battle_1', 'win_1', 'gacha_1']),
+    );
+  });
+
+  test('claimを並列実行しても同じミッションは1回しか報酬が出ない', () async {
+    await service.recordBattle(won: false);
+
+    final results = await Future.wait([
+      service.claim('battle_1'),
+      service.claim('battle_1'),
+    ]);
+
+    final successful = results.whereType<DailyMissionClaimResult>().toList();
+    expect(successful.length, 1);
+    expect(successful.first.coinsAwarded, 80);
+    expect(storage.getCoins(), 80);
+    expect(storage.getClaimedDailyMissions(), ['battle_1']);
+  });
+
   test('日付が変わると進捗と受取済み状態をリセットしてから記録する', () async {
     await storage.setDailyMissionDate('2026-05-04');
     await storage.setDailyMissionBattles(3);

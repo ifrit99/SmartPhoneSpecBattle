@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../data/local_storage_service.dart';
 import 'currency_service.dart';
 
@@ -64,12 +66,27 @@ class DailyMissionService {
   final LocalStorageService _storage;
   final CurrencyService _currencyService;
   final DateTime Function() _now;
+  Future<void>? _claimChain;
 
   DailyMissionService(
     this._storage,
     this._currencyService, {
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now;
+
+  Future<T> _runExclusive<T>(Future<T> Function() action) async {
+    final previous = _claimChain;
+    final completer = Completer<void>();
+    _claimChain = completer.future;
+    try {
+      if (previous != null) {
+        await previous;
+      }
+      return await action();
+    } finally {
+      completer.complete();
+    }
+  }
 
   static final List<DailyMissionDefinition> definitions = [
     DailyMissionDefinition(
@@ -139,69 +156,73 @@ class DailyMissionService {
     );
   }
 
-  Future<DailyMissionClaimResult?> claim(String id) async {
-    await _ensureToday();
+  Future<DailyMissionClaimResult?> claim(String id) {
+    return _runExclusive(() async {
+      await _ensureToday();
 
-    DailyMissionSnapshot? snapshot;
-    for (final mission in loadMissions()) {
-      if (mission.definition.id == id) {
-        snapshot = mission;
-        break;
+      DailyMissionSnapshot? snapshot;
+      for (final mission in loadMissions()) {
+        if (mission.definition.id == id) {
+          snapshot = mission;
+          break;
+        }
       }
-    }
-    if (snapshot == null || !snapshot.claimable) return null;
+      if (snapshot == null || !snapshot.claimable) return null;
 
-    final definition = snapshot.definition;
-    if (definition.coinsReward > 0) {
-      await _currencyService.addCoins(definition.coinsReward);
-    }
-    if (definition.gemsReward > 0) {
-      await _currencyService.addGems(definition.gemsReward);
-    }
+      final definition = snapshot.definition;
+      final claimed = _storage.getClaimedDailyMissions().toSet()..add(id);
+      await _storage.saveClaimedDailyMissions(claimed.toList());
 
-    final claimed = _storage.getClaimedDailyMissions().toSet()..add(id);
-    await _storage.saveClaimedDailyMissions(claimed.toList());
+      if (definition.coinsReward > 0) {
+        await _currencyService.addCoins(definition.coinsReward);
+      }
+      if (definition.gemsReward > 0) {
+        await _currencyService.addGems(definition.gemsReward);
+      }
 
-    return DailyMissionClaimResult(
-      coinsAwarded: definition.coinsReward,
-      gemsAwarded: definition.gemsReward,
-    );
+      return DailyMissionClaimResult(
+        coinsAwarded: definition.coinsReward,
+        gemsAwarded: definition.gemsReward,
+      );
+    });
   }
 
-  Future<DailyMissionClaimAllResult?> claimAllAvailable() async {
-    await _ensureToday();
+  Future<DailyMissionClaimAllResult?> claimAllAvailable() {
+    return _runExclusive(() async {
+      await _ensureToday();
 
-    final claimable = loadMissions()
-        .where((mission) => mission.claimable)
-        .map((mission) => mission.definition)
-        .toList();
-    if (claimable.isEmpty) return null;
+      final claimable = loadMissions()
+          .where((mission) => mission.claimable)
+          .map((mission) => mission.definition)
+          .toList();
+      if (claimable.isEmpty) return null;
 
-    final coins = claimable.fold<int>(
-      0,
-      (total, definition) => total + definition.coinsReward,
-    );
-    final gems = claimable.fold<int>(
-      0,
-      (total, definition) => total + definition.gemsReward,
-    );
+      final claimed = _storage.getClaimedDailyMissions().toSet()
+        ..addAll(claimable.map((definition) => definition.id));
+      await _storage.saveClaimedDailyMissions(claimed.toList());
 
-    if (coins > 0) {
-      await _currencyService.addCoins(coins);
-    }
-    if (gems > 0) {
-      await _currencyService.addGems(gems);
-    }
+      final coins = claimable.fold<int>(
+        0,
+        (total, definition) => total + definition.coinsReward,
+      );
+      final gems = claimable.fold<int>(
+        0,
+        (total, definition) => total + definition.gemsReward,
+      );
 
-    final claimed = _storage.getClaimedDailyMissions().toSet()
-      ..addAll(claimable.map((definition) => definition.id));
-    await _storage.saveClaimedDailyMissions(claimed.toList());
+      if (coins > 0) {
+        await _currencyService.addCoins(coins);
+      }
+      if (gems > 0) {
+        await _currencyService.addGems(gems);
+      }
 
-    return DailyMissionClaimAllResult(
-      claimedCount: claimable.length,
-      coinsAwarded: coins,
-      gemsAwarded: gems,
-    );
+      return DailyMissionClaimAllResult(
+        claimedCount: claimable.length,
+        coinsAwarded: coins,
+        gemsAwarded: gems,
+      );
+    });
   }
 
   Future<void> _ensureToday() async {
