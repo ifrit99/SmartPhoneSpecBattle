@@ -90,6 +90,44 @@ void main() {
     expect(offer.blockedReason, 'Battery満タン');
   });
 
+  test('同一オファーを並列購入してもCoinは1回分しか消費されない', () async {
+    await currencyService.addCoins(1000);
+    final service = serviceFor(DateTime(2026, 5, 5));
+
+    final results = await Future.wait([
+      service.purchase('gem_cache'),
+      service.purchase('gem_cache'),
+    ]);
+
+    final successful =
+        results.whereType<DailyShopPurchaseResult>().toList();
+    expect(successful.length, 1);
+    expect(storage.getCoins(), 640);
+    expect(storage.getPremiumGems(), 8);
+    expect(storage.getPurchasedDailyShopOffers(), ['gem_cache']);
+  });
+
+  test('異なるオファーを並列購入すると両方成立する', () async {
+    await equipFirstDevice();
+    await currencyService.addCoins(1000);
+    final service = serviceFor(DateTime(2026, 5, 5));
+
+    final results = await Future.wait([
+      service.purchase('battery_pack'),
+      service.purchase('gem_cache'),
+    ]);
+
+    final successful =
+        results.whereType<DailyShopPurchaseResult>().toList();
+    expect(successful.length, 2);
+    expect(storage.getCoins(), 1000 - 120 - 360);
+    expect(storage.getPremiumGems(), 8);
+    expect(
+      storage.getPurchasedDailyShopOffers(),
+      containsAll(['battery_pack', 'gem_cache']),
+    );
+  });
+
   test('解析GemパックはCoinをGemsに変換し日付変更で再購入できる', () async {
     await currencyService.addCoins(800);
     final service = serviceFor(DateTime(2026, 5, 5));

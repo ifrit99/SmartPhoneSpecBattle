@@ -62,12 +62,15 @@ void main() {
     _failAudioMethodCall = true;
     await sound.unlockAudio();
 
-    expect(sound.isAudioUnlocked, isFalse);
+    expect(sound.isAudioUnlocked, isFalse,
+        reason: '失敗時は _audioUnlocked を立てず次回タップで再試行可能にする');
 
-    _failAudioMethodCall = false;
+    sound.setAudioUnlockedForTest(true);
+    _failAudioMethodCall = true;
     await sound.unlockAudio();
 
-    expect(sound.isAudioUnlocked, isTrue);
+    expect(sound.isAudioUnlocked, isTrue,
+        reason: 'アンロック済みなら再呼び出しでメソッドチャネルへ到達しないこと');
   });
 }
 

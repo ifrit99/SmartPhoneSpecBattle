@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../data/local_storage_service.dart';
 import '../models/gacha_character.dart';
 import '../models/player_currency.dart';
@@ -116,6 +118,7 @@ class DailyShopService {
   final CurrencyService _currencyService;
   final GachaService _gachaService;
   final DateTime Function() _now;
+  Future<void>? _purchaseChain;
 
   DailyShopService(
     this._storage,
@@ -123,6 +126,20 @@ class DailyShopService {
     this._gachaService, {
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now;
+
+  Future<T> _runExclusive<T>(Future<T> Function() action) async {
+    final previous = _purchaseChain;
+    final completer = Completer<void>();
+    _purchaseChain = completer.future;
+    try {
+      if (previous != null) {
+        await previous;
+      }
+      return await action();
+    } finally {
+      completer.complete();
+    }
+  }
 
   String get todayString => _formatDate(_now());
 
@@ -147,63 +164,65 @@ class DailyShopService {
     );
   }
 
-  Future<DailyShopPurchaseResult?> purchase(String id) async {
-    await _ensureToday();
+  Future<DailyShopPurchaseResult?> purchase(String id) {
+    return _runExclusive(() async {
+      await _ensureToday();
 
-    final definition = _definitionById(id);
-    if (definition == null) return null;
+      final definition = _definitionById(id);
+      if (definition == null) return null;
 
-    final shop = loadShop();
-    DailyShopOfferSnapshot? offer;
-    for (final candidate in shop.offers) {
-      if (candidate.definition.id == definition.id) {
-        offer = candidate;
-        break;
+      final shop = loadShop();
+      DailyShopOfferSnapshot? offer;
+      for (final candidate in shop.offers) {
+        if (candidate.definition.id == definition.id) {
+          offer = candidate;
+          break;
+        }
       }
-    }
-    if (offer == null || !offer.canPurchase) return null;
+      if (offer == null || !offer.canPurchase) return null;
 
-    final beforeCharacter = _gachaService.getEquippedCharacter();
-    final spent = await _currencyService.spendCoins(definition.costCoins);
-    if (spent == null) return null;
+      final beforeCharacter = _gachaService.getEquippedCharacter();
+      final spent = await _currencyService.spendCoins(definition.costCoins);
+      if (spent == null) return null;
 
-    var updatedCurrency = spent;
-    GachaCharacter? updatedCharacter;
-    var levelsGained = 0;
+      var updatedCurrency = spent;
+      GachaCharacter? updatedCharacter;
+      var levelsGained = 0;
 
-    switch (definition.rewardKind) {
-      case DailyShopRewardKind.trainingExp:
-        final target = beforeCharacter;
-        if (target == null) return null;
-        updatedCharacter = target.gainExp(definition.rewardAmount);
-        levelsGained =
-            updatedCharacter.character.level - target.character.level;
-        await _gachaService.updateCharacter(updatedCharacter);
-      case DailyShopRewardKind.batteryCharge:
-        final target = beforeCharacter;
-        if (target == null) return null;
-        final nextBattery =
-            (target.character.batteryLevel + definition.rewardAmount)
-                .clamp(0, 100)
-                .toInt();
-        updatedCharacter = target.withBattery(nextBattery);
-        await _gachaService.updateCharacter(updatedCharacter);
-      case DailyShopRewardKind.premiumGems:
-        updatedCurrency = await _currencyService.addGems(
-          definition.rewardAmount,
-        );
-    }
+      switch (definition.rewardKind) {
+        case DailyShopRewardKind.trainingExp:
+          final target = beforeCharacter;
+          if (target == null) return null;
+          updatedCharacter = target.gainExp(definition.rewardAmount);
+          levelsGained =
+              updatedCharacter.character.level - target.character.level;
+          await _gachaService.updateCharacter(updatedCharacter);
+        case DailyShopRewardKind.batteryCharge:
+          final target = beforeCharacter;
+          if (target == null) return null;
+          final nextBattery =
+              (target.character.batteryLevel + definition.rewardAmount)
+                  .clamp(0, 100)
+                  .toInt();
+          updatedCharacter = target.withBattery(nextBattery);
+          await _gachaService.updateCharacter(updatedCharacter);
+        case DailyShopRewardKind.premiumGems:
+          updatedCurrency = await _currencyService.addGems(
+            definition.rewardAmount,
+          );
+      }
 
-    final purchased = _storage.getPurchasedDailyShopOffers().toSet()
-      ..add(definition.id);
-    await _storage.savePurchasedDailyShopOffers(purchased.toList());
+      final purchased = _storage.getPurchasedDailyShopOffers().toSet()
+        ..add(definition.id);
+      await _storage.savePurchasedDailyShopOffers(purchased.toList());
 
-    return DailyShopPurchaseResult(
-      definition: definition,
-      updatedCurrency: updatedCurrency,
-      updatedCharacter: updatedCharacter,
-      levelsGained: levelsGained,
-    );
+      return DailyShopPurchaseResult(
+        definition: definition,
+        updatedCurrency: updatedCurrency,
+        updatedCharacter: updatedCharacter,
+        levelsGained: levelsGained,
+      );
+    });
   }
 
   Future<void> _ensureToday() async {
