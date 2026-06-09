@@ -1,0 +1,42 @@
+# PR の品質ゲート: 静的解析・ユニットテスト・Web ビルド確認
+# トリガー: master 宛ての Pull Request / 手動実行
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# 同一 PR の連続 push では最新の実行のみ有効
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: Flutter SDK をセットアップ
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.0'
+          channel: stable
+          cache: true
+
+      - name: 依存関係をインストール
+        run: flutter pub get
+
+      - name: 静的解析
+        run: flutter analyze
+
+      - name: ユニットテスト
+        run: flutter test
+
+      - name: Web ビルド確認
+        run: flutter build web --release --base-href "/SmartPhoneSpecBattle/"
