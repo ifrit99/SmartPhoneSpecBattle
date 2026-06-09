@@ -46,3 +46,6 @@ SmartPhoneSpecBattle（スマホスペックバトル）
 - GitHub Pages デプロイ後のOGP/URL対戦フロー最終確認が残タスク
 - Mac環境では `objective_c` ネイティブビルド問題で `flutter test` がローカル失敗する場合がある（Docker回避）
 - ステータス生成ロジック（`character_generator.dart`）のバランスは数値調整の余地あり（仮置き）
+
+## 判断メモ
+- リリース可否・将来収益化の評価は [`docs/release-monetization-assessment.md`](release-monetization-assessment.md) を参照。
