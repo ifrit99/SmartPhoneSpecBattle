@@ -44,6 +44,17 @@ void main() {
       final names = gachaDeviceCatalog.map((d) => d.deviceName).toSet();
       expect(names.length, gachaDeviceCatalog.length);
     });
+
+    test('イベント限定端末は通常カタログとは別に3体存在する', () {
+      expect(eventLimitedDeviceCatalog.length, 3);
+      expect(eventLimitedDeviceCatalog.every((d) => d.rarity == Rarity.ssr),
+          isTrue);
+
+      final normalNames = gachaDeviceCatalog.map((d) => d.deviceName).toSet();
+      for (final eventDevice in eventLimitedDeviceCatalog) {
+        expect(normalNames, isNot(contains(eventDevice.deviceName)));
+      }
+    });
   });
 
   group('GachaCharacter', () {
@@ -82,9 +93,12 @@ void main() {
       expect(restored.character.name, original.character.name);
       expect(restored.character.element, original.character.element);
       expect(restored.character.baseStats.hp, original.character.baseStats.hp);
-      expect(restored.character.baseStats.atk, original.character.baseStats.atk);
-      expect(restored.character.baseStats.def, original.character.baseStats.def);
-      expect(restored.character.baseStats.spd, original.character.baseStats.spd);
+      expect(
+          restored.character.baseStats.atk, original.character.baseStats.atk);
+      expect(
+          restored.character.baseStats.def, original.character.baseStats.def);
+      expect(
+          restored.character.baseStats.spd, original.character.baseStats.spd);
       expect(restored.character.seed, original.character.seed);
       expect(restored.character.level, original.character.level);
     });
@@ -101,6 +115,16 @@ void main() {
       expect(restored.rarity, original.rarity);
     });
 
+    test('JSONは覚醒レベルを保持する', () {
+      final device = gachaDeviceCatalog.first;
+      final original = GachaCharacter.fromDevice(device).awaken();
+
+      final restored = GachaCharacter.fromJsonString(original.toJsonString());
+
+      expect(restored.awakeningLevel, 1);
+      expect(restored.awakeningLabel, '+1');
+    });
+
     test('gainExpで経験値を加算できる', () {
       final device = gachaDeviceCatalog.first;
       final gacha = GachaCharacter.fromDevice(device);
@@ -111,6 +135,35 @@ void main() {
       expect(leveled.deviceName, gacha.deviceName);
     });
 
+    test('awakenで覚醒レベルと基礎ステータスが上がる', () {
+      final device = gachaDeviceCatalog.first;
+      final gacha = GachaCharacter.fromDevice(device);
+      final awakened = gacha.awaken();
+
+      expect(awakened.awakeningLevel, 1);
+      expect(awakened.id, gacha.id);
+      expect(
+        awakened.character.baseStats.maxHp,
+        greaterThan(gacha.character.baseStats.maxHp),
+      );
+      expect(
+        awakened.character.baseStats.atk,
+        greaterThanOrEqualTo(gacha.character.baseStats.atk),
+      );
+    });
+
+    test('awakenは最大覚醒レベルを超えない', () {
+      final device = gachaDeviceCatalog.first;
+      var gacha = GachaCharacter.fromDevice(device);
+
+      for (var i = 0; i < GachaCharacter.maxAwakeningLevel + 2; i++) {
+        gacha = gacha.awaken();
+      }
+
+      expect(gacha.awakeningLevel, GachaCharacter.maxAwakeningLevel);
+      expect(gacha.canAwaken, isFalse);
+    });
+
     test('withBatteryでバッテリーレベルを更新できる', () {
       final device = gachaDeviceCatalog.first;
       final gacha = GachaCharacter.fromDevice(device);
@@ -118,6 +171,15 @@ void main() {
 
       expect(updated.character.batteryLevel, 50);
       expect(updated.id, gacha.id);
+    });
+
+    test('JSONはバッテリーレベルを保持する', () {
+      final device = gachaDeviceCatalog.first;
+      final original = GachaCharacter.fromDevice(device).withBattery(87);
+
+      final restored = GachaCharacter.fromJsonString(original.toJsonString());
+
+      expect(restored.character.batteryLevel, 87);
     });
 
     test('レアリティ補正がステータスに反映される', () {

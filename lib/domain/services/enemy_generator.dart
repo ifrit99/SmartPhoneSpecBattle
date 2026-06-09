@@ -6,44 +6,52 @@ import '../../data/device_info_service.dart';
 
 /// 敵の難易度
 enum EnemyDifficulty {
-  easy,   // 弱い（古い端末）
+  easy, // 弱い（古い端末）
   normal, // 普通（標準的な端末）
-  hard,   // 強い（ハイエンド端末）
-  boss,   // 最強（最新フラッグシップ）
+  hard, // 強い（ハイエンド端末）
+  boss, // 最強（最新フラッグシップ）
 }
 
 extension EnemyDifficultyExtension on EnemyDifficulty {
   /// 難易度の日本語ラベル
   String get label {
     switch (this) {
-      case EnemyDifficulty.easy:   return 'EASY';
-      case EnemyDifficulty.normal: return 'NORMAL';
-      case EnemyDifficulty.hard:   return 'HARD';
-      case EnemyDifficulty.boss:   return 'BOSS';
+      case EnemyDifficulty.easy:
+        return 'EASY';
+      case EnemyDifficulty.normal:
+        return 'NORMAL';
+      case EnemyDifficulty.hard:
+        return 'HARD';
+      case EnemyDifficulty.boss:
+        return 'BOSS';
     }
   }
 
   /// 難易度に対応したレベル補正（プレイヤーレベルへの加算値）
   int levelOffset(Random random) {
     switch (this) {
-      case EnemyDifficulty.easy:   return -(1 + random.nextInt(2)); // -1 〜 -2
-      case EnemyDifficulty.normal: return random.nextInt(3) - 1;    // -1 〜 +1
-      case EnemyDifficulty.hard:   return 1 + random.nextInt(3);    // +1 〜 +3
-      case EnemyDifficulty.boss:   return 3 + random.nextInt(3);    // +3 〜 +5
+      case EnemyDifficulty.easy:
+        return -(1 + random.nextInt(2)); // -1 〜 -2
+      case EnemyDifficulty.normal:
+        return random.nextInt(3) - 1; // -1 〜 +1
+      case EnemyDifficulty.hard:
+        return 1 + random.nextInt(3); // +1 〜 +3
+      case EnemyDifficulty.boss:
+        return 3 + random.nextInt(3); // +3 〜 +5
     }
   }
 }
 
 /// 架空デバイスの仕様（敵のフレーバー情報）
 class EnemyDeviceSpec {
-  final String id;           // 永続化用の固定ID（変更不可）
-  final String deviceName;   // 端末名（表示用、将来変更しても影響なし）
-  final String osLabel;      // OS表示（例: "Android 8.0"）
-  final String osVersion;    // 属性決定に使うバージョン文字列
-  final int cpuCores;        // CPUコア数 → ATK に影響
-  final int ramMB;           // RAM容量 → HP に影響
-  final int storageFreeGB;   // ストレージ空き → DEF に影響
-  final int batteryLevel;    // バッテリー残量 → SPD に影響
+  final String id; // 永続化用の固定ID（変更不可）
+  final String deviceName; // 端末名（表示用、将来変更しても影響なし）
+  final String osLabel; // OS表示（例: "Android 8.0"）
+  final String osVersion; // 属性決定に使うバージョン文字列
+  final int cpuCores; // CPUコア数 → ATK に影響
+  final int ramMB; // RAM容量 → HP に影響
+  final int storageFreeGB; // ストレージ空き → DEF に影響
+  final int batteryLevel; // バッテリー残量 → SPD に影響
   final EnemyDifficulty difficulty;
 
   const EnemyDeviceSpec({
@@ -67,7 +75,10 @@ const _easyDevices = [
     deviceName: 'Stellar J2 Lite',
     osLabel: 'Android 6.0',
     osVersion: '6',
-    cpuCores: 4, ramMB: 1536, storageFreeGB: 8, batteryLevel: 50,
+    cpuCores: 4,
+    ramMB: 1536,
+    storageFreeGB: 8,
+    batteryLevel: 50,
     difficulty: EnemyDifficulty.easy,
   ),
   EnemyDeviceSpec(
@@ -75,7 +86,10 @@ const _easyDevices = [
     deviceName: 'Blazemi 4A',
     osLabel: 'Android 6.0',
     osVersion: '6',
-    cpuCores: 4, ramMB: 2048, storageFreeGB: 8, batteryLevel: 50,
+    cpuCores: 4,
+    ramMB: 2048,
+    storageFreeGB: 8,
+    batteryLevel: 50,
     difficulty: EnemyDifficulty.easy,
   ),
   EnemyDeviceSpec(
@@ -83,7 +97,10 @@ const _easyDevices = [
     deviceName: 'Clario sense2',
     osLabel: 'Android 8.1',
     osVersion: '8',
-    cpuCores: 4, ramMB: 3072, storageFreeGB: 12, batteryLevel: 50,
+    cpuCores: 4,
+    ramMB: 3072,
+    storageFreeGB: 12,
+    batteryLevel: 50,
     difficulty: EnemyDifficulty.easy,
   ),
   EnemyDeviceSpec(
@@ -91,7 +108,10 @@ const _easyDevices = [
     deviceName: 'FruitPhone 6s',
     osLabel: 'iOS 12.5',
     osVersion: '12',
-    cpuCores: 2, ramMB: 2048, storageFreeGB: 10, batteryLevel: 50,
+    cpuCores: 2,
+    ramMB: 2048,
+    storageFreeGB: 10,
+    batteryLevel: 50,
     difficulty: EnemyDifficulty.easy,
   ),
 ];
@@ -102,7 +122,10 @@ const _normalDevices = [
     deviceName: 'Prism 5a',
     osLabel: 'Android 12.0',
     osVersion: '12',
-    cpuCores: 8, ramMB: 6144, storageFreeGB: 48, batteryLevel: 50,
+    cpuCores: 8,
+    ramMB: 6144,
+    storageFreeGB: 48,
+    batteryLevel: 50,
     difficulty: EnemyDifficulty.normal,
   ),
   EnemyDeviceSpec(
@@ -110,7 +133,10 @@ const _normalDevices = [
     deviceName: 'Stellar A54',
     osLabel: 'Android 13.0',
     osVersion: '13',
-    cpuCores: 8, ramMB: 8192, storageFreeGB: 64, batteryLevel: 50,
+    cpuCores: 8,
+    ramMB: 8192,
+    storageFreeGB: 64,
+    batteryLevel: 50,
     difficulty: EnemyDifficulty.normal,
   ),
   EnemyDeviceSpec(
@@ -118,7 +144,10 @@ const _normalDevices = [
     deviceName: 'FruitPhone 13',
     osLabel: 'iOS 16.0',
     osVersion: '16',
-    cpuCores: 6, ramMB: 4096, storageFreeGB: 50, batteryLevel: 50,
+    cpuCores: 6,
+    ramMB: 4096,
+    storageFreeGB: 50,
+    batteryLevel: 50,
     difficulty: EnemyDifficulty.normal,
   ),
   EnemyDeviceSpec(
@@ -126,7 +155,10 @@ const _normalDevices = [
     deviceName: 'Nexia 10 V',
     osLabel: 'Android 13.0',
     osVersion: '13',
-    cpuCores: 8, ramMB: 6144, storageFreeGB: 56, batteryLevel: 50,
+    cpuCores: 8,
+    ramMB: 6144,
+    storageFreeGB: 56,
+    batteryLevel: 50,
     difficulty: EnemyDifficulty.normal,
   ),
 ];
@@ -137,7 +169,10 @@ const _hardDevices = [
     deviceName: 'Stellar S24',
     osLabel: 'Android 14.0',
     osVersion: '14',
-    cpuCores: 8, ramMB: 8192, storageFreeGB: 128, batteryLevel: 50,
+    cpuCores: 8,
+    ramMB: 8192,
+    storageFreeGB: 128,
+    batteryLevel: 50,
     difficulty: EnemyDifficulty.hard,
   ),
   EnemyDeviceSpec(
@@ -145,7 +180,10 @@ const _hardDevices = [
     deviceName: 'Prism 9 Pro',
     osLabel: 'Android 15.0',
     osVersion: '15',
-    cpuCores: 9, ramMB: 16384, storageFreeGB: 180, batteryLevel: 50,
+    cpuCores: 9,
+    ramMB: 16384,
+    storageFreeGB: 180,
+    batteryLevel: 50,
     difficulty: EnemyDifficulty.hard,
   ),
   EnemyDeviceSpec(
@@ -153,7 +191,10 @@ const _hardDevices = [
     deviceName: 'FruitPhone 16 Pro',
     osLabel: 'iOS 18.0',
     osVersion: '18',
-    cpuCores: 6, ramMB: 8192, storageFreeGB: 200, batteryLevel: 50,
+    cpuCores: 6,
+    ramMB: 8192,
+    storageFreeGB: 200,
+    batteryLevel: 50,
     difficulty: EnemyDifficulty.hard,
   ),
   EnemyDeviceSpec(
@@ -161,7 +202,10 @@ const _hardDevices = [
     deviceName: 'Nexia 1 VI',
     osLabel: 'Android 14.0',
     osVersion: '14',
-    cpuCores: 8, ramMB: 12288, storageFreeGB: 150, batteryLevel: 50,
+    cpuCores: 8,
+    ramMB: 12288,
+    storageFreeGB: 150,
+    batteryLevel: 50,
     difficulty: EnemyDifficulty.hard,
   ),
 ];
@@ -172,7 +216,10 @@ const _bossDevices = [
     deviceName: 'Stellar S24 Ultra',
     osLabel: 'Android 15.0',
     osVersion: '15',
-    cpuCores: 12, ramMB: 16384, storageFreeGB: 512, batteryLevel: 50,
+    cpuCores: 12,
+    ramMB: 16384,
+    storageFreeGB: 512,
+    batteryLevel: 50,
     difficulty: EnemyDifficulty.boss,
   ),
   EnemyDeviceSpec(
@@ -180,7 +227,10 @@ const _bossDevices = [
     deviceName: 'FruitPhone 16 Pro Max',
     osLabel: 'iOS 18.2',
     osVersion: '18',
-    cpuCores: 6, ramMB: 8192, storageFreeGB: 512, batteryLevel: 50,
+    cpuCores: 6,
+    ramMB: 8192,
+    storageFreeGB: 512,
+    batteryLevel: 50,
     difficulty: EnemyDifficulty.boss,
   ),
   EnemyDeviceSpec(
@@ -188,7 +238,10 @@ const _bossDevices = [
     deviceName: 'Prism 9 Pro XL',
     osLabel: 'Android 15.0',
     osVersion: '15',
-    cpuCores: 9, ramMB: 16384, storageFreeGB: 512, batteryLevel: 50,
+    cpuCores: 9,
+    ramMB: 16384,
+    storageFreeGB: 512,
+    batteryLevel: 50,
     difficulty: EnemyDifficulty.boss,
   ),
   EnemyDeviceSpec(
@@ -196,7 +249,10 @@ const _bossDevices = [
     deviceName: 'Forge Phone 9 Pro',
     osLabel: 'Android 15.0',
     osVersion: '15',
-    cpuCores: 12, ramMB: 24576, storageFreeGB: 512, batteryLevel: 50,
+    cpuCores: 12,
+    ramMB: 24576,
+    storageFreeGB: 512,
+    batteryLevel: 50,
     difficulty: EnemyDifficulty.boss,
   ),
 ];
@@ -224,7 +280,17 @@ class EnemyGenerator {
     // 難易度に対応したデバイスカタログから1体をランダム選択
     final catalog = _catalogFor(difficulty);
     final deviceSpec = catalog[_random.nextInt(catalog.length)];
+    return generateFromDeviceSpec(
+      deviceSpec: deviceSpec,
+      playerLevel: playerLevel,
+    );
+  }
 
+  /// 指定した架空デバイスから敵を生成する（イベント専用ライバル等で使用）
+  static EnemyProfile generateFromDeviceSpec({
+    required EnemyDeviceSpec deviceSpec,
+    required int playerLevel,
+  }) {
     // 架空スペックを DeviceSpecs に変換
     final specs = DeviceSpecs(
       osVersion: deviceSpec.osVersion,
@@ -236,7 +302,7 @@ class EnemyGenerator {
     );
 
     // プレイヤーレベルに難易度補正を加えた敵レベルを決定
-    final levelOffset = difficulty.levelOffset(_random);
+    final levelOffset = deviceSpec.difficulty.levelOffset(_random);
     final enemyLevel = max(1, playerLevel + levelOffset);
     final experience = Experience(
       level: enemyLevel,
@@ -245,7 +311,8 @@ class EnemyGenerator {
     );
 
     // CharacterGenerator で実際のキャラクターを生成（プレイヤーと同じパイプライン）
-    final character = CharacterGenerator.generate(specs, experience: experience);
+    final character =
+        CharacterGenerator.generate(specs, experience: experience);
 
     return EnemyProfile(character: character, deviceSpec: deviceSpec);
   }
@@ -269,10 +336,14 @@ class EnemyGenerator {
 
   static List<EnemyDeviceSpec> _catalogFor(EnemyDifficulty difficulty) {
     switch (difficulty) {
-      case EnemyDifficulty.easy:   return _easyDevices;
-      case EnemyDifficulty.normal: return _normalDevices;
-      case EnemyDifficulty.hard:   return _hardDevices;
-      case EnemyDifficulty.boss:   return _bossDevices;
+      case EnemyDifficulty.easy:
+        return _easyDevices;
+      case EnemyDifficulty.normal:
+        return _normalDevices;
+      case EnemyDifficulty.hard:
+        return _hardDevices;
+      case EnemyDifficulty.boss:
+        return _bossDevices;
     }
   }
 

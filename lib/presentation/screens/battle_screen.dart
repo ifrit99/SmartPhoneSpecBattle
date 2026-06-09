@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../domain/models/character.dart';
 import '../../domain/enums/element_type.dart';
+import '../../domain/enums/battle_tactic.dart';
 import '../../domain/services/battle_engine.dart';
 import '../../data/sound_service.dart';
 import '../widgets/pixel_character.dart';
@@ -18,6 +19,7 @@ class BattleScreen extends StatefulWidget {
   final String? enemyDeviceId;
   final EnemyDifficulty enemyDifficulty;
   final bool isCpuBattle;
+  final BattleTactic playerTactic;
 
   const BattleScreen({
     super.key,
@@ -26,6 +28,7 @@ class BattleScreen extends StatefulWidget {
     this.enemyDeviceId,
     this.enemyDifficulty = EnemyDifficulty.normal,
     this.isCpuBattle = true,
+    this.playerTactic = BattleTactic.balanced,
   });
 
   @override
@@ -37,6 +40,7 @@ class _BattleScreenState extends State<BattleScreen>
   late BattleResult _result;
   List<BattleLogEntry> _displayedLog = [];
   int _currentLogIndex = 0;
+  bool _supportSelected = false;
   bool _battleComplete = false;
 
   late Character _currentPlayer;
@@ -49,10 +53,13 @@ class _BattleScreenState extends State<BattleScreen>
 
   // サウンドサービス
   final SoundService _sound = SoundService();
+  final List<double> _playbackSpeeds = const [1.0, 1.5, 2.0, 3.0];
+  double _playbackSpeed = 1.0;
 
   late AnimationController _shakeController;
   late AnimationController _flashController;
   late Animation<double> _shakeAnimation;
+  final ScrollController _logScrollController = ScrollController();
 
   @override
   void initState() {
@@ -73,21 +80,30 @@ class _BattleScreenState extends State<BattleScreen>
       vsync: this,
     );
 
-    // バトル実行
-    _runBattle();
+    // バトル開始前にプレイヤーの支援コマンド選択を待つ
   }
 
   @override
   void dispose() {
     _shakeController.dispose();
     _flashController.dispose();
+    _logScrollController.dispose();
     _sound.stopBgmImmediate(); // 画面離脱時にBGMを確実に停止
     super.dispose();
   }
 
-  void _runBattle() {
+  void _runBattle(BattleSupportCommand supportCommand) {
+    setState(() {
+      _supportSelected = true;
+    });
+
     final engine = BattleEngine();
-    _result = engine.executeBattle(widget.player, widget.enemy);
+    _result = engine.executeBattle(
+      widget.player,
+      widget.enemy,
+      playerTactic: widget.playerTactic,
+      supportCommand: supportCommand,
+    );
 
     // バトルBGM + 開始SEを再生
     _sound.playBgm();
@@ -126,7 +142,8 @@ class _BattleScreenState extends State<BattleScreen>
       }
 
       // スキル発動時のエフェクト待機＋効果音
-      if (entry.actionType == BattleActionType.skill && !entry.message.contains('防御力が上がった')) {
+      if (entry.actionType == BattleActionType.skill &&
+          !entry.message.contains('防御力が上がった')) {
         final isPlayerAction = entry.actorName == _currentPlayer.name ||
             entry.actorName == widget.player.name;
         final actor = isPlayerAction ? _currentPlayer : _currentEnemy;
@@ -178,11 +195,12 @@ class _BattleScreenState extends State<BattleScreen>
           }
         }
       });
+      _scrollLogToBottom();
 
       _currentLogIndex++;
 
       // 次のログまでのウェイト
-      await Future.delayed(const Duration(milliseconds: 800));
+      await Future.delayed(Duration(milliseconds: _logDelayMs));
     }
 
     // ログ再生完了
@@ -217,6 +235,32 @@ class _BattleScreenState extends State<BattleScreen>
       // 実際の最終HPを反映
       _currentPlayer = _currentPlayer.withHp(_result.finalPlayerHp);
       _currentEnemy = _currentEnemy.withHp(_result.finalEnemyHp);
+    });
+    _scrollLogToBottom();
+  }
+
+  void _scrollLogToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (!_logScrollController.hasClients) return;
+      _logScrollController.animateTo(
+        _logScrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  int get _logDelayMs => (800 / _playbackSpeed).round().clamp(220, 800);
+  int get _skillEffectDelayMs =>
+      (1000 / _playbackSpeed).round().clamp(320, 1000);
+
+  void _cyclePlaybackSpeed() {
+    final currentIndex = _playbackSpeeds.indexOf(_playbackSpeed);
+    final nextIndex = (currentIndex + 1) % _playbackSpeeds.length;
+    SoundService().playButton();
+    setState(() {
+      _playbackSpeed = _playbackSpeeds[nextIndex];
     });
   }
 
@@ -286,6 +330,7 @@ class _BattleScreenState extends State<BattleScreen>
     final fieldHeight = (screenSize.height * 0.38).clamp(200.0, 320.0);
     // キャラサイズは画面幅の18%を基準に、最小50・最大100の範囲
     final charSize = (screenSize.width * 0.18).clamp(50.0, 100.0);
+    final enemySpriteTopPadding = (charSize * 0.52).clamp(28.0, 42.0);
 
     return Container(
       height: fieldHeight,
@@ -338,14 +383,23 @@ class _BattleScreenState extends State<BattleScreen>
                       builder: (context, child) {
                         final isEnemyHit = _displayedLog.isNotEmpty &&
                             _displayedLog.last.damage > 0 &&
-                            (_displayedLog.last.actorName == _currentPlayer.name ||
-                             _displayedLog.last.actorName == widget.player.name);
+                            (_displayedLog.last.actorName ==
+                                    _currentPlayer.name ||
+                                _displayedLog.last.actorName ==
+                                    widget.player.name);
                         return Transform.translate(
-                          offset: Offset(isEnemyHit ? _shakeAnimation.value : 0, 0),
-                          child: PixelCharacter(
-                              character: _currentEnemy,
-                              size: charSize,
-                              flipHorizontal: true),
+                          offset:
+                              Offset(isEnemyHit ? _shakeAnimation.value : 0, 0),
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                              top: enemySpriteTopPadding,
+                              right: 4,
+                            ),
+                            child: PixelCharacter(
+                                character: _currentEnemy,
+                                size: charSize,
+                                flipHorizontal: true),
+                          ),
                         );
                       },
                     ),
@@ -363,10 +417,12 @@ class _BattleScreenState extends State<BattleScreen>
                       builder: (context, child) {
                         final isPlayerHit = _displayedLog.isNotEmpty &&
                             _displayedLog.last.damage > 0 &&
-                            _displayedLog.last.actorName != _currentPlayer.name &&
+                            _displayedLog.last.actorName !=
+                                _currentPlayer.name &&
                             _displayedLog.last.actorName != widget.player.name;
                         return Transform.translate(
-                          offset: Offset(isPlayerHit ? -_shakeAnimation.value : 0, 0),
+                          offset: Offset(
+                              isPlayerHit ? -_shakeAnimation.value : 0, 0),
                           child: PixelCharacter(
                               character: _currentPlayer, size: charSize),
                         );
@@ -437,10 +493,10 @@ class _BattleScreenState extends State<BattleScreen>
         border: Border.all(color: Colors.white10),
       ),
       child: ListView.builder(
-        reverse: true,
+        controller: _logScrollController,
         itemCount: _displayedLog.length,
         itemBuilder: (context, index) {
-          final entry = _displayedLog[_displayedLog.length - 1 - index];
+          final entry = _displayedLog[index];
           final baseColor = entry.damage > 0
               ? Colors.redAccent[100]!
               : entry.healing > 0
@@ -495,12 +551,41 @@ class _BattleScreenState extends State<BattleScreen>
   }
 
   Widget _buildActionButtons() {
+    if (!_supportSelected) {
+      return _buildSupportCommandPicker();
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       child: Row(
         children: [
-          if (!_battleComplete)
+          if (!_battleComplete) ...[
             Expanded(
+              flex: 2,
+              child: OutlinedButton.icon(
+                onPressed: _cyclePlaybackSpeed,
+                icon: const Icon(Icons.speed, size: 18),
+                label: Text(
+                  'x${_playbackSpeed.toStringAsFixed(_playbackSpeed == 1.0 ? 0 : 1)}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFFFFD700),
+                  side: BorderSide(
+                    color: const Color(0xFFFFD700).withValues(alpha: 0.45),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  backgroundColor:
+                      const Color(0xFFFFD700).withValues(alpha: 0.06),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              flex: 3,
               child: ElevatedButton(
                 onPressed: _skipToEnd,
                 style: ElevatedButton.styleFrom(
@@ -510,10 +595,13 @@ class _BattleScreenState extends State<BattleScreen>
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text('スキップ ▶▶',
-                    style: TextStyle(color: Colors.white70)),
+                child: const Text(
+                  'スキップ ▶▶',
+                  style: TextStyle(color: Colors.white70),
+                ),
               ),
             ),
+          ],
           if (_battleComplete)
             Expanded(
               child: ElevatedButton(
@@ -558,6 +646,104 @@ class _BattleScreenState extends State<BattleScreen>
     );
   }
 
+  Widget _buildSupportCommandPicker() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0D1B2A),
+        border: Border(
+            top: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'サポートコマンドを選択',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: _supportCommandButton(
+                  command: BattleSupportCommand.none,
+                  icon: Icons.play_arrow,
+                  color: Colors.white70,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _supportCommandButton(
+                  command: BattleSupportCommand.overdrive,
+                  icon: Icons.flash_on,
+                  color: const Color(0xFFFFD700),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _supportCommandButton(
+                  command: BattleSupportCommand.barrier,
+                  icon: Icons.shield,
+                  color: const Color(0xFF00CEC9),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _supportCommandButton({
+    required BattleSupportCommand command,
+    required IconData icon,
+    required Color color,
+  }) {
+    return OutlinedButton(
+      onPressed: () {
+        SoundService().playButton();
+        _runBattle(command);
+      },
+      style: OutlinedButton.styleFrom(
+        foregroundColor: color,
+        side: BorderSide(color: color.withValues(alpha: 0.45)),
+        backgroundColor: color.withValues(alpha: 0.08),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18),
+          const SizedBox(height: 4),
+          Text(
+            command.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            command.description,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 9),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// BGM/SE共通のミュートトグルボタン
   Widget _buildMuteButton({
     required String label,
@@ -597,13 +783,15 @@ class _BattleScreenState extends State<BattleScreen>
   }
 
   /// ダメージポップアップを追加
-  void _addDamagePopup(int value, bool isPlayerDamage, bool isCritical, bool isHealing) {
+  void _addDamagePopup(
+      int value, bool isPlayerDamage, bool isCritical, bool isHealing) {
     if (!mounted) return;
 
     final key = UniqueKey();
     final random = Random();
     final screenWidth = MediaQuery.sizeOf(context).width;
-    final offsetX = random.nextDouble() * (screenWidth * 0.15) - (screenWidth * 0.075);
+    final offsetX =
+        random.nextDouble() * (screenWidth * 0.15) - (screenWidth * 0.075);
     final baseOffset = screenWidth * 0.15;
 
     final popup = Positioned(
@@ -634,7 +822,7 @@ class _BattleScreenState extends State<BattleScreen>
   /// スキルエフェクトを表示
   Future<void> _showSkillEffect(String skillName, ElementType element) async {
     if (!mounted) return;
-    
+
     setState(() {
       _currentSkillOverlay = SkillEffectOverlay(
         skillName: skillName,
@@ -648,8 +836,8 @@ class _BattleScreenState extends State<BattleScreen>
         },
       );
     });
-    
+
     // エフェクトのピークまで少し待つ
-    await Future.delayed(const Duration(milliseconds: 1000));
+    await Future.delayed(Duration(milliseconds: _skillEffectDelayMs));
   }
 }

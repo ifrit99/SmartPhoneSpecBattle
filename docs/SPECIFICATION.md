@@ -1,4 +1,6 @@
-# SPEC BATTLE - 仕様書
+# SPEC BATTLE - 旧仕様書
+
+> この文書はアーカイブです。現行仕様の参照先は `docs/product_spec.md` です。
 
 バージョン: 0.1.0
 最終更新: 2026-02-17

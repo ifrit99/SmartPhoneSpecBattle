@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/device_info_service.dart';
+import '../../domain/enums/element_type.dart';
+import '../../domain/enums/rarity.dart';
+import '../../domain/models/character.dart';
 import '../../domain/services/character_generator.dart';
 import '../../domain/services/service_locator.dart';
+import '../theme/app_colors.dart';
+import '../widgets/pixel_character.dart';
 
 /// URL共有画面（自分のキャラクターの対戦URLを生成・コピー・シェアする）
 class ShareScreen extends StatefulWidget {
@@ -13,24 +18,27 @@ class ShareScreen extends StatefulWidget {
 }
 
 class _ShareScreenState extends State<ShareScreen> {
-  late Future<String> _urlFuture;
+  late Future<_SharePayload> _shareFuture;
 
   @override
   void initState() {
     super.initState();
-    _urlFuture = _generateShareUrl();
+    _shareFuture = _generateSharePayload();
   }
 
-  Future<String> _generateShareUrl() async {
+  Future<_SharePayload> _generateSharePayload() async {
     final sl = ServiceLocator();
     final equippedId = sl.storage.getEquippedGachaCharacterId();
 
-    String encoded;
     if (equippedId != null) {
       final equipped = sl.gachaService.findById(equippedId);
       if (equipped != null) {
-        encoded = sl.qrBattleService.encodeGachaCharacter(equipped);
-        return sl.qrBattleService.generateShareUrl(encoded);
+        final encoded = sl.qrBattleService.encodeGachaCharacter(equipped);
+        return _SharePayload(
+          url: sl.qrBattleService.generateShareUrl(encoded),
+          character: equipped.character,
+          sourceLabel: '${equipped.rarity.label} / ${equipped.deviceName}',
+        );
       }
     }
 
@@ -39,8 +47,12 @@ class _ShareScreenState extends State<ShareScreen> {
     final specs = await deviceInfo.getDeviceSpecs();
     final exp = sl.experienceService.loadExperience();
     final character = CharacterGenerator.generate(specs, experience: exp);
-    encoded = sl.qrBattleService.encodePlayerCharacter(character);
-    return sl.qrBattleService.generateShareUrl(encoded);
+    final encoded = sl.qrBattleService.encodePlayerCharacter(character);
+    return _SharePayload(
+      url: sl.qrBattleService.generateShareUrl(encoded),
+      character: character,
+      sourceLabel: '実機スペック',
+    );
   }
 
   void _copyUrl(String url) {
@@ -65,8 +77,8 @@ class _ShareScreenState extends State<ShareScreen> {
       appBar: AppBar(
         title: const Text('対戦URLを共有'),
       ),
-      body: FutureBuilder<String>(
-        future: _urlFuture,
+      body: FutureBuilder<_SharePayload>(
+        future: _shareFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -80,7 +92,8 @@ class _ShareScreenState extends State<ShareScreen> {
             );
           }
 
-          final url = snapshot.data!;
+          final payload = snapshot.data!;
+          final url = payload.url;
 
           return Center(
             child: SingleChildScrollView(
@@ -88,8 +101,8 @@ class _ShareScreenState extends State<ShareScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.share, size: 64, color: Colors.blueAccent),
-                  const SizedBox(height: 16),
+                  _buildShareCharacterCard(payload),
+                  const SizedBox(height: 24),
                   const Text(
                     'このURLを友達に送って\n対戦しよう！',
                     textAlign: TextAlign.center,
@@ -131,7 +144,8 @@ class _ShareScreenState extends State<ShareScreen> {
                         style: TextStyle(color: Colors.white, fontSize: 16),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.greenAccent.withValues(alpha: 0.3),
+                        backgroundColor:
+                            Colors.greenAccent.withValues(alpha: 0.3),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -171,4 +185,105 @@ class _ShareScreenState extends State<ShareScreen> {
       ),
     );
   }
+
+  Widget _buildShareCharacterCard(_SharePayload payload) {
+    final character = payload.character;
+    final elemColor = elementColor(character.element);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B2838),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: elemColor.withValues(alpha: 0.35)),
+        boxShadow: [
+          BoxShadow(
+            color: elemColor.withValues(alpha: 0.12),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          PixelCharacter(character: character, size: 70),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  character.name,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    _shareBadge(
+                      elementName(character.element),
+                      elemColor,
+                    ),
+                    _shareBadge('Lv.${character.level}', Colors.white70),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  payload.sourceLabel,
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Icon(Icons.ios_share, color: Colors.blueAccent),
+        ],
+      ),
+    );
+  }
+
+  Widget _shareBadge(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.28)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
+  }
+}
+
+class _SharePayload {
+  final String url;
+  final Character character;
+  final String sourceLabel;
+
+  const _SharePayload({
+    required this.url,
+    required this.character,
+    required this.sourceLabel,
+  });
 }

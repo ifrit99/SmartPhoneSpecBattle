@@ -1,9 +1,24 @@
 import '../../data/local_storage_service.dart';
+import '../../data/sound_service.dart';
+import 'boss_bounty_service.dart';
 import 'daily_reward_service.dart';
+import 'daily_mission_service.dart';
 import 'experience_service.dart';
 import 'currency_service.dart';
 import 'gacha_service.dart';
+import 'battle_result_service.dart';
 import 'qr_battle_service.dart';
+import 'achievement_service.dart';
+import 'weekly_challenge_service.dart';
+import 'limited_event_service.dart';
+import 'season_pass_service.dart';
+import 'player_rank_service.dart';
+import 'local_league_service.dart';
+import 'gacha_plan_service.dart';
+import 'roster_bonus_service.dart';
+import 'daily_shop_service.dart';
+import 'rival_road_service.dart';
+import 'player_title_service.dart';
 
 /// 旧デバイス名（実在名・架空名）→ 固定IDの対応表（マイグレーション用）
 const _oldDeviceNameToIdMap = <String, String>{
@@ -79,6 +94,20 @@ class ServiceLocator {
   late final GachaService gachaService;
   late final QrBattleService qrBattleService;
   late final DailyRewardService dailyRewardService;
+  late final DailyMissionService dailyMissionService;
+  late final BossBountyService bossBountyService;
+  late final WeeklyChallengeService weeklyChallengeService;
+  late final LimitedEventService limitedEventService;
+  late final SeasonPassService seasonPassService;
+  late final BattleResultService battleResultService;
+  late final AchievementService achievementService;
+  late final PlayerRankService playerRankService;
+  late final LocalLeagueService localLeagueService;
+  late final GachaPlanService gachaPlanService;
+  late final RosterBonusService rosterBonusService;
+  late final DailyShopService dailyShopService;
+  late final RivalRoadService rivalRoadService;
+  late final PlayerTitleService playerTitleService;
 
   /// 全サービスの初期化（アプリ起動時に1回だけ呼ぶ）
   Future<void> init() async {
@@ -86,6 +115,7 @@ class ServiceLocator {
 
     storage = LocalStorageService();
     await storage.init();
+    await SoundService().init(storage);
 
     // 旧デバイス名ベースの図鑑データをIDベースにマイグレーション
     await storage.migrateDefeatedEnemies(_oldDeviceNameToIdMap);
@@ -94,9 +124,36 @@ class ServiceLocator {
 
     experienceService = ExperienceService(storage);
     currencyService = CurrencyService(storage);
-    gachaService = GachaService(currencyService, storage);
+    dailyMissionService = DailyMissionService(storage, currencyService);
+    gachaService = GachaService(currencyService, storage, dailyMissionService);
     qrBattleService = QrBattleService();
     dailyRewardService = DailyRewardService(storage, currencyService);
+    bossBountyService = BossBountyService(storage, currencyService);
+    weeklyChallengeService = WeeklyChallengeService(storage, currencyService);
+    limitedEventService = LimitedEventService(storage, currencyService);
+    seasonPassService = SeasonPassService(storage, currencyService);
+    achievementService = AchievementService(storage, currencyService);
+    playerRankService = PlayerRankService(storage, currencyService);
+    localLeagueService = LocalLeagueService(playerRankService);
+    gachaPlanService = GachaPlanService(gachaService);
+    rosterBonusService = RosterBonusService(storage);
+    dailyShopService = DailyShopService(storage, currencyService, gachaService);
+    rivalRoadService = RivalRoadService(storage, currencyService);
+    playerTitleService = PlayerTitleService(storage, playerRankService);
+    battleResultService = BattleResultService(
+      storage,
+      experienceService,
+      currencyService,
+      gachaService,
+      dailyRewardService,
+      dailyMissionService,
+      bossBountyService,
+      weeklyChallengeService,
+      limitedEventService,
+      seasonPassService,
+      rivalRoadService: rivalRoadService,
+      rosterBonusService: rosterBonusService,
+    );
 
     _initialized = true;
   }

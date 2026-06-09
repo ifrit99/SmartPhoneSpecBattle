@@ -63,6 +63,24 @@ class QrBattleService {
     return _restoreBase64Padding(cleaned);
   }
 
+  /// URLまたは生コードの入力値を、デコード可能な対戦コードに正規化する。
+  ///
+  /// 共有URL入力時は `battle` パラメータを抽出し、
+  /// 生コード入力時は不足しているbase64urlパディングを復元する。
+  static String normalizeBattleInput(String input) {
+    final trimmed = input.trim();
+    final uri = Uri.tryParse(trimmed);
+    if (uri != null && uri.hasScheme) {
+      final extracted = extractBattleParam(uri);
+      if (extracted != null && extracted.isNotEmpty) {
+        return extracted;
+      }
+    }
+
+    final cleaned = trimmed.replaceAll(' ', '').replaceAll('+', '');
+    return _restoreBase64Padding(cleaned);
+  }
+
   /// base64urlのパディング(`=`)を除去
   static String _stripBase64Padding(String encoded) {
     return encoded.replaceAll('=', '');

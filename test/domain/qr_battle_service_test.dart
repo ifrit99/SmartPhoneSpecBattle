@@ -175,6 +175,31 @@ void main() {
       expect(guest.name, '抽出テスト');
     });
 
+    test('normalizeBattleInput は共有URLから battle コードを復元できる', () {
+      final original = _makeCharacter(name: 'URL入力テスト');
+      final encoded = service.encodePlayerCharacter(original);
+      final url = 'https://example.com/?battle=${encoded.replaceAll('=', '')}';
+
+      final normalized = QrBattleService.normalizeBattleInput(url);
+      final guest = service.decodeAsGuest(normalized);
+
+      expect(normalized, encoded);
+      expect(guest.name, 'URL入力テスト');
+    });
+
+    test('normalizeBattleInput はパディングなしの生コードも復元できる', () {
+      final original = _makeCharacter(name: '生コード入力テスト');
+      final encoded = service.encodePlayerCharacter(original);
+
+      final normalized = QrBattleService.normalizeBattleInput(
+        encoded.replaceAll('=', ''),
+      );
+      final guest = service.decodeAsGuest(normalized);
+
+      expect(normalized, encoded);
+      expect(guest.name, '生コード入力テスト');
+    });
+
     test('battleパラメータのないURLからはnullが返る', () {
       final uri = Uri.parse('https://example.com/?other=value');
       expect(QrBattleService.extractBattleParam(uri), isNull);
