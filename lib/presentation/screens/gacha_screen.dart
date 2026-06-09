@@ -147,7 +147,9 @@ class _GachaScreenState extends State<GachaScreen>
     await _gachaService.equipCharacter(char.id);
     if (!mounted) return;
 
-    Navigator.of(dialogContext).pop();
+    if (dialogContext.mounted) {
+      Navigator.of(dialogContext).pop();
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('${char.deviceName} をメインキャラクターに設定しました')),
     );
