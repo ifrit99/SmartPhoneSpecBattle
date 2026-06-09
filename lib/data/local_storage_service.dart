@@ -688,6 +688,22 @@ class LocalStorageService {
       throw FormatException('バックアップデータが壊れています');
     }
 
+    // 復元の途中で書き込みが失敗した場合に元へ戻せるよう、
+    // 既存データのスナップショットを先に取得する（部分復元の防止）
+    final snapshot = <String, Object?>{
+      for (final key in _store.getKeys()) key: _store.get(key),
+    };
+
+    try {
+      await _importBackupData(data);
+    } catch (_) {
+      await _restoreSnapshot(snapshot);
+      rethrow;
+    }
+  }
+
+  /// バックアップデータを全消去のうえ書き込む（importBackupCode専用）
+  Future<void> _importBackupData(Map<String, dynamic> data) async {
     await _store.clear();
     await _store.setInt(_keyLevel, _asInt(data[_keyLevel], 1));
     await _store.setInt(_keyCurrentExp, _asInt(data[_keyCurrentExp], 0));
@@ -831,6 +847,28 @@ class LocalStorageService {
     final bossBestTurns = data[_keyBossBestTurns];
     if (bossBestTurns is int && bossBestTurns > 0) {
       await _store.setInt(_keyBossBestTurns, bossBestTurns);
+    }
+  }
+
+  /// スナップショットの内容でストレージ全体を巻き戻す（復元失敗時用）
+  Future<void> _restoreSnapshot(Map<String, Object?> snapshot) async {
+    await _store.clear();
+    for (final entry in snapshot.entries) {
+      final value = entry.value;
+      if (value is bool) {
+        await _store.setBool(entry.key, value);
+      } else if (value is int) {
+        await _store.setInt(entry.key, value);
+      } else if (value is double) {
+        await _store.setDouble(entry.key, value);
+      } else if (value is String) {
+        await _store.setString(entry.key, value);
+      } else if (value is List) {
+        await _store.setStringList(
+          entry.key,
+          value.whereType<String>().toList(),
+        );
+      }
     }
   }
 
