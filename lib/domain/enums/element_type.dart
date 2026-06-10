@@ -42,8 +42,13 @@ extension ElementTypeExtension on ElementType {
 ElementType elementFromOsVersion(String osVersion) {
   final digits = osVersion.replaceAll(RegExp(r'[^0-9]'), '');
   if (digits.isEmpty) return ElementType.fire;
-  final num = int.parse(digits) % ElementType.values.length;
-  return ElementType.values[num];
+  // Linux 等ではバージョン文字列が長く int.parse がオーバーフローするため、
+  // 桁ごとに剰余を取りながら計算する（int.parse(digits) % length と同値）
+  var remainder = 0;
+  for (final codeUnit in digits.codeUnits) {
+    remainder = (remainder * 10 + (codeUnit - 0x30)) % ElementType.values.length;
+  }
+  return ElementType.values[remainder];
 }
 
 /// 後方互換: 属性の日本語名
