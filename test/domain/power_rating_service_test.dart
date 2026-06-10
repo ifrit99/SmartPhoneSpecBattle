@@ -69,9 +69,32 @@ void main() {
       }
 
       final playerIndex = rating.entries.indexWhere((e) => e.isPlayer);
-      // 同点はプレイヤー有利のため、順位はプレイヤー行の位置以下になる
-      expect(rating.rank, lessThanOrEqualTo(playerIndex + 1));
+      // 同点はプレイヤーを前に並べるため、rank と表示位置は常に一致する
+      expect(rating.rank, playerIndex + 1);
       expect(rating.score, rating.entries[playerIndex].score);
+    });
+
+    test('登場端末と同点の場合もプレイヤーが先に並び、rank と表示位置が一致する', () {
+      // カタログ先頭の端末と同一スペックを使い、確実に同点を発生させる
+      final device = EnemyGenerator.allEnemyDevices.first;
+      final specs = DeviceSpecs(
+        osVersion: device.osVersion,
+        deviceModel: device.deviceName,
+        cpuCores: device.cpuCores,
+        ramMB: device.ramMB,
+        storageFreeGB: device.storageFreeGB,
+        batteryLevel: device.batteryLevel,
+      );
+      final rating = service.estimate(CharacterGenerator.generate(specs));
+
+      final playerIndex = rating.entries.indexWhere((e) => e.isPlayer);
+      expect(rating.rank, playerIndex + 1);
+
+      // 同点の端末（同一スペックの端末自身）はプレイヤーより後に表示される
+      final tiedIndex = rating.entries.indexWhere(
+        (e) => !e.isPlayer && e.score == rating.score,
+      );
+      expect(tiedIndex, greaterThan(playerIndex));
     });
 
     test('同じスペックなら常に同じ評価を返す（決定論）', () {

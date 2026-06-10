@@ -109,7 +109,14 @@ class PowerRatingService {
           score: _deviceScore(device),
           isPlayer: false,
         ),
-    ]..sort((a, b) => b.score.compareTo(a.score));
+    ]..sort((a, b) {
+        final byScore = b.score.compareTo(a.score);
+        if (byScore != 0) return byScore;
+        // 同点はプレイヤーを前に並べ、rank（プレイヤー有利）と表示順を一致させる
+        if (a.isPlayer) return -1;
+        if (b.isPlayer) return 1;
+        return 0;
+      });
 
     // 同点はプレイヤー有利に扱う（自分より高スコアの端末数 + 1 が順位）
     final rank =
