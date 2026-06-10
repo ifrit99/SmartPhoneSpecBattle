@@ -42,8 +42,9 @@ class GachaProbabilityTable {
     final roll = random.nextInt(100);
     if (roll < rates[Rarity.ssr]!) return Rarity.ssr;
     if (roll < rates[Rarity.ssr]! + rates[Rarity.sr]!) return Rarity.sr;
-    if (roll < rates[Rarity.ssr]! + rates[Rarity.sr]! + rates[Rarity.r]!)
+    if (roll < rates[Rarity.ssr]! + rates[Rarity.sr]! + rates[Rarity.r]!) {
       return Rarity.r;
+    }
     return Rarity.n;
   }
 }

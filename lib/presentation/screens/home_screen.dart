@@ -2010,7 +2010,7 @@ class _HomeScreenState extends State<HomeScreen>
                   const SizedBox(height: 3),
                   Text(
                     bossBestTurns != null
-                        ? 'BOSS自己ベスト: ${bossBestTurns}ターン。${bountyAvailable ? '本日報酬も未回収です。' : '記録更新を狙えます。'}'
+                        ? 'BOSS自己ベスト: $bossBestTurnsターン。${bountyAvailable ? '本日報酬も未回収です。' : '記録更新を狙えます。'}'
                         : bountyAvailable
                             ? 'BOSS初回撃破で +300 Coin / +30 Gems'
                             : '本日のBOSS撃破報酬は受取済みです。',
@@ -2390,8 +2390,9 @@ class _HomeScreenState extends State<HomeScreen>
     LimitedEventMilestoneDefinition definition,
   ) {
     final parts = <String>[];
-    if (definition.rewardCoins > 0)
+    if (definition.rewardCoins > 0) {
       parts.add('+${definition.rewardCoins} Coin');
+    }
     if (definition.rewardGems > 0) parts.add('+${definition.rewardGems} Gems');
     return parts.join(' / ');
   }
@@ -2811,7 +2812,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (defeatedCount < enemyTotal) {
       return _NextObjective(
         icon: Icons.menu_book,
-        title: '図鑑 ${defeatedCount}/$enemyTotal',
+        title: '図鑑 $defeatedCount/$enemyTotal',
         description: '未発見の端末が残っています。勝利してコレクションを埋めましょう。',
         buttonLabel: '確認',
         color: Colors.white70,

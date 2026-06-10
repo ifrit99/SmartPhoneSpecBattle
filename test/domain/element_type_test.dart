@@ -56,5 +56,21 @@ void main() {
     test('空文字列はデフォルトの fire を返す', () {
       expect(elementFromOsVersion(''), ElementType.fire);
     });
+
+    test('int の上限を超える長い数字列でも例外を投げない', () {
+      // Linux CI の Platform.operatingSystemVersion から実際に生成された26桁。
+      // int.parse では FormatException になる長さ
+      // 61701015152404162237492026 % 6 = 0 -> ElementType.fire
+      expect(
+        elementFromOsVersion('61701015152404162237492026'),
+        ElementType.fire,
+      );
+      // デフォルト値(fire)へのフォールバックと区別するため非fireのケースも検証
+      // 99999999999999999999999999 % 6 = 3 -> ElementType.wind
+      expect(
+        elementFromOsVersion('9' * 26),
+        ElementType.wind,
+      );
+    });
   });
 }

@@ -1,0 +1,8 @@
+# Flutter 公式推奨の lint ルールセットを適用する。
+# ルール一覧: https://dart.dev/tools/linter-rules
+include: package:flutter_lints/flutter.yaml
+
+# 個別ルールの調整が必要になったらここに追記する。
+# linter:
+#   rules:
+#     avoid_print: false
