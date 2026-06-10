@@ -96,11 +96,12 @@
   - ~~Codex 再レビュー → マージ~~ → **完了**（2026-06-10: PR #14 マージ、レビュー指摘なし）
   - ~~GitHub Pages デプロイの確認~~ → **完了**（2026-06-10: deploy.yml 成功）
   - デプロイ後の最終動作確認（OGPプレビュー、URL対戦フロー、ログイン報酬/バトル報酬）— ユーザー実機テスト待ち
-  - リポジトリ品質改善（`feature/ci-quality-gate` ブランチ、2026-06-10）
+  - ~~リポジトリ品質改善~~ → **完了**（2026-06-10: PR #15 マージ・デプロイ成功）
     - CI に PR トリガー追加（`ci.yml`: analyze + test + web build）
     - deploy.yml に `flutter test` 追加、Flutter を 3.44.0 に統一
     - `flutter_lints` + `analysis_options.yaml` 導入、lint指摘5件修正
     - バックアップ復元の失敗時ロールバック（スナップショット巻き戻し）
+    - `elementFromOsVersion` の int オーバーフロー修正（Linux 等の長い OS バージョン文字列で FormatException が発生していた本番バグ。CI で発覚）
   - 別タスク候補（未着手）:
     - `home_screen.dart`（3,538行）の Widget 分割
     - `assets/fonts/NotoSansJP-Regular.ttf` の pubspec 登録 or 削除の判断
