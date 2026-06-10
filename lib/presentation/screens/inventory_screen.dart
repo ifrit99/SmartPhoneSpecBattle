@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../domain/models/gacha_character.dart';
 import '../../domain/enums/rarity.dart';
+import '../../domain/services/power_rating_service.dart';
 import '../../domain/services/service_locator.dart';
 import '../../domain/services/roster_bonus_service.dart';
 import '../theme/app_colors.dart';
@@ -822,14 +823,8 @@ class _InventoryScreenState extends State<InventoryScreen> {
     );
   }
 
-  int _powerScore(GachaCharacter char) {
-    final stats = char.character.battleStats;
-    return (stats.maxHp * 0.35 +
-            stats.atk * 3.0 +
-            stats.def * 2.1 +
-            stats.spd * 1.6)
-        .round();
-  }
+  int _powerScore(GachaCharacter char) =>
+      PowerRatingService.powerScore(char.character.battleStats);
 
   Widget _awakeningChip(GachaCharacter char, Color color) {
     return Container(

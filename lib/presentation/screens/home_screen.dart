@@ -12,10 +12,12 @@ import '../../domain/services/daily_shop_service.dart';
 import '../../domain/services/enemy_generator.dart';
 import '../../domain/services/gacha_plan_service.dart';
 import '../../domain/services/limited_event_service.dart';
+import '../../domain/services/power_rating_service.dart';
 import '../../domain/services/season_pass_service.dart';
 import '../../domain/services/service_locator.dart';
 import '../../domain/models/player_currency.dart';
 import '../widgets/pixel_character.dart';
+import '../widgets/power_rating_card.dart';
 import '../widgets/stat_bar.dart';
 import 'character_screen.dart';
 import 'collection_screen.dart';
@@ -43,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen>
     with TickerProviderStateMixin, WidgetsBindingObserver, RouteAware {
   Character? _playerCharacter;
   PlayerCurrency? _playerCurrency;
+  PowerRating? _powerRating;
   bool _loading = true;
   bool _isFirstBattle = false;
   bool _canClaimBattleReward = false;
@@ -137,6 +140,11 @@ class _HomeScreenState extends State<HomeScreen>
     final character = await _buildPlayerCharacter();
     final firstBattle = !LocalStorageService().isFirstBattleCompleted();
 
+    // 戦闘力レーティングは装備キャラではなく「自分のスマホ」の素体で評価する
+    final specs = await _deviceInfo.getDeviceSpecs();
+    final rating =
+        _sl.powerRatingService.estimate(CharacterGenerator.generate(specs));
+
     // ログイン報酬を付与（その日の初回起動時）
     final loginResult = await _sl.dailyRewardService.claimLoginReward();
     final battleRewardAvailable = _sl.dailyRewardService.canClaimBattleReward();
@@ -146,6 +154,7 @@ class _HomeScreenState extends State<HomeScreen>
     setState(() {
       _playerCharacter = character;
       _playerCurrency = currency;
+      _powerRating = rating;
       _isFirstBattle = firstBattle;
       _canClaimBattleReward = battleRewardAvailable;
       _loading = false;
@@ -465,7 +474,13 @@ class _HomeScreenState extends State<HomeScreen>
             onTap: _openCharacterDetail,
             child: _buildCharacterCard(player),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
+
+          // 戦闘力カード（スマホの強さの相対評価）
+          if (_powerRating != null) ...[
+            PowerRatingCard(rating: _powerRating!),
+            const SizedBox(height: 24),
+          ],
 
           // 戦績カード
           _buildRecordCard(record),

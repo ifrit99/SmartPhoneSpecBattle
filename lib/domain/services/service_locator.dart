@@ -19,6 +19,7 @@ import 'roster_bonus_service.dart';
 import 'daily_shop_service.dart';
 import 'rival_road_service.dart';
 import 'player_title_service.dart';
+import 'power_rating_service.dart';
 
 /// 旧デバイス名（実在名・架空名）→ 固定IDの対応表（マイグレーション用）
 const _oldDeviceNameToIdMap = <String, String>{
@@ -108,6 +109,7 @@ class ServiceLocator {
   late final DailyShopService dailyShopService;
   late final RivalRoadService rivalRoadService;
   late final PlayerTitleService playerTitleService;
+  late final PowerRatingService powerRatingService;
 
   /// 全サービスの初期化（アプリ起動時に1回だけ呼ぶ）
   Future<void> init() async {
@@ -140,6 +142,7 @@ class ServiceLocator {
     dailyShopService = DailyShopService(storage, currencyService, gachaService);
     rivalRoadService = RivalRoadService(storage, currencyService);
     playerTitleService = PlayerTitleService(storage, playerRankService);
+    powerRatingService = PowerRatingService();
     battleResultService = BattleResultService(
       storage,
       experienceService,

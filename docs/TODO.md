@@ -102,6 +102,12 @@
     - `flutter_lints` + `analysis_options.yaml` 導入、lint指摘5件修正
     - バックアップ復元の失敗時ロールバック（スナップショット巻き戻し）
     - `elementFromOsVersion` の int オーバーフロー修正（Linux 等の長い OS バージョン文字列で FormatException が発生していた本番バグ。CI で発覚）
+  - 戦闘力の可視化（`feature/power-rating-home` ブランチ、2026-06-10）
+    - ゴール: スマホの強さを「一目で」把握（ホームで戦闘力・推定上位%・順位を即表示）
+    - `PowerRatingService` 新設（PWR式をドメインへ昇格・編成画面も参照切替）
+    - 全登場端末17体との Lv1 素体比較で推定上位%・順位・ティア(SS〜D)を算出
+    - ホームに `PowerRatingCard` 追加、タップでランキング詳細シート
+    - 世界ランキングは段階導入方針（`isEstimated` フラグでサーバー実装に差し替え可能）
   - 別タスク候補（未着手）:
     - `home_screen.dart`（3,538行）の Widget 分割
     - `assets/fonts/NotoSansJP-Regular.ttf` の pubspec 登録 or 削除の判断
