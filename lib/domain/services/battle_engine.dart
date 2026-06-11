@@ -1,4 +1,5 @@
 import 'dart:math';
+import '../models/battle_statistics.dart';
 import '../models/character.dart';
 import '../models/skill.dart';
 import '../models/experience.dart';
@@ -73,6 +74,7 @@ class BattleResult {
   final int finalEnemyHp;
   final BattleTactic playerTactic;
   final BattleSupportCommand supportCommand;
+  final BattleStatistics statistics;
 
   const BattleResult({
     required this.playerWon,
@@ -83,7 +85,41 @@ class BattleResult {
     this.finalEnemyHp = 0,
     this.playerTactic = BattleTactic.balanced,
     this.supportCommand = BattleSupportCommand.none,
+    this.statistics = const BattleStatistics(),
   });
+}
+
+/// バトル進行中に統計値を加算するための内部ビルダー
+class _BattleStatsBuilder {
+  int playerDamageDealt = 0;
+  int enemyDamageDealt = 0;
+  int playerCriticalHits = 0;
+  int playerSkillCount = 0;
+  int playerSkillDamage = 0;
+  int playerHealing = 0;
+  int elementBonusDamage = 0;
+  int elementPenaltyDamage = 0;
+  int enemyElementBonusDamage = 0;
+  int tacticBonusDamage = 0;
+  int tacticGuardedDamage = 0;
+  int supportHealing = 0;
+
+  BattleStatistics build() {
+    return BattleStatistics(
+      playerDamageDealt: playerDamageDealt,
+      enemyDamageDealt: enemyDamageDealt,
+      playerCriticalHits: playerCriticalHits,
+      playerSkillCount: playerSkillCount,
+      playerSkillDamage: playerSkillDamage,
+      playerHealing: playerHealing,
+      elementBonusDamage: elementBonusDamage,
+      elementPenaltyDamage: elementPenaltyDamage,
+      enemyElementBonusDamage: enemyElementBonusDamage,
+      tacticBonusDamage: tacticBonusDamage,
+      tacticGuardedDamage: tacticGuardedDamage,
+      supportHealing: supportHealing,
+    );
+  }
 }
 
 /// 自動バトルエンジン
@@ -93,6 +129,9 @@ class BattleEngine {
   // スキルクールダウン管理
   final Map<String, int> _playerCooldowns = {};
   final Map<String, int> _enemyCooldowns = {};
+
+  // バトル統計の収集（executeBattle ごとにリセット）
+  _BattleStatsBuilder _stats = _BattleStatsBuilder();
 
   /// 自動バトルを実行し、結果を返す
   BattleResult executeBattle(
@@ -106,6 +145,7 @@ class BattleEngine {
     var currentEnemy = enemy.withHp(enemy.battleStats.hp);
     _playerCooldowns.clear();
     _enemyCooldowns.clear();
+    _stats = _BattleStatsBuilder();
 
     final log = <BattleLogEntry>[];
     int turn = 0;
@@ -186,8 +226,10 @@ class BattleEngine {
       }
 
       // ターン終了時の処理（バフ経過、クールダウン減少）
-      currentPlayer = _onTurnEnd(currentPlayer, _playerCooldowns, log);
-      currentEnemy = _onTurnEnd(currentEnemy, _enemyCooldowns, log);
+      currentPlayer =
+          _onTurnEnd(currentPlayer, _playerCooldowns, log, isPlayer: true);
+      currentEnemy =
+          _onTurnEnd(currentEnemy, _enemyCooldowns, log, isPlayer: false);
     }
 
     final reachedTurnLimit = turn >= maxTurns &&
@@ -215,7 +257,41 @@ class BattleEngine {
       finalEnemyHp: currentEnemy.currentStats.hp,
       playerTactic: playerTactic,
       supportCommand: supportCommand,
+      statistics: _stats.build(),
     );
+  }
+
+  /// ダメージイベントを統計に記録する。
+  ///
+  /// [neutralDamage] は属性倍率を等倍(1.0)にして計算した場合のダメージ、
+  /// [untacticDamage] は戦術倍率を適用しない場合のダメージ。
+  /// 実ダメージとの差分から属性・戦術それぞれの寄与を求める。
+  void _recordDamage({
+    required bool attackerIsPlayer,
+    required int damage,
+    required int neutralDamage,
+    required int untacticDamage,
+    required double elemMult,
+    bool isCritical = false,
+    bool isSkill = false,
+  }) {
+    if (attackerIsPlayer) {
+      _stats.playerDamageDealt += damage;
+      if (isCritical) _stats.playerCriticalHits++;
+      if (isSkill) _stats.playerSkillDamage += damage;
+      if (elemMult > 1.0) {
+        _stats.elementBonusDamage += damage - neutralDamage;
+      } else if (elemMult < 1.0) {
+        _stats.elementPenaltyDamage += neutralDamage - damage;
+      }
+      _stats.tacticBonusDamage += damage - untacticDamage;
+    } else {
+      _stats.enemyDamageDealt += damage;
+      if (elemMult > 1.0) {
+        _stats.enemyElementBonusDamage += damage - neutralDamage;
+      }
+      _stats.tacticGuardedDamage += untacticDamage - damage;
+    }
   }
 
   Character _applySupportCommand(
@@ -272,7 +348,11 @@ class BattleEngine {
 
   /// ターン終了処理（ステータス効果更新、クールダウン減少）
   Character _onTurnEnd(
-      Character char, Map<String, int> cooldowns, List<BattleLogEntry> log) {
+    Character char,
+    Map<String, int> cooldowns,
+    List<BattleLogEntry> log, {
+    required bool isPlayer,
+  }) {
     // クールダウン減少
     for (final key in cooldowns.keys.toList()) {
       cooldowns[key] = max(0, cooldowns[key]! - 1);
@@ -287,12 +367,24 @@ class BattleEngine {
       // regen: maxHp * value% 回復
       if (effect.type == EffectType.regen) {
         final healAmt = (maxHp * effect.value / 100).round();
-        currentHp = min(maxHp, currentHp + healAmt);
-        log.add(BattleLogEntry(
-          actorName: char.name,
-          healing: healAmt,
-          message: '${char.name} は ${effect.type.label} で HP $healAmt 回復した！',
-        ));
+        // HP上限で丸めた後の実回復量を統計・ログに使う（満タン時の過大計上を防ぐ）
+        final actualHeal = min(maxHp, currentHp + healAmt) - currentHp;
+        currentHp += actualHeal;
+        if (isPlayer) {
+          _stats.playerHealing += actualHeal;
+          // 支援コマンド由来のリジェネは個別に記録する
+          if (effect.id.startsWith('support_')) {
+            _stats.supportHealing += actualHeal;
+          }
+        }
+        if (actualHeal > 0) {
+          log.add(BattleLogEntry(
+            actorName: char.name,
+            healing: actualHeal,
+            message:
+                '${char.name} は ${effect.type.label} で HP $actualHeal 回復した！',
+          ));
+        }
       }
       // poison: maxHp * value% ダメージ
       else if (effect.type == EffectType.poison) {
@@ -368,7 +460,7 @@ class BattleEngine {
       case BattleActionType.attack:
         return _doAttack(attacker, defender, isPlayer, log, playerTactic);
       case BattleActionType.defend:
-        return _doDefend(attacker, defender, log);
+        return _doDefend(attacker, defender, isPlayer, log);
       case BattleActionType.skill:
         return _doSkill(attacker, defender, isPlayer, log, playerTactic);
     }
@@ -433,6 +525,23 @@ class BattleEngine {
       playerTactic: playerTactic,
     );
 
+    // 統計収集: 属性等倍で計算した場合のダメージとの差分で属性寄与を求める
+    final neutralRaw = attacker.effectiveStats.atk * 1.0 * critMult -
+        defender.effectiveStats.def * 0.5;
+    _recordDamage(
+      attackerIsPlayer: isPlayer,
+      damage: damage,
+      neutralDamage: _applyTacticDamage(
+        max(1, neutralRaw.round()),
+        attackerIsPlayer: isPlayer,
+        defenderIsPlayer: !isPlayer,
+        playerTactic: playerTactic,
+      ),
+      untacticDamage: max(1, rawDamage.round()),
+      elemMult: elemMult,
+      isCritical: isCritical,
+    );
+
     // 属性相性メッセージ
     String elemMsg = '';
     if (elemMult > 1.0) elemMsg = ' 効果抜群！';
@@ -454,22 +563,30 @@ class BattleEngine {
 
   /// 防御（HP微回復 + 防御バフもつける？）
   (Character, Character) _doDefend(
-      Character attacker, Character defender, List<BattleLogEntry> log) {
-    // 防御時は最大HPの5%回復
+    Character attacker,
+    Character defender,
+    bool isPlayer,
+    List<BattleLogEntry> log,
+  ) {
+    // 防御時は最大HPの5%回復（HP上限で丸めた実回復量を統計・ログに使う）
     final healAmount = (attacker.currentStats.maxHp * 0.05).round();
+    final actualHeal = min(attacker.currentStats.maxHp,
+            attacker.currentStats.hp + healAmount) -
+        attacker.currentStats.hp;
+    if (isPlayer) _stats.playerHealing += actualHeal;
 
     log.add(BattleLogEntry(
       actorName: attacker.name,
       actionType: BattleActionType.defend,
       actionName: '防御',
-      healing: healAmount,
-      message: '${attacker.name} は防御の構えをとった！ HP $healAmount 回復！',
+      healing: actualHeal,
+      message: actualHeal > 0
+          ? '${attacker.name} は防御の構えをとった！ HP $actualHeal 回復！'
+          : '${attacker.name} は防御の構えをとった！',
     ));
 
     // 自分のHPを回復
-    final newHp =
-        min(attacker.currentStats.maxHp, attacker.currentStats.hp + healAmount);
-    return (attacker.withHp(newHp), defender);
+    return (attacker.withHp(attacker.currentStats.hp + actualHeal), defender);
   }
 
   /// スキル使用
@@ -491,6 +608,7 @@ class BattleEngine {
 
     final skill = availableSkills[_random.nextInt(availableSkills.length)];
     cooldowns[skill.name] = skill.cooldown;
+    if (isPlayer) _stats.playerSkillCount++;
 
     Character newAttacker = attacker;
     Character newDefender = defender;
@@ -527,6 +645,23 @@ class BattleEngine {
           playerTactic: playerTactic,
         );
 
+        // 統計収集: 属性等倍計算との差分で属性寄与を求める
+        final neutralRaw = newAttacker.effectiveStats.atk * skill.multiplier -
+            newDefender.effectiveStats.def * 0.3;
+        _recordDamage(
+          attackerIsPlayer: isPlayer,
+          damage: damage,
+          neutralDamage: _applyTacticDamage(
+            max(1, neutralRaw.round()),
+            attackerIsPlayer: isPlayer,
+            defenderIsPlayer: !isPlayer,
+            playerTactic: playerTactic,
+          ),
+          untacticDamage: max(1, rawDamage.round()),
+          elemMult: elemMult,
+          isSkill: true,
+        );
+
         log.add(BattleLogEntry(
           actorName: attacker.name,
           actionType: BattleActionType.skill,
@@ -551,18 +686,22 @@ class BattleEngine {
       case SkillCategory.special:
         // 回復スキルなど
         if (skill.isSelfTarget && skill.multiplier > 0) {
+          // HP上限で丸めた実回復量を統計・ログに使う
           final healAmount =
               (newAttacker.currentStats.maxHp * skill.multiplier).round();
-          final newHp = min(newAttacker.currentStats.maxHp,
-              newAttacker.currentStats.hp + healAmount);
-          newAttacker = newAttacker.withHp(newHp);
+          final actualHeal = min(newAttacker.currentStats.maxHp,
+                  newAttacker.currentStats.hp + healAmount) -
+              newAttacker.currentStats.hp;
+          newAttacker =
+              newAttacker.withHp(newAttacker.currentStats.hp + actualHeal);
+          if (isPlayer) _stats.playerHealing += actualHeal;
 
           log.add(BattleLogEntry(
             actorName: attacker.name,
             actionType: BattleActionType.skill,
             actionName: skill.name,
-            healing: healAmount, // ここでヒール数値を渡す
-            message: '${attacker.name} の ${skill.name}！ HP $healAmount 回復！',
+            healing: actualHeal, // ここでヒール数値を渡す
+            message: '${attacker.name} の ${skill.name}！ HP $actualHeal 回復！',
           ));
         } else if (!skill.isSelfTarget &&
             skill.multiplier > 0 &&
@@ -582,7 +721,21 @@ class BattleEngine {
             final heal = dmg;
             final newHp = min(newAttacker.currentStats.maxHp,
                 newAttacker.currentStats.hp + heal);
+            // 統計にはHP上限で丸めた実回復量を使う
+            // （ログは「吸収量 = ダメージ量」という演出仕様のため heal のまま）
+            final actualHeal = newHp - newAttacker.currentStats.hp;
             newAttacker = newAttacker.withHp(newHp);
+
+            // 統計収集: ドレインは属性・防御を無視するため等倍扱い
+            _recordDamage(
+              attackerIsPlayer: isPlayer,
+              damage: dmg,
+              neutralDamage: dmg,
+              untacticDamage: max(1, rawDamage.round()),
+              elemMult: 1.0,
+              isSkill: true,
+            );
+            if (isPlayer) _stats.playerHealing += actualHeal;
 
             log.add(BattleLogEntry(
               actorName: attacker.name,

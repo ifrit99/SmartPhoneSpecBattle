@@ -3422,6 +3422,26 @@ class _EnemyPreviewSheetState extends State<_EnemyPreviewSheet> {
               ),
             ],
           ),
+          const SizedBox(height: 10),
+          // 推奨戦術の理由（なぜその戦術なのかを1行で示す）
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.tips_and_updates,
+                  size: 14, color: Colors.white54),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  _suggestReason(ratio, matchup),
+                  style: const TextStyle(
+                    color: Colors.white60,
+                    fontSize: 11,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -3471,6 +3491,20 @@ class _EnemyPreviewSheetState extends State<_EnemyPreviewSheet> {
     if (matchup >= 1.5) return BattleTactic.burst;
     if (ratio > 1.18) return BattleTactic.overclock;
     return BattleTactic.balanced;
+  }
+
+  /// 推奨戦術の理由（_suggestTactic と同じ分岐で説明を返す）
+  String _suggestReason(double ratio, double matchup) {
+    if (ratio < 0.88) {
+      return 'スペック劣勢のため、被ダメージを抑える「ファイアウォール」で粘るのが有効';
+    }
+    if (matchup >= 1.5) {
+      return '属性有利なので、スキル使用率が上がる「バースト」で1.5倍の相性を畳みかけたい';
+    }
+    if (ratio > 1.18) {
+      return 'スペック優勢なので、「オーバークロック」で押し切ればCoin報酬も1.2倍になる';
+    }
+    return '互角の勝負。標準の「バランス」で安定して立ち回るのが堅実';
   }
 
   String _forecastLabel(double ratio) {
