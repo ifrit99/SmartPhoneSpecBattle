@@ -367,19 +367,24 @@ class BattleEngine {
       // regen: maxHp * value% 回復
       if (effect.type == EffectType.regen) {
         final healAmt = (maxHp * effect.value / 100).round();
-        currentHp = min(maxHp, currentHp + healAmt);
+        // HP上限で丸めた後の実回復量を統計・ログに使う（満タン時の過大計上を防ぐ）
+        final actualHeal = min(maxHp, currentHp + healAmt) - currentHp;
+        currentHp += actualHeal;
         if (isPlayer) {
-          _stats.playerHealing += healAmt;
+          _stats.playerHealing += actualHeal;
           // 支援コマンド由来のリジェネは個別に記録する
           if (effect.id.startsWith('support_')) {
-            _stats.supportHealing += healAmt;
+            _stats.supportHealing += actualHeal;
           }
         }
-        log.add(BattleLogEntry(
-          actorName: char.name,
-          healing: healAmt,
-          message: '${char.name} は ${effect.type.label} で HP $healAmt 回復した！',
-        ));
+        if (actualHeal > 0) {
+          log.add(BattleLogEntry(
+            actorName: char.name,
+            healing: actualHeal,
+            message:
+                '${char.name} は ${effect.type.label} で HP $actualHeal 回復した！',
+          ));
+        }
       }
       // poison: maxHp * value% ダメージ
       else if (effect.type == EffectType.poison) {
@@ -563,22 +568,25 @@ class BattleEngine {
     bool isPlayer,
     List<BattleLogEntry> log,
   ) {
-    // 防御時は最大HPの5%回復
+    // 防御時は最大HPの5%回復（HP上限で丸めた実回復量を統計・ログに使う）
     final healAmount = (attacker.currentStats.maxHp * 0.05).round();
-    if (isPlayer) _stats.playerHealing += healAmount;
+    final actualHeal = min(attacker.currentStats.maxHp,
+            attacker.currentStats.hp + healAmount) -
+        attacker.currentStats.hp;
+    if (isPlayer) _stats.playerHealing += actualHeal;
 
     log.add(BattleLogEntry(
       actorName: attacker.name,
       actionType: BattleActionType.defend,
       actionName: '防御',
-      healing: healAmount,
-      message: '${attacker.name} は防御の構えをとった！ HP $healAmount 回復！',
+      healing: actualHeal,
+      message: actualHeal > 0
+          ? '${attacker.name} は防御の構えをとった！ HP $actualHeal 回復！'
+          : '${attacker.name} は防御の構えをとった！',
     ));
 
     // 自分のHPを回復
-    final newHp =
-        min(attacker.currentStats.maxHp, attacker.currentStats.hp + healAmount);
-    return (attacker.withHp(newHp), defender);
+    return (attacker.withHp(attacker.currentStats.hp + actualHeal), defender);
   }
 
   /// スキル使用
@@ -678,19 +686,22 @@ class BattleEngine {
       case SkillCategory.special:
         // 回復スキルなど
         if (skill.isSelfTarget && skill.multiplier > 0) {
+          // HP上限で丸めた実回復量を統計・ログに使う
           final healAmount =
               (newAttacker.currentStats.maxHp * skill.multiplier).round();
-          final newHp = min(newAttacker.currentStats.maxHp,
-              newAttacker.currentStats.hp + healAmount);
-          newAttacker = newAttacker.withHp(newHp);
-          if (isPlayer) _stats.playerHealing += healAmount;
+          final actualHeal = min(newAttacker.currentStats.maxHp,
+                  newAttacker.currentStats.hp + healAmount) -
+              newAttacker.currentStats.hp;
+          newAttacker =
+              newAttacker.withHp(newAttacker.currentStats.hp + actualHeal);
+          if (isPlayer) _stats.playerHealing += actualHeal;
 
           log.add(BattleLogEntry(
             actorName: attacker.name,
             actionType: BattleActionType.skill,
             actionName: skill.name,
-            healing: healAmount, // ここでヒール数値を渡す
-            message: '${attacker.name} の ${skill.name}！ HP $healAmount 回復！',
+            healing: actualHeal, // ここでヒール数値を渡す
+            message: '${attacker.name} の ${skill.name}！ HP $actualHeal 回復！',
           ));
         } else if (!skill.isSelfTarget &&
             skill.multiplier > 0 &&
@@ -710,6 +721,9 @@ class BattleEngine {
             final heal = dmg;
             final newHp = min(newAttacker.currentStats.maxHp,
                 newAttacker.currentStats.hp + heal);
+            // 統計にはHP上限で丸めた実回復量を使う
+            // （ログは「吸収量 = ダメージ量」という演出仕様のため heal のまま）
+            final actualHeal = newHp - newAttacker.currentStats.hp;
             newAttacker = newAttacker.withHp(newHp);
 
             // 統計収集: ドレインは属性・防御を無視するため等倍扱い
@@ -721,7 +735,7 @@ class BattleEngine {
               elemMult: 1.0,
               isSkill: true,
             );
-            if (isPlayer) _stats.playerHealing += heal;
+            if (isPlayer) _stats.playerHealing += actualHeal;
 
             log.add(BattleLogEntry(
               actorName: attacker.name,

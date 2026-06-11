@@ -1,9 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spec_battle_game/domain/enums/battle_tactic.dart';
+import 'package:spec_battle_game/domain/enums/effect_type.dart';
 import 'package:spec_battle_game/domain/enums/element_type.dart';
 import 'package:spec_battle_game/domain/models/character.dart';
 import 'package:spec_battle_game/domain/models/skill.dart';
 import 'package:spec_battle_game/domain/models/stats.dart';
+import 'package:spec_battle_game/domain/models/status_effect.dart';
 import 'package:spec_battle_game/domain/services/battle_engine.dart';
 
 /// テスト用キャラクターのファクトリ（battle_engine_test.dart と同じパターン）
@@ -15,6 +17,7 @@ Character makeCharacter({
   int def = 10,
   int spd = 10,
   List<Skill> skills = const [],
+  List<StatusEffect> statusEffects = const [],
   int batteryLevel = 50,
 }) {
   final stats = Stats(hp: hp, maxHp: hp, atk: atk, def: def, spd: spd);
@@ -24,6 +27,7 @@ Character makeCharacter({
     baseStats: stats,
     currentStats: stats,
     skills: skills,
+    statusEffects: statusEffects,
     batteryLevel: batteryLevel,
   );
 }
@@ -127,16 +131,55 @@ void main() {
 
     test('防御支援のリジェネ回復が supportHealing に記録される', () {
       final engine = BattleEngine();
-      final player = makeCharacter(name: 'プレイヤー', hp: 400, atk: 20, def: 15);
-      final enemy = makeCharacter(name: '敵', hp: 400, atk: 20, def: 15);
+
+      // 実回復量ベースのため、リジェネ発動前にプレイヤーが被弾している必要がある。
+      // 敵がリジェネ期間（3ターン）に一度も攻撃しない確率は (防御率0.15)^3 ≈ 0.3% の
+      // ため、稀なフレークを避けるために数回リトライする。
+      var supportHealing = 0;
+      var playerHealing = 0;
+      for (var i = 0; i < 5 && supportHealing == 0; i++) {
+        final player =
+            makeCharacter(name: 'プレイヤー', hp: 400, atk: 20, def: 15);
+        final enemy = makeCharacter(name: '敵', hp: 400, atk: 20, def: 15);
+        final stats = engine
+            .executeBattle(player, enemy,
+                supportCommand: BattleSupportCommand.barrier)
+            .statistics;
+        supportHealing = stats.supportHealing;
+        playerHealing = stats.playerHealing;
+      }
+
+      expect(supportHealing, greaterThan(0));
+      expect(playerHealing, greaterThanOrEqualTo(supportHealing));
+    });
+
+    test('満タン時のリジェネ回復は統計に計上しない（オーバーヒール防止）', () {
+      final engine = BattleEngine();
+      // 敵を10ターンスタンさせ、リジェネ期間（3ターン）中プレイヤーが
+      // 無傷（満タン）であることを保証する
+      final player = makeCharacter(name: 'プレイヤー', hp: 400, atk: 20, def: 10);
+      final enemy = makeCharacter(
+        name: '敵',
+        hp: 400,
+        atk: 20,
+        def: 10,
+        statusEffects: const [
+          StatusEffect(
+            id: 'test_stun',
+            type: EffectType.stun,
+            duration: 10,
+            value: 0,
+          ),
+        ],
+      );
 
       final stats = engine
           .executeBattle(player, enemy,
               supportCommand: BattleSupportCommand.barrier)
           .statistics;
 
-      expect(stats.supportHealing, greaterThan(0));
-      expect(stats.playerHealing, greaterThanOrEqualTo(stats.supportHealing));
+      // 満タンのまま3ターン経過するため、実回復量は0でなければならない
+      expect(stats.supportHealing, 0);
     });
 
     test('スキル使用回数とスキルダメージが記録される', () {
