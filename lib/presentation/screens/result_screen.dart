@@ -4,6 +4,7 @@ import '../../domain/models/character.dart';
 import '../../domain/enums/battle_tactic.dart';
 import '../../domain/services/boss_bounty_service.dart';
 import '../../domain/services/battle_engine.dart';
+import '../../domain/services/battle_insight_service.dart';
 import '../../domain/services/daily_reward_service.dart';
 import '../../domain/services/enemy_generator.dart';
 import '../../domain/services/rival_road_service.dart';
@@ -61,6 +62,7 @@ class _ResultScreenState extends State<ResultScreen>
   BossRecordUpdate? _bossRecordUpdate;
   RivalRoadClearResult? _rivalRoadClearResult;
   int _seasonPassXpGained = 0;
+  late final List<BattleInsightItem> _insights;
 
   @override
   void initState() {
@@ -86,6 +88,13 @@ class _ResultScreenState extends State<ResultScreen>
     );
 
     _canOpenGacha = _hasGachaPullAvailable();
+
+    // 勝因・敗因の分析（純粋関数なので initState で一度だけ計算する）
+    _insights = BattleInsightService.analyze(
+      result: widget.result,
+      player: widget.player,
+      enemy: widget.enemy,
+    );
 
     // バトル結果を永続化する（Futureを保持して遷移前に完了を保証）
     _saveFuture = _saveResult();
@@ -415,6 +424,12 @@ class _ResultScreenState extends State<ResultScreen>
             ),
           ),
 
+          // 勝因ハイライト / 次への対策カード
+          if (_insights.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _buildInsightCard(won),
+          ],
+
           // レベルアップ演出
           if (_leveledUp) ...[
             const SizedBox(height: 16),
@@ -657,6 +672,80 @@ class _ResultScreenState extends State<ResultScreen>
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// 勝因ハイライト（勝利時）／次への対策（敗北時）カード
+  Widget _buildInsightCard(bool won) {
+    final accentColor =
+        won ? const Color(0xFFFFD700) : const Color(0xFF74B9FF);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B2838),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: accentColor.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                won ? Icons.military_tech : Icons.lightbulb_outline,
+                color: accentColor,
+                size: 18,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                won ? '勝因ハイライト' : '次への対策',
+                style: TextStyle(
+                  color: accentColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          for (final (index, item) in _insights.indexed) ...[
+            if (index > 0) const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(item.icon, style: const TextStyle(fontSize: 18)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        item.detail,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
