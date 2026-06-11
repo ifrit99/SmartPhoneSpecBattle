@@ -1,7 +1,7 @@
 # SPEC BATTLE — TODO
 
 バージョン: 0.1.0
-最終更新: 2026-06-10
+最終更新: 2026-06-11
 
 ---
 
@@ -108,6 +108,12 @@
     - 全登場端末17体との Lv1 素体比較で推定上位%・順位・ティア(SS〜D)を算出
     - ホームに `PowerRatingCard` 追加、タップでランキング詳細シート
     - 世界ランキングは段階導入方針（`isEstimated` フラグでサーバー実装に差し替え可能）
+  - アバタースタジオ＝見た目カスタマイズ（`feature/avatar-studio` ブランチ、2026-06-11）
+    - ゴール: 見た目のカスタマイズが「自己表現したくなる」状態（計画: `docs/plans/avatar-studio.md`）
+    - 4軸カスタマイズ（形状8×6×5×5/カラー12/装飾8/オーラ6 = 691,200通り）+ 各スロット「おまかせ」
+    - `AvatarStudioScreen` 新規、ホーム「見た目」導線、ランキング/リーグ順位表に自分のアバター表示
+    - `CharacterCodec` v3 化（accessory/aura 2バイト追加、v1/v2 デコード後方互換）
+    - analyze/test 完了（377件パス）。PR作成 → Codexレビュー → デプロイ後の本番検証が残り
   - 別タスク候補（未着手）:
     - `home_screen.dart`（3,538行）の Widget 分割
     - `assets/fonts/NotoSansJP-Regular.ttf` の pubspec 登録 or 削除の判断

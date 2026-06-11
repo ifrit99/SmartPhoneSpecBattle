@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/device_info_service.dart';
 import '../../data/sound_service.dart';
+import '../../domain/models/avatar_customization.dart';
 import '../../domain/models/character.dart';
 import '../../domain/enums/element_type.dart';
 import '../../domain/enums/battle_tactic.dart';
@@ -19,6 +20,7 @@ import '../../domain/models/player_currency.dart';
 import '../widgets/pixel_character.dart';
 import '../widgets/power_rating_card.dart';
 import '../widgets/stat_bar.dart';
+import 'avatar_studio_screen.dart';
 import 'character_screen.dart';
 import 'collection_screen.dart';
 import 'battle_screen.dart';
@@ -166,8 +168,17 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  /// 装備中のキャラクターまたは実機スペックからCharacterを構築する
+  /// 装備中のキャラクターまたは実機スペックからCharacterを構築し、
+  /// アバターカスタマイズ（見た目）を適用する
   Future<Character> _buildPlayerCharacter() async {
+    final base = await _buildBasePlayerCharacter();
+    final customization = AvatarCustomization.fromStorageString(
+        _sl.storage.getAvatarCustomization());
+    return customization.applyTo(base);
+  }
+
+  /// カスタマイズ適用前のベースキャラクターを構築する
+  Future<Character> _buildBasePlayerCharacter() async {
     final experience = _sl.experienceService.loadExperience();
     final equippedId = _sl.storage.getEquippedGachaCharacterId();
 
@@ -180,6 +191,21 @@ class _HomeScreenState extends State<HomeScreen>
 
     final specs = await _deviceInfo.getDeviceSpecs();
     return CharacterGenerator.generate(specs, experience: experience);
+  }
+
+  /// アバタースタジオを開き、戻ってきたら見た目を再反映する
+  Future<void> _openAvatarStudio() async {
+    final base = await _buildBasePlayerCharacter();
+    if (!mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AvatarStudioScreen(baseCharacter: base),
+      ),
+    );
+    final updated = await _buildPlayerCharacter();
+    if (!mounted) return;
+    setState(() => _playerCharacter = updated);
   }
 
   void _startBattle({EnemyDifficulty? difficulty}) {
@@ -478,7 +504,7 @@ class _HomeScreenState extends State<HomeScreen>
 
           // 戦闘力カード（スマホの強さの相対評価）
           if (_powerRating != null) ...[
-            PowerRatingCard(rating: _powerRating!),
+            PowerRatingCard(rating: _powerRating!, playerAvatar: player),
             const SizedBox(height: 24),
           ],
 
@@ -754,7 +780,41 @@ class _HomeScreenState extends State<HomeScreen>
       ),
       child: Row(
         children: [
-          PixelCharacter(character: player, size: charSize),
+          Column(
+            children: [
+              PixelCharacter(character: player, size: charSize),
+              const SizedBox(height: 6),
+              GestureDetector(
+                onTap: _openAvatarStudio,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6C5CE7).withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: const Color(0xFF6C5CE7).withValues(alpha: 0.5),
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.brush, size: 12, color: Color(0xFFA29BFE)),
+                      SizedBox(width: 4),
+                      Text(
+                        '見た目',
+                        style: TextStyle(
+                          color: Color(0xFFA29BFE),
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(

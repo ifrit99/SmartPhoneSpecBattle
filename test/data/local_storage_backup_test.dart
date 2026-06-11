@@ -71,6 +71,7 @@ void main() {
     await storage.saveClaimedAchievements(['first_battle']);
     await storage.setBgmMuted(true);
     await storage.setSeMuted(true);
+    await storage.saveAvatarCustomization('3,-1,2,-1,9,0,5');
 
     final code = await storage.exportBackupCode();
 
@@ -127,6 +128,7 @@ void main() {
     expect(storage.getClaimedAchievements(), ['first_battle']);
     expect(storage.isBgmMuted(), isTrue);
     expect(storage.isSeMuted(), isTrue);
+    expect(storage.getAvatarCustomization(), '3,-1,2,-1,9,0,5');
   });
 
   test('prefixなしのバックアップ本文も復元できる', () async {

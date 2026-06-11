@@ -18,9 +18,11 @@ import '../enums/rarity.dart';
 ///
 /// v2 ではデータ末尾に HMAC-SHA256 ベースの4バイトチェックサムを付与し、
 /// 改ざんを検知する。
+/// v3 ではビジュアルパーツにアクセサリー/オーラの2バイトを追加した。
 class CharacterCodec {
-  static const int currentVersion = 2;
-  static const int _fixedHeaderSize = 19;
+  static const int currentVersion = 3;
+  static const int _fixedHeaderSizeV2 = 19; // v1/v2: visual 5バイトまで
+  static const int _fixedHeaderSize = 21; // v3: accessory/aura を含む
   static const int _checksumSize = 4;
 
   /// チェックサム計算用の秘密鍵
@@ -69,9 +71,10 @@ class CharacterCodec {
     if (version == 1) {
       // v1: チェックサムなし（後方互換）
       return _fromBytes(bytes, version: 1);
-    } else if (version == currentVersion) {
-      // v2: チェックサム検証
-      if (bytes.length < _fixedHeaderSize + 1 + _checksumSize) {
+    } else if (version == 2 || version == currentVersion) {
+      // v2/v3: チェックサム検証
+      final minHeader = version == 2 ? _fixedHeaderSizeV2 : _fixedHeaderSize;
+      if (bytes.length < minHeader + 1 + _checksumSize) {
         throw const FormatException('データが短すぎます');
       }
 
@@ -84,7 +87,7 @@ class CharacterCodec {
         throw const IntegrityException('データの整合性チェックに失敗しました（改ざんの可能性）');
       }
 
-      return _fromBytes(payload, version: currentVersion);
+      return _fromBytes(payload, version: version);
     } else {
       throw FormatException('未対応のバージョンです: v$version');
     }
@@ -105,10 +108,11 @@ class CharacterCodec {
 
     final version = bytes[0];
 
-    if (version == currentVersion) {
+    if (version >= 2) {
+      // v2以降はチェックサム付き（検証はせず除去のみ）
       final payloadEnd = bytes.length - _checksumSize;
       final payload = bytes.sublist(0, payloadEnd);
-      return _fromBytes(payload, version: currentVersion);
+      return _fromBytes(payload, version: version);
     } else {
       return _fromBytes(bytes, version: version);
     }
@@ -185,14 +189,16 @@ class CharacterCodec {
     buffer.setUint32(offset, character.seed & 0xFFFFFFFF);
     offset += 4;
 
-    // [14-18] visual parts
+    // [14-20] visual parts
     buffer.setUint8(offset++, character.headIndex.clamp(0, 255));
     buffer.setUint8(offset++, character.bodyIndex.clamp(0, 255));
     buffer.setUint8(offset++, character.armIndex.clamp(0, 255));
     buffer.setUint8(offset++, character.legIndex.clamp(0, 255));
     buffer.setUint8(offset++, character.colorPaletteIndex.clamp(0, 255));
+    buffer.setUint8(offset++, character.accessoryIndex.clamp(0, 255));
+    buffer.setUint8(offset++, character.auraIndex.clamp(0, 255));
 
-    // [19] nameLen + name
+    // [21] nameLen + name
     buffer.setUint8(offset++, nameBytes.length.clamp(0, 255));
     final result = buffer.buffer.asUint8List();
     result.setRange(offset, offset + nameBytes.length, nameBytes);
@@ -209,7 +215,8 @@ class CharacterCodec {
   }
 
   static DecodedCharacter _fromBytes(Uint8List bytes, {required int version}) {
-    if (bytes.length < _fixedHeaderSize + 1) {
+    final minHeader = version >= 3 ? _fixedHeaderSize : _fixedHeaderSizeV2;
+    if (bytes.length < minHeader + 1) {
       throw const FormatException('データが短すぎます');
     }
 
@@ -257,7 +264,15 @@ class CharacterCodec {
     final legIndex = buffer.getUint8(offset++);
     final colorPaletteIndex = buffer.getUint8(offset++);
 
-    // [19] nameLen + name
+    // [19-20] v3: accessory / aura（v1/v2 はなし = 0）
+    var accessoryIndex = 0;
+    var auraIndex = 0;
+    if (version >= 3) {
+      accessoryIndex = buffer.getUint8(offset++);
+      auraIndex = buffer.getUint8(offset++);
+    }
+
+    // nameLen + name
     if (offset >= bytes.length) {
       throw const FormatException('名前データが不足しています');
     }
@@ -309,6 +324,8 @@ class CharacterCodec {
       armIndex: armIndex,
       legIndex: legIndex,
       colorPaletteIndex: colorPaletteIndex,
+      accessoryIndex: accessoryIndex,
+      auraIndex: auraIndex,
     );
 
     return DecodedCharacter(

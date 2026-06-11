@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../domain/models/character.dart';
 import '../../domain/services/power_rating_service.dart';
+import 'pixel_character.dart';
 import 'stat_bar.dart';
 
 /// ティアごとのテーマカラー
@@ -19,7 +21,10 @@ Color powerTierColor(PowerTier tier) {
 class PowerRatingCard extends StatelessWidget {
   final PowerRating rating;
 
-  const PowerRatingCard({super.key, required this.rating});
+  /// ランキング詳細の自分の行に表示するアバター（カスタマイズ反映済み）
+  final Character? playerAvatar;
+
+  const PowerRatingCard({super.key, required this.rating, this.playerAvatar});
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +33,8 @@ class PowerRatingCard extends StatelessWidget {
     final strength = (1 - rating.topPercent / 100).clamp(0.0, 1.0);
 
     return GestureDetector(
-      onTap: () => PowerRankingSheet.show(context, rating),
+      onTap: () =>
+          PowerRankingSheet.show(context, rating, playerAvatar: playerAvatar),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
@@ -156,9 +162,16 @@ class PowerRatingCard extends StatelessWidget {
 class PowerRankingSheet extends StatelessWidget {
   final PowerRating rating;
 
-  const PowerRankingSheet({super.key, required this.rating});
+  /// 自分の行に表示するアバター（カスタマイズ反映済み）
+  final Character? playerAvatar;
 
-  static Future<void> show(BuildContext context, PowerRating rating) {
+  const PowerRankingSheet({super.key, required this.rating, this.playerAvatar});
+
+  static Future<void> show(
+    BuildContext context,
+    PowerRating rating, {
+    Character? playerAvatar,
+  }) {
     return showModalBottomSheet<void>(
       context: context,
       backgroundColor: const Color(0xFF1B2838),
@@ -166,7 +179,8 @@ class PowerRankingSheet extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => PowerRankingSheet(rating: rating),
+      builder: (context) =>
+          PowerRankingSheet(rating: rating, playerAvatar: playerAvatar),
     );
   }
 
@@ -260,6 +274,11 @@ class PowerRankingSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
+          // 自分の行にはカスタマイズ済みアバターを表示
+          if (highlight && playerAvatar != null) ...[
+            PixelCharacter(character: playerAvatar!, size: 28),
+            const SizedBox(width: 6),
+          ],
           Expanded(
             child: Text(
               entry.isPlayer ? 'あなたのスマホ' : entry.name,

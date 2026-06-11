@@ -1,0 +1,70 @@
+# Plan: アバタースタジオ（見た目カスタマイズ）
+Created: 2026-06-11
+Status: IN_PROGRESS
+
+## 要件
+見た目のカスタマイズが「自己表現したくなる」状態にする。
+- カスタマイズの選択肢が豊富で、組み合わせの楽しさがある
+- カスタマイズした結果が対戦時やランキング画面でしっかり反映・表示される
+- 方向性の異なるカスタマイズ軸が3つ以上存在する
+
+## 現状の課題
+- 見た目（head/body/arm/leg/colorPalette の5インデックス）はシードから自動生成され、ユーザーは一切選べない
+- 描画は頭4種・体3種・腕3種・脚2種・色6種のみ（headIndex は 0-7 で保存されるが描画は %4 に丸めている）
+- ランキング系 UI（PowerRankingSheet・ローカルリーグ順位表）に自分のアバター表示がない
+
+## 仕様
+
+### カスタマイズ軸（4軸・方向性が異なる）
+1. **形状軸**: 頭8種 / 体6種 / 腕5種 / 脚5種（シルエットの個性）
+2. **カラー軸**: パレット12種（色の個性）
+3. **装飾軸**: アクセサリー8種（なし/アンテナ/とんがり帽/ツノ/王冠/リボン/サングラス/マフラー）
+4. **演出軸**: オーラ6種（なし/光輪/星屑/炎/電撃/雪）
+
+組み合わせ: 8×6×5×5×12×8×6 = 691,200 通り。
+各スロットは「おまかせ（-1 = 元の見た目を維持）」を選択可能。
+
+### 画面/UI変更
+- `avatar_studio_screen.dart`【新規】: ライブプレビュー + 軸別パーツ選択 + シャッフル + リセット
+- `home_screen.dart`: プレイヤーカードに「見た目」導線を追加。`_buildPlayerCharacter` の最後にカスタム適用（装備ガチャキャラにも適用される。おまかせなら元の見た目）
+- `power_rating_card.dart`: PowerRankingSheet の自分の行にミニアバター表示
+- `collection_screen.dart`: ローカルリーグ順位表の自分の行にミニアバター表示
+
+### ロジック/状態変更
+- `character.dart`: `accessoryIndex` / `auraIndex` フィールド追加（デフォルト0 = なし）
+- `avatar_customization.dart`【新規】: 7スロットモデル（-1=おまかせ）+ `applyTo(Character)`
+- `pixel_character.dart`: 描画拡張（頭8/体6/腕5/脚5/色12 + アクセサリー + オーラ）
+- `character_generator.dart`: 生成時に accessory/aura もシード乱数で決定（敵にも個性）
+- `character_codec.dart`: v3 化（visual 7バイト）。v1/v2 デコード後方互換（accessory/aura=0）
+- `gacha_character.dart`: toJson/fromJson に accessory/aura 追加（`as int? ?? 0` で後方互換）
+- `local_storage_service.dart`: `avatar.customization` キー1個（カンマ区切り7値）の保存/読込 + バックアップ対象化
+
+### 既知の影響（意図的変更）
+- 描画の %4 丸め解除により、既存の敵・キャラの一部で頭の形が変わる（多様化のため許容）
+
+### テスト基準
+- [x] AvatarCustomization.applyTo: -1 スロットは元の値を維持、設定値は上書き
+- [x] CharacterCodec v3 ラウンドトリップ（accessory/aura 含む）と v2 データの後方互換デコード
+- [x] GachaCharacter JSON: 旧形式（accessory/aura なし）の読込が 0 にフォールバック
+- [x] LocalStorage: アバター設定の保存/読込/バックアップ往復
+- [ ] ブラウザ: スタジオで変更 → ホーム/バトル/リザルトに反映、ランキングにアバター表示
+
+### 完了条件
+- [x] flutter analyze: エラー0（2026-06-11）
+- [x] flutter test: 全377件パス（2026-06-11）
+- [ ] 本番デプロイ後、カスタマイズ→対戦反映を Playwright で確認
+
+---
+## Generator ログ
+- 2026-06-11: コア実装完了。
+  - `AvatarCustomization` 新規（7スロット、-1=おまかせ、カンマ区切り1キーで永続化）
+  - `Character` に accessoryIndex/auraIndex 追加、`CharacterCodec` v3 化（v1/v2 デコード後方互換）
+  - `PixelCharacter` 描画拡張: 頭8/体6/腕5/脚5/色12 + アクセサリー8 + オーラ6
+  - `AvatarStudioScreen` 新規（ライブプレビュー + 4軸選択 + シャッフル/リセット、変更即保存）
+  - ホームのプレイヤーカードに「見た目」導線、PowerRankingSheet とローカルリーグ順位表の自分の行にミニアバター表示
+  - 保存キーは計画当初の「キー7個」から `avatar.customization` 1キー（カンマ区切り7値）に簡素化
+  - テスト: avatar_customization_test.dart 新規 + codec v3/v2互換 + gacha JSON 後方互換 + バックアップ往復で計377件パス
+
+---
+## 評価
+（検証結果を追記）
