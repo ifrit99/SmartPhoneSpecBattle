@@ -103,6 +103,42 @@ void main() {
       expect(restored.character.level, original.character.level);
     });
 
+    test('JSONはアクセサリー/オーラを保持する', () {
+      final device = gachaDeviceCatalog.first;
+      final original = GachaCharacter.fromDevice(device);
+      final withVisuals = GachaCharacter(
+        id: original.id,
+        deviceName: original.deviceName,
+        rarity: original.rarity,
+        obtainedAt: original.obtainedAt,
+        character: original.character.copyWith(
+          accessoryIndex: 4,
+          auraIndex: 2,
+        ),
+      );
+
+      final restored =
+          GachaCharacter.fromJsonString(withVisuals.toJsonString());
+
+      expect(restored.character.accessoryIndex, 4);
+      expect(restored.character.auraIndex, 2);
+    });
+
+    test('旧形式JSON（accessory/auraなし）は0にフォールバックする', () {
+      final device = gachaDeviceCatalog.first;
+      final original = GachaCharacter.fromDevice(device);
+
+      // v3以前の保存データを再現（accessoryIndex/auraIndexキーなし）
+      final legacyJson = original.toJson()
+        ..remove('accessoryIndex')
+        ..remove('auraIndex');
+      final restored = GachaCharacter.fromJson(legacyJson);
+
+      expect(restored.character.accessoryIndex, 0);
+      expect(restored.character.auraIndex, 0);
+      expect(restored.id, original.id);
+    });
+
     test('JSON文字列の往復変換が正しく動作する', () {
       final device = gachaDeviceCatalog[5]; // R rank
       final original = GachaCharacter.fromDevice(device);

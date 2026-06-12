@@ -7,6 +7,7 @@ import '../../domain/services/achievement_service.dart';
 import '../../domain/services/player_rank_service.dart';
 import '../../domain/services/local_league_service.dart';
 import '../../domain/services/player_title_service.dart';
+import '../widgets/pixel_character.dart';
 
 class CollectionScreen extends StatefulWidget {
   final Character? playerCharacter; // プレイヤーの現在情報を渡してもらう
@@ -771,6 +772,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
   Widget _leagueRow(LocalLeagueEntry entry) {
     final color = entry.isPlayer ? Colors.cyanAccent : Colors.white54;
     final index = _leagueSnapshot.standings.indexOf(entry) + 1;
+    final playerAvatar = widget.playerCharacter;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -786,6 +788,11 @@ class _CollectionScreenState extends State<CollectionScreen> {
               ),
             ),
           ),
+          // 自分の行にはカスタマイズ済みアバターを表示
+          if (entry.isPlayer && playerAvatar != null) ...[
+            PixelCharacter(character: playerAvatar, size: 24),
+            const SizedBox(width: 6),
+          ],
           Expanded(
             child: Text(
               entry.isPlayer ? 'YOU' : entry.name,

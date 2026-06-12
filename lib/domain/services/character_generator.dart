@@ -37,6 +37,9 @@ class CharacterGenerator {
     final armIndex = random.nextInt(8);
     final legIndex = random.nextInt(8);
     final colorPaletteIndex = random.nextInt(6);
+    // アクセサリー/オーラは控えめに（なし多め）して個性のアクセントにする
+    final accessoryIndex = random.nextInt(16) < 8 ? 0 : random.nextInt(8);
+    final auraIndex = random.nextInt(16) < 12 ? 0 : random.nextInt(6);
 
     // キャラクター名の生成
     final name = _generateName(element, seed);
@@ -56,6 +59,8 @@ class CharacterGenerator {
       armIndex: armIndex,
       legIndex: legIndex,
       colorPaletteIndex: colorPaletteIndex,
+      accessoryIndex: accessoryIndex,
+      auraIndex: auraIndex,
     );
   }
 
@@ -99,6 +104,8 @@ class CharacterGenerator {
       armIndex: random.nextInt(8),
       legIndex: random.nextInt(8),
       colorPaletteIndex: random.nextInt(6),
+      accessoryIndex: random.nextInt(16) < 8 ? 0 : random.nextInt(8),
+      auraIndex: random.nextInt(16) < 12 ? 0 : random.nextInt(6),
     );
   }
 

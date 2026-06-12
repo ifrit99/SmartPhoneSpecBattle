@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spec_battle_game/domain/models/character.dart';
 import 'package:spec_battle_game/domain/models/stats.dart';
@@ -34,7 +35,15 @@ Character _makeCharacter({
     armIndex: 3,
     legIndex: 0,
     colorPaletteIndex: 4,
+    accessoryIndex: 5,
+    auraIndex: 3,
   );
+}
+
+/// CharacterCodec と同じ方式でチェックサムを計算する（v2バイナリ手動構築用）
+List<int> _checksumOf(List<int> payload) {
+  final hmacSha256 = Hmac(sha256, utf8.encode('SpecBattle_v2_integrity_2026'));
+  return hmacSha256.convert(payload).bytes.sublist(0, 4);
 }
 
 void main() {
@@ -63,6 +72,8 @@ void main() {
       expect(c.armIndex, original.armIndex);
       expect(c.legIndex, original.legIndex);
       expect(c.colorPaletteIndex, original.colorPaletteIndex);
+      expect(c.accessoryIndex, original.accessoryIndex);
+      expect(c.auraIndex, original.auraIndex);
     });
 
     test('currentStats がレベル反映済みで復元される', () {
@@ -276,16 +287,16 @@ void main() {
       expect(decoded.character.baseStats.atk, (18 + 10) % 256);
     });
 
-    test('v2エンコードデータにはチェックサム4バイトが付与される', () {
+    test('v3エンコードデータにはチェックサム4バイトが付与される', () {
       final original = _makeCharacter(name: 'A');
       final encoded = CharacterCodec.encode(original);
       final bytes = base64Url.decode(encoded);
 
-      // version=2 を確認
-      expect(bytes[0], 2);
+      // version=3 を確認
+      expect(bytes[0], 3);
 
-      // 固定ヘッダ(19) + nameLen(1) + name(1 byte for 'A') + checksum(4) = 25
-      expect(bytes.length, 25);
+      // 固定ヘッダ(21) + nameLen(1) + name(1 byte for 'A') + checksum(4) = 27
+      expect(bytes.length, 27);
     });
   });
 
@@ -324,6 +335,61 @@ void main() {
       expect(decoded.character.level, 3);
       expect(decoded.character.baseStats.atk, 15);
       expect(decoded.isGacha, false);
+    });
+  });
+
+  group('CharacterCodec - v2後方互換', () {
+    test('v2フォーマット（accessory/auraなし）のデータがデコードできる', () {
+      // v2フォーマットのバイナリを手動構築（visual 5バイト + チェックサム）
+      final name = 'V2Char';
+      final nameBytes = utf8.encode(name);
+      final payloadSize = 19 + 1 + nameBytes.length;
+      final buffer = ByteData(payloadSize);
+      var offset = 0;
+
+      buffer.setUint8(offset++, 2); // version=2
+      buffer.setUint8(offset++, 1 << 3); // flags: 実機, water(index=1)
+      buffer.setUint8(offset++, 7); // level=7
+      buffer.setUint16(offset, 150); offset += 2; // hp
+      buffer.setUint16(offset, 150); offset += 2; // maxHp
+      buffer.setUint8(offset++, 20); // atk
+      buffer.setUint8(offset++, 16); // def
+      buffer.setUint8(offset++, 11); // spd
+      buffer.setUint32(offset, 777); offset += 4; // seed
+      buffer.setUint8(offset++, 4); // head
+      buffer.setUint8(offset++, 2); // body
+      buffer.setUint8(offset++, 1); // arm
+      buffer.setUint8(offset++, 3); // leg
+      buffer.setUint8(offset++, 5); // palette
+      buffer.setUint8(offset++, nameBytes.length);
+
+      final payload = buffer.buffer.asUint8List();
+      payload.setRange(offset, offset + nameBytes.length, nameBytes);
+
+      final result = [...payload, ..._checksumOf(payload)];
+      final decoded = CharacterCodec.decode(base64Url.encode(result));
+
+      final c = decoded.character;
+      expect(c.name, 'V2Char');
+      expect(c.level, 7);
+      expect(c.element, ElementType.water);
+      expect(c.headIndex, 4);
+      expect(c.colorPaletteIndex, 5);
+      // v2にはaccessory/auraがないため0（なし）にフォールバック
+      expect(c.accessoryIndex, 0);
+      expect(c.auraIndex, 0);
+    });
+
+    test('v2データのチェックサム改ざんはIntegrityExceptionになる', () {
+      final payload = Uint8List(19 + 1); // 最小ヘッダ + nameLen=0
+      payload[0] = 2; // version=2
+      final checksum = _checksumOf(payload);
+      checksum[0] = (checksum[0] + 1) % 256; // 改ざん
+
+      expect(
+        () => CharacterCodec.decode(base64Url.encode([...payload, ...checksum])),
+        throwsA(isA<IntegrityException>()),
+      );
     });
   });
 

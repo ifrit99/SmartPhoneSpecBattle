@@ -24,6 +24,8 @@ class Character {
   final int armIndex;
   final int legIndex;
   final int colorPaletteIndex;
+  final int accessoryIndex; // 装飾（0 = なし）
+  final int auraIndex; // オーラ演出（0 = なし）
 
   const Character({
     required this.name,
@@ -40,6 +42,8 @@ class Character {
     this.armIndex = 0,
     this.legIndex = 0,
     this.colorPaletteIndex = 0,
+    this.accessoryIndex = 0,
+    this.auraIndex = 0,
   });
 
   int get level => experience.level;
@@ -59,6 +63,8 @@ class Character {
     int? armIndex,
     int? legIndex,
     int? colorPaletteIndex,
+    int? accessoryIndex,
+    int? auraIndex,
   }) {
     return Character(
       name: name ?? this.name,
@@ -75,6 +81,8 @@ class Character {
       armIndex: armIndex ?? this.armIndex,
       legIndex: legIndex ?? this.legIndex,
       colorPaletteIndex: colorPaletteIndex ?? this.colorPaletteIndex,
+      accessoryIndex: accessoryIndex ?? this.accessoryIndex,
+      auraIndex: auraIndex ?? this.auraIndex,
     );
   }
 

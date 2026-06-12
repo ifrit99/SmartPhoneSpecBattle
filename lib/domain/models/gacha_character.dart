@@ -159,6 +159,8 @@ class GachaCharacter {
       'armIndex': c.armIndex,
       'legIndex': c.legIndex,
       'colorPaletteIndex': c.colorPaletteIndex,
+      'accessoryIndex': c.accessoryIndex,
+      'auraIndex': c.auraIndex,
     };
   }
 
@@ -199,6 +201,9 @@ class GachaCharacter {
       armIndex: json['armIndex'] as int,
       legIndex: json['legIndex'] as int,
       colorPaletteIndex: json['colorPaletteIndex'] as int,
+      // 旧データ（accessory/aura なし）との後方互換
+      accessoryIndex: json['accessoryIndex'] as int? ?? 0,
+      auraIndex: json['auraIndex'] as int? ?? 0,
     );
 
     return GachaCharacter(

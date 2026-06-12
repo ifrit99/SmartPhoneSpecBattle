@@ -100,6 +100,7 @@ class LocalStorageService {
   static const String _keyPremiumFeaturedMisses = 'gacha.premiumFeaturedMisses';
   static const String _keyEventLimitedMisses = 'gacha.eventLimitedMisses';
   static const String _keySeed = 'character_seed';
+  static const String _keyAvatarCustomization = 'avatar.customization';
   static const String _keyOnboardingCompleted = 'onboarding_completed';
   static const String _keyFirstBattleCompleted = 'first_battle_completed';
   static const String _keyLastLoginRewardDate = 'daily.lastLoginRewardDate';
@@ -225,6 +226,15 @@ class LocalStorageService {
   }
 
   int getCharacterSeed() => _store.getInt(_keySeed) ?? 0;
+
+  /// アバターカスタマイズ設定を保存（AvatarCustomization.toStorageString 形式）
+  Future<void> saveAvatarCustomization(String encoded) async {
+    await _store.setString(_keyAvatarCustomization, encoded);
+  }
+
+  /// アバターカスタマイズ設定を取得（未設定時は null）
+  String? getAvatarCustomization() =>
+      _store.getString(_keyAvatarCustomization);
 
   // --- 図鑑（対戦履歴） ---
 
@@ -631,6 +641,7 @@ class LocalStorageService {
         _keyPremiumFeaturedMisses: getPremiumFeaturedMisses(),
         _keyEventLimitedMisses: getEventLimitedMisses(),
         _keySeed: getCharacterSeed(),
+        _keyAvatarCustomization: getAvatarCustomization(),
         _keyOnboardingCompleted: isOnboardingCompleted(),
         _keyFirstBattleCompleted: isFirstBattleCompleted(),
         _keyLastLoginRewardDate: getLastLoginRewardDate(),
@@ -747,6 +758,8 @@ class LocalStorageService {
       _asInt(data[_keyEventLimitedMisses], 0),
     );
     await _store.setInt(_keySeed, _asInt(data[_keySeed], 0));
+    await _setOptionalString(
+        _keyAvatarCustomization, data[_keyAvatarCustomization]);
     await _store.setBool(
       _keyOnboardingCompleted,
       data[_keyOnboardingCompleted] == true,
