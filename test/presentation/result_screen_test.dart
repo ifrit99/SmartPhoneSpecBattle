@@ -128,26 +128,25 @@ void main() {
       );
     });
 
-    testWidgets('結果をコピーすると共有用サマリーがクリップボードに入る', (tester) async {
+    testWidgets('Xで結果を呟くとX投稿画面のURLを開く', (tester) async {
       await _prepareStorage();
       final results = <String?>[];
-      String? clipboardText;
+      String? launchedUrl;
 
+      const urlLauncherChannel =
+          MethodChannel('plugins.flutter.io/url_launcher');
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(SystemChannels.platform, (call) async {
-        if (call.method == 'Clipboard.setData') {
-          final data = call.arguments as Map<Object?, Object?>;
-          clipboardText = data['text'] as String?;
-          return null;
-        }
-        if (call.method == 'Clipboard.getData') {
-          return <String, Object?>{'text': clipboardText};
+          .setMockMethodCallHandler(urlLauncherChannel, (call) async {
+        if (call.method == 'launch') {
+          final args = call.arguments as Map<Object?, Object?>;
+          launchedUrl = args['url'] as String?;
+          return true;
         }
         return null;
       });
       addTearDown(() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-            .setMockMethodCallHandler(SystemChannels.platform, null);
+            .setMockMethodCallHandler(urlLauncherChannel, null);
       });
 
       await _pumpResultLauncher(
@@ -158,16 +157,17 @@ void main() {
       );
       await tester.pump(const Duration(seconds: 1));
 
-      await tester.ensureVisible(find.text('結果をコピー'));
-      await tester.tap(find.text('結果をコピー'));
+      await tester.ensureVisible(find.text('Xで結果を呟く'));
+      await tester.tap(find.text('Xで結果を呟く'));
       await tester.pump(const Duration(milliseconds: 300));
 
-      expect(clipboardText, contains('SPEC BATTLE'));
-      expect(clipboardText, contains('勝利: Player vs Enemy'));
-      expect(clipboardText, contains('シーズンポイント'));
-      expect(clipboardText, contains('BOSS撃破報酬'));
-      expect(clipboardText, contains('BOSS自己ベスト'));
-      expect(find.text('バトル結果をコピーしました'), findsOneWidget);
+      expect(launchedUrl, isNotNull);
+      expect(launchedUrl, contains('x.com/intent/post'));
+      final tweetText = Uri.parse(launchedUrl!).queryParameters['text'];
+      expect(tweetText, contains('SPEC BATTLE'));
+      expect(tweetText, contains('勝利！ Player vs Enemy'));
+      expect(tweetText, contains('#SPECBATTLE'));
+      expect(tweetText, contains('ifrit99.github.io/SmartPhoneSpecBattle'));
     });
 
     testWidgets('デイリーミッション達成時はミッション導線で missions を返す', (tester) async {
