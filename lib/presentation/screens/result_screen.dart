@@ -192,13 +192,23 @@ class _ResultScreenState extends State<ResultScreen>
     }
   }
 
+  /// キャラ名の最大文字数（フレンド対戦で長い名前が来ても280字を超えないよう丸める）
+  static const int _tweetNameMaxLength = 20;
+
+  static String _truncateName(String name) {
+    if (name.length <= _tweetNameMaxLength) return name;
+    return '${name.substring(0, _tweetNameMaxLength)}…';
+  }
+
   /// X投稿用の本文（結果 + ハッシュタグ + ゲームURL）
   String _buildTweetText() {
     final result = widget.result;
     final headline = result.playerWon ? '勝利！' : '敗北…';
+    final playerName = _truncateName(widget.player.name);
+    final enemyName = _truncateName(widget.enemy.name);
     final lines = <String>[
       '🎮SPEC BATTLE',
-      '$headline ${widget.player.name} vs ${widget.enemy.name}',
+      '$headline $playerName vs $enemyName',
       'ターン: ${result.turnsPlayed} / 戦術: ${result.playerTactic.label}',
       '獲得: +${result.expGained} EXP / +$_coinsGained Coin',
       '',
