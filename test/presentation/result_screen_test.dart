@@ -162,7 +162,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       expect(launchedUrl, isNotNull);
-      expect(launchedUrl, contains('x.com/intent/post'));
+      expect(launchedUrl, contains('x.com/intent/tweet'));
       final tweetText = Uri.parse(launchedUrl!).queryParameters['text'];
       expect(tweetText, contains('SPEC BATTLE'));
       expect(tweetText, contains('勝利！ Player vs Enemy'));

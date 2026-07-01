@@ -53,6 +53,7 @@ class _ResultScreenState extends State<ResultScreen>
   int _coinsGained = 0;
   bool _isFirstBattle = false;
   bool _finishing = false;
+  bool _saved = false;
   bool _canOpenGacha = false;
   int _claimableAchievementCount = 0;
   int _claimableDailyMissionCount = 0;
@@ -113,7 +114,11 @@ class _ResultScreenState extends State<ResultScreen>
 
     _applyPersistedResult(persisted);
 
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {
+        _saved = true;
+      });
+    }
   }
 
   void _applyPersistedResult(PersistedBattleResult persisted) {
@@ -172,11 +177,11 @@ class _ResultScreenState extends State<ResultScreen>
       'https://ifrit99.github.io/SmartPhoneSpecBattle/';
 
   Future<void> _shareToX() async {
-    await _saveFuture;
-    if (!mounted) return;
-
+    // Web版 url_launcher は新規ウィンドウを開くため、ポップアップブロックを
+    // 避けるべく launchUrl はタップ操作と同期して最初に呼び出す。
+    // ツイート文面が依存する保存結果はボタン有効化（_saved）で担保する。
     final uri = Uri.parse(
-      'https://x.com/intent/post?text=${Uri.encodeComponent(_buildTweetText())}',
+      'https://x.com/intent/tweet?text=${Uri.encodeComponent(_buildTweetText())}',
     );
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!mounted) return;
@@ -611,7 +616,7 @@ class _ResultScreenState extends State<ResultScreen>
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: _finishing ? null : _shareToX,
+              onPressed: (_finishing || !_saved) ? null : _shareToX,
               icon: const Icon(Icons.share),
               label: const Text('Xで結果を呟く'),
               style: OutlinedButton.styleFrom(
