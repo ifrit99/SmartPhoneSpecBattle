@@ -16,6 +16,8 @@ dependencies:
   # battery_plus: ^7.0.0  # Web版では非対応。ネイティブアプリ実装時に復活
   audioplayers: ^6.1.0
   crypto: ^3.0.3
+  # X共有で使用。対象はWeb公開（GitHub Pages）。
+  # Androidネイティブビルドは compileSdk 34 / AGP 8.1+ への更新が別途必要。
   url_launcher: ^6.3.0
 
 dev_dependencies:

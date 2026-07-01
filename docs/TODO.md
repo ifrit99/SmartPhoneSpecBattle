@@ -115,6 +115,7 @@
     - `CharacterCodec` v3 化（accessory/aura 2バイト追加、v1/v2 デコード後方互換）
     - 本番 Playwright 検証: スタジオ操作→プレビュー/ホーム/バトル/ランキング/リーグ反映を確認
   - 別タスク候補（未着手）:
+    - Androidネイティブビルドのツールチェーン更新（compileSdk 34 / AGP 8.1+ / Gradle 8+）— `url_launcher` 追加でネイティブビルドに更新が必要（現状Web公開のみ対象のため未対応、PR #21 で明記）
     - `home_screen.dart`（3,538行）の Widget 分割
     - `assets/fonts/NotoSansJP-Regular.ttf` の pubspec 登録 or 削除の判断
     - バックアップコードへのチェックサム付与（バトルコードと同等の整合性検証）
