@@ -59,7 +59,7 @@ class HelpScreen extends StatelessWidget {
             color: Color(0xFF55EFC4),
             title: 'フレンド対戦',
             body:
-                'Friendから自分のキャラURLをコピーできます。受け取ったURLを入力すると、相手キャラとの相性と推奨戦術を見てから対戦できます。リザルトは結果コピーで共有できます。',
+                'Friendから自分のキャラURLをコピーできます。受け取ったURLを入力すると、相手キャラとの相性と推奨戦術を見てから対戦できます。リザルトは「Xで結果を呟く」からXに投稿して共有できます。',
           ),
         ],
       ),

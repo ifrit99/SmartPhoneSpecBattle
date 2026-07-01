@@ -128,26 +128,25 @@ void main() {
       );
     });
 
-    testWidgets('結果をコピーすると共有用サマリーがクリップボードに入る', (tester) async {
+    testWidgets('Xで結果を呟くとX投稿画面のURLを開く', (tester) async {
       await _prepareStorage();
       final results = <String?>[];
-      String? clipboardText;
+      String? launchedUrl;
 
+      const urlLauncherChannel =
+          MethodChannel('plugins.flutter.io/url_launcher');
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(SystemChannels.platform, (call) async {
-        if (call.method == 'Clipboard.setData') {
-          final data = call.arguments as Map<Object?, Object?>;
-          clipboardText = data['text'] as String?;
-          return null;
-        }
-        if (call.method == 'Clipboard.getData') {
-          return <String, Object?>{'text': clipboardText};
+          .setMockMethodCallHandler(urlLauncherChannel, (call) async {
+        if (call.method == 'launch') {
+          final args = call.arguments as Map<Object?, Object?>;
+          launchedUrl = args['url'] as String?;
+          return true;
         }
         return null;
       });
       addTearDown(() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-            .setMockMethodCallHandler(SystemChannels.platform, null);
+            .setMockMethodCallHandler(urlLauncherChannel, null);
       });
 
       await _pumpResultLauncher(
@@ -158,16 +157,58 @@ void main() {
       );
       await tester.pump(const Duration(seconds: 1));
 
-      await tester.ensureVisible(find.text('結果をコピー'));
-      await tester.tap(find.text('結果をコピー'));
+      await tester.ensureVisible(find.text('Xで結果を呟く'));
+      await tester.tap(find.text('Xで結果を呟く'));
       await tester.pump(const Duration(milliseconds: 300));
 
-      expect(clipboardText, contains('SPEC BATTLE'));
-      expect(clipboardText, contains('勝利: Player vs Enemy'));
-      expect(clipboardText, contains('シーズンポイント'));
-      expect(clipboardText, contains('BOSS撃破報酬'));
-      expect(clipboardText, contains('BOSS自己ベスト'));
-      expect(find.text('バトル結果をコピーしました'), findsOneWidget);
+      expect(launchedUrl, isNotNull);
+      expect(launchedUrl, contains('x.com/intent/tweet'));
+      final tweetText = Uri.parse(launchedUrl!).queryParameters['text'];
+      expect(tweetText, contains('SPEC BATTLE'));
+      expect(tweetText, contains('勝利！ Player vs Enemy'));
+      expect(tweetText, contains('#SPECBATTLE'));
+      expect(tweetText, contains('ifrit99.github.io/SmartPhoneSpecBattle'));
+    });
+
+    testWidgets('長いキャラ名でもツイート本文は280字以内に丸められる', (tester) async {
+      await _prepareStorage();
+      final results = <String?>[];
+      String? launchedUrl;
+
+      const urlLauncherChannel =
+          MethodChannel('plugins.flutter.io/url_launcher');
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(urlLauncherChannel, (call) async {
+        if (call.method == 'launch') {
+          final args = call.arguments as Map<Object?, Object?>;
+          launchedUrl = args['url'] as String?;
+          return true;
+        }
+        return null;
+      });
+      addTearDown(() {
+        TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+            .setMockMethodCallHandler(urlLauncherChannel, null);
+      });
+
+      final longName = 'あ' * 100;
+      await _pumpResultLauncher(
+        tester,
+        results: results,
+        playerName: longName,
+        enemyName: longName,
+      );
+      await tester.pump(const Duration(seconds: 1));
+
+      await tester.ensureVisible(find.text('Xで結果を呟く'));
+      await tester.tap(find.text('Xで結果を呟く'));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final tweetText = Uri.parse(launchedUrl!).queryParameters['text']!;
+      expect(tweetText.length, lessThanOrEqualTo(280));
+      // 名前は丸め記号付きで短縮され、フル100文字は含まれない
+      expect(tweetText, contains('…'));
+      expect(tweetText, isNot(contains(longName)));
     });
 
     testWidgets('デイリーミッション達成時はミッション導線で missions を返す', (tester) async {
@@ -208,6 +249,8 @@ Future<void> _pumpResultLauncher(
   bool isCpuBattle = true,
   EnemyDifficulty enemyDifficulty = EnemyDifficulty.normal,
   String? enemyDeviceId,
+  String playerName = 'Player',
+  String enemyName = 'Enemy',
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -224,8 +267,8 @@ Future<void> _pumpResultLauncher(
                     finalPlayerHp: 80,
                     finalEnemyHp: 0,
                   ),
-                  player: _character('Player'),
-                  enemy: _character('Enemy'),
+                  player: _character(playerName),
+                  enemy: _character(enemyName),
                   enemyDeviceId: enemyDeviceId ?? 'easy_01',
                   enemyDifficulty: enemyDifficulty,
                   isCpuBattle: isCpuBattle,

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../domain/models/character.dart';
 import '../../domain/enums/battle_tactic.dart';
 import '../../domain/services/boss_bounty_service.dart';
@@ -53,6 +53,7 @@ class _ResultScreenState extends State<ResultScreen>
   int _coinsGained = 0;
   bool _isFirstBattle = false;
   bool _finishing = false;
+  bool _saved = false;
   bool _canOpenGacha = false;
   int _claimableAchievementCount = 0;
   int _claimableDailyMissionCount = 0;
@@ -113,7 +114,11 @@ class _ResultScreenState extends State<ResultScreen>
 
     _applyPersistedResult(persisted);
 
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {
+        _saved = true;
+      });
+    }
   }
 
   void _applyPersistedResult(PersistedBattleResult persisted) {
@@ -167,61 +172,49 @@ class _ResultScreenState extends State<ResultScreen>
     Navigator.of(context).pop(nextAction);
   }
 
-  Future<void> _copyResultSummary() async {
-    await _saveFuture;
-    if (!mounted) return;
+  /// ゲームの公開URL（ツイートに添付）
+  static const String _gameUrl =
+      'https://ifrit99.github.io/SmartPhoneSpecBattle/';
 
-    await Clipboard.setData(ClipboardData(text: _buildShareText()));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('バトル結果をコピーしました')),
+  Future<void> _shareToX() async {
+    // Web版 url_launcher は新規ウィンドウを開くため、ポップアップブロックを
+    // 避けるべく launchUrl はタップ操作と同期して最初に呼び出す。
+    // ツイート文面が依存する保存結果はボタン有効化（_saved）で担保する。
+    final uri = Uri.parse(
+      'https://x.com/intent/tweet?text=${Uri.encodeComponent(_buildTweetText())}',
     );
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!mounted) return;
+    if (!launched) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Xの投稿画面を開けませんでした')),
+      );
+    }
   }
 
-  String _buildShareText() {
-    final lines = <String>[
-      'SPEC BATTLE',
-      '${widget.result.playerWon ? '勝利' : '敗北'}: ${widget.player.name} vs ${widget.enemy.name}',
-      'ターン: ${widget.result.turnsPlayed}',
-      '戦術: ${widget.result.playerTactic.label} / ${widget.result.supportCommand.label}',
-      '獲得: +${widget.result.expGained} EXP / +$_coinsGained Coin',
-    ];
+  /// キャラ名の最大文字数（フレンド対戦で長い名前が来ても280字を超えないよう丸める）
+  static const int _tweetNameMaxLength = 20;
 
-    if (_dailyBattleReward != null) {
-      lines.add('デイリー報酬: +${_dailyBattleReward!.gemsAwarded} Gems');
-    }
-    if (_seasonPassXpGained > 0) {
-      lines.add('シーズンポイント: +$_seasonPassXpGained SP');
-    }
-    if (_enemyDiscoveryBonus != null) {
-      lines.add(
-        '初回撃破ボーナス: +${_enemyDiscoveryBonus!.coinsAwarded} Coin / +${_enemyDiscoveryBonus!.gemsAwarded} Gems',
-      );
-    }
-    if (_bossBountyReward != null) {
-      lines.add(
-        'BOSS撃破報酬: +${_bossBountyReward!.coinsAwarded} Coin / +${_bossBountyReward!.gemsAwarded} Gems',
-      );
-    }
-    if (_rivalRoadClearResult != null) {
-      final stage = _rivalRoadClearResult!.stage;
-      if (_rivalRoadClearResult!.stageCleared) {
-        lines.add(
-          'ライバルロード: ${stage.title} CLEAR +${stage.rewardCoins} Coin / +${stage.rewardGems} Gems',
-        );
-      }
-      if (_rivalRoadClearResult!.bestTurnsUpdated) {
-        lines.add('ライバルロード最短: ${_rivalRoadClearResult!.bestTurns}ターン');
-      }
-    }
-    if (_bossRecordUpdate != null) {
-      final previous = _bossRecordUpdate!.previousBestTurns;
-      lines.add(
-        previous == null
-            ? 'BOSS自己ベスト: ${_bossRecordUpdate!.bestTurns}ターン'
-            : 'BOSS自己ベスト更新: $previous → ${_bossRecordUpdate!.bestTurns}ターン',
-      );
-    }
+  static String _truncateName(String name) {
+    if (name.length <= _tweetNameMaxLength) return name;
+    return '${name.substring(0, _tweetNameMaxLength)}…';
+  }
+
+  /// X投稿用の本文（結果 + ハッシュタグ + ゲームURL）
+  String _buildTweetText() {
+    final result = widget.result;
+    final headline = result.playerWon ? '勝利！' : '敗北…';
+    final playerName = _truncateName(widget.player.name);
+    final enemyName = _truncateName(widget.enemy.name);
+    final lines = <String>[
+      '🎮SPEC BATTLE',
+      '$headline $playerName vs $enemyName',
+      'ターン: ${result.turnsPlayed} / 戦術: ${result.playerTactic.label}',
+      '獲得: +${result.expGained} EXP / +$_coinsGained Coin',
+      '',
+      '#SPECBATTLE',
+      _gameUrl,
+    ];
     return lines.join('\n');
   }
 
@@ -633,9 +626,9 @@ class _ResultScreenState extends State<ResultScreen>
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: _finishing ? null : _copyResultSummary,
-              icon: const Icon(Icons.copy),
-              label: const Text('結果をコピー'),
+              onPressed: (_finishing || !_saved) ? null : _shareToX,
+              icon: const Icon(Icons.share),
+              label: const Text('Xで結果を呟く'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.white70,
                 side: BorderSide(
