@@ -203,7 +203,7 @@ rankings/{weekId}/entries/{anonUid}:
 - `lib/domain/services/ranking_service.dart`: 参加登録/解除、スコア送信、上位一覧＋自分の順位取得。結果は `RankingSnapshot`（entries, myRank, myPercentile, isEstimated=false）。
 - 失敗時（オフライン/未参加）は `PowerRatingService` の既存推定値（`isEstimated=true`）を返すフォールバックを `RankingService` 内で完結させる（UIはデータ取得経路＝サーバー/ローカルを意識しない）。
 - **表示切替（UI側の必須変更）**: 現行 `lib/presentation/widgets/power_rating_card.dart` は「推定上位○%」表記とローカル比較の免責文をハードコードしており `isEstimated` を参照していない。F6では `isEstimated` に応じたラベル切替を実装する — `true`: 現行どおり「推定上位○%」＋免責文 / `false`: 「世界○位（上位○%）」＋週次リセット表記（免責文は非表示）。ランキング詳細シート側も同じ規則に従う。
-- 送信タイミング: ホーム画面表示時にPWRが前回送信値から変化していれば送信（デバウンス、1セッション最大数回）。
+- 送信タイミング: ホーム画面表示時に、前回送信ペイロード（`lastSentWeekId` / `powerRating` / `characterCode` / `title` をローカル保存）のいずれかが変化していれば送信（デバウンス、1セッション最大数回）。**週替わり（weekIdの変化）時はPWRが同一でも必ず再送**し、新しい `rankings/{weekId}` へ登録する（参加ONなのに今週のランキングから消える事態を防ぐ）。
 
 ### 2-5. F4: ホーム画面分割（挙動変更なし）
 
@@ -317,7 +317,7 @@ rankings/{weekId}/entries/{anonUid}:
 | 対象 | 観点 |
 |------|------|
 | AnalyticsService | 未同意時にイベントが送信されない / 同意後に送信される / 3値の同意状態遷移 |
-| RankingService | 送信デバウンス / オフライン時に推定値フォールバック / 順位・上位%計算（分母が総参加数Nであること。参加51人以上のケースを含む） / 参加解除時に過去週を含む全週の自分entryが削除され推定表示へ戻る / weekId計算がローカルリーグと一致 |
+| RankingService | 送信デバウンス / **週替わり時はPWR不変でも再送される** / オフライン時に推定値フォールバック / 順位・上位%計算（分母が総参加数Nであること。参加51人以上のケースを含む） / 参加解除時に過去週を含む全週の自分entryが削除され推定表示へ戻る / weekId計算がローカルリーグと一致 |
 | バックアップv2 | 正常往復 / 1文字破損で `IntegrityException` / v1コード復元互換 / v2生成プレフィックス |
 | 経済バランス | **既存 `economy_balance_test.dart` が無変更でパス**（カジュアル方針: 経済に手を入れていない証明） |
 | コーデック互換 | Character v1/v2/v3 デコード互換の既存テスト維持 |
