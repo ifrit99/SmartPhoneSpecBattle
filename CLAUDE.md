@@ -21,6 +21,7 @@
 - `docs/TODO.md`: 現在の実装状況のサマリーと、次に取り組むべき残タスク
 - `docs/SPECIFICATION.md`: 旧仕様書のアーカイブ（現行仕様の参照先は `docs/product_spec.md`）
 - `docs/product_spec.md`: 現行プロダクトの仕様整理（要件定義の土台）
+- `docs/phase5_brushup_spec.md`: Phase 5 ブラッシュアップの要件定義・機能設計・画面設計・テスト観点（分析基盤/エラー監視/空状態UX/ホーム分割/バックアップv2/オンラインランキング）
 - `docs/gacha_browser_test_cases.md`: ガチャ機能のブラウザ結合テストケース
 - `docs/device_info.md`: デバイス情報取得状況（プラットフォーム別取得可否・ステータス反映）
 - `docs/plans/`: Planner/Generator/Evaluator ワークフロー用の計画・評価ドキュメント（運用ルールは `docs/plans/TEMPLATES.md` を参照）
