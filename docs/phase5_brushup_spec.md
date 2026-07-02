@@ -195,7 +195,8 @@ rankings/{weekId}/entries/{anonUid}:
 
 **ドメイン層**
 - `lib/domain/services/ranking_service.dart`: 参加登録/解除、スコア送信、上位一覧＋自分の順位取得。結果は `RankingSnapshot`（entries, myRank, myPercentile, isEstimated=false）。
-- 失敗時（オフライン/未参加）は `PowerRatingService` の既存推定値（`isEstimated=true`）を返すフォールバックを `RankingService` 内で完結させ、UI側の分岐を増やさない。
+- 失敗時（オフライン/未参加）は `PowerRatingService` の既存推定値（`isEstimated=true`）を返すフォールバックを `RankingService` 内で完結させる（UIはデータ取得経路＝サーバー/ローカルを意識しない）。
+- **表示切替（UI側の必須変更）**: 現行 `lib/presentation/widgets/power_rating_card.dart` は「推定上位○%」表記とローカル比較の免責文をハードコードしており `isEstimated` を参照していない。F6では `isEstimated` に応じたラベル切替を実装する — `true`: 現行どおり「推定上位○%」＋免責文 / `false`: 「世界○位（上位○%）」＋週次リセット表記（免責文は非表示）。ランキング詳細シート側も同じ規則に従う。
 - 送信タイミング: ホーム画面表示時にPWRが前回送信値から変化していれば送信（デバウンス、1セッション最大数回）。
 
 ### 2-5. F4: ホーム画面分割（挙動変更なし）
@@ -231,7 +232,7 @@ rankings/{weekId}/entries/{anonUid}:
 | 画面 | 変更 | 関連機能 |
 |------|------|---------|
 | タイトル画面 | 初回タップ後に「計測とエラー送信の同意ダイアログ」を1回だけ表示 | F1, F2 |
-| ホーム画面 | 見た目の変更なし（内部分割のみ）。`PowerRatingCard` がランキング参加時に実測順位を表示 | F4, F6 |
+| ホーム画面 | 見た目の変更なし（内部分割のみ）。`PowerRatingCard` はランキング参加時に `isEstimated=false` を受けて「推定上位○%」→「世界○位（上位○%）」へ表記を切替（免責文も非表示化） | F4, F6 |
 | ランキング詳細シート（既存 `PowerRatingCard` タップ） | 「世界ランキング」セクション追加: 参加トグル、上位50一覧（アバター・称号・PWR）、自分の順位ハイライト、週次リセット表記 | F6 |
 | コレクション画面 | 戦績/履歴/実績タブの空状態改善（§2-3） | F3 |
 | URL入力・ゲストプレビュー | オフライン注意・失敗理由別エラー表示 | F3 |
@@ -316,6 +317,7 @@ rankings/{weekId}/entries/{anonUid}:
 | EmptyStateCard | 文言・導線ボタンのタップで期待画面へ遷移 |
 | 同意ダイアログ | 初回のみ表示 / 選択の永続化 / 「協力しない」後もホームへ遷移 |
 | ランキングシート | 参加ON/OFF切替 / 自分の行のハイライト / 未参加時の推定表示 |
+| PowerRatingCard | `isEstimated=true` で「推定上位○%」＋免責文 / `false` で「世界○位（上位○%）」＋週次リセット表記に切り替わる |
 
 ### 4-3. ブラウザ結合テスト（手動・Playwright）
 
