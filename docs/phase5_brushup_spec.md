@@ -188,7 +188,8 @@ rankings/{weekId}/entries/{anonUid}:
 - `anonUid` は **Firebase Anonymous Auth のUID**（ランキング参加ON時にサインインして取得。クライアント生成のUUIDは使わない）。
 - `weekId` はローカルリーグと同一の週ID計算を使用（週次リセット）。
 - 書き込みはセキュリティルールで制約: `request.auth.uid == anonUid` を強制（他人のエントリへの書き込み拒否）/ powerRating は 0〜理論上限（全端末Lv上限×覚醒+5から算出した定数）/ characterCode 長さ上限。
-- 順位取得: 上位50件の取得＋自分より高スコアの件数カウント（`count()` 集計クエリ）で順位・上位%を算出。
+- 順位取得（3クエリ）: ①上位50件の取得（一覧表示用）、②自分より高スコアの件数の `count()` 集計 → 順位 = 件数+1、③`rankings/{weekId}/entries` 全体の `count()` 集計 → 総参加数N。上位% = 順位 ÷ N × 100 とし、「上位○%（参加N人中）」（§3-3）の分母はNを使う（上位50件を分母にしない）。
+- 参加解除（OFF）: `rankings/{weekId}/entries/{anonUid}` を**即時削除**し、一覧・順位・総参加数のすべてから除外する。削除権限もセキュリティルールで `request.auth.uid == anonUid` のみに制限。過去週のentryは表示・集計対象外だが、`updatedAt` にFirestore TTLポリシー（30日）を設定して自動削除し、データを残さない。
 
 **不正対策の割り切り（既知リスク）**
 - PWRはクライアント計算のため完全な防止は不可能。MVPでは (a) ルールでの値域クランプ、(b) `characterCode` のチェックサム検証を将来のCloud Functionsで実施できる形でデータを残す、(c) 順位に報酬を付けない（カジュアル方針と整合）ことで実害を抑える。
@@ -304,7 +305,7 @@ rankings/{weekId}/entries/{anonUid}:
 | 対象 | 観点 |
 |------|------|
 | AnalyticsService | 未同意時にイベントが送信されない / 同意後に送信される / 3値の同意状態遷移 |
-| RankingService | 送信デバウンス / オフライン時に推定値フォールバック / 順位・上位%計算 / weekId計算がローカルリーグと一致 |
+| RankingService | 送信デバウンス / オフライン時に推定値フォールバック / 順位・上位%計算（分母が総参加数Nであること。参加51人以上のケースを含む） / 参加解除時に当週entryが削除され推定表示へ戻る / weekId計算がローカルリーグと一致 |
 | バックアップv2 | 正常往復 / 1文字破損で `IntegrityException` / v1コード復元互換 / v2生成プレフィックス |
 | 経済バランス | **既存 `economy_balance_test.dart` が無変更でパス**（カジュアル方針: 経済に手を入れていない証明） |
 | コーデック互換 | Character v1/v2/v3 デコード互換の既存テスト維持 |
@@ -324,7 +325,7 @@ rankings/{weekId}/entries/{anonUid}:
 - 初回起動 → 同意ダイアログ → 拒否 → 全コアフロー（バトル/ガチャ/共有）が動作すること
 - 未同意・拒否状態でDebugViewに**自動収集イベント（`first_visit` / `session_start` 等）を含めて**1件も到達しないこと
 - 同意 → 分析コンソール（DebugView）で `battle_start` 〜 `battle_result` の到達確認
-- ランキング: 2ブラウザ（別プロファイル）で参加し、相互の順位が反映されること
+- ランキング: 2ブラウザ（別プロファイル）で参加し、相互の順位が反映されること。一方が参加OFFにすると、もう一方の一覧・総参加数から即時消えること
 - オフライン（DevToolsでOffline化）: ホーム表示・バトル・ガチャが劣化なく動き、ランキングが推定表示に戻ること
 - ホーム分割PRごと: 分割前後のスクリーンショット比較で差分ゼロ
 - バックアップ: 旧バージョンで作成したv1コードの復元 / v2コード破損時の拒否
@@ -335,7 +336,7 @@ rankings/{weekId}/entries/{anonUid}:
 - `flutter build web` 成功、main.dart.js サイズを F1/F2導入前後で記録（+15%以内）
 - 初期ロード時間の目視比較（GitHub Pages本番）
 - 既存テスト全件（370件超）パス
-- Firestoreセキュリティルールのテスト（他人のuidへの書き込み拒否 / 値域外powerRating拒否）— Firebase Emulator Suite
+- Firestoreセキュリティルールのテスト（他人のuidへの書き込み拒否 / **他人のentryの削除拒否・自分のentryの削除許可** / 値域外powerRating拒否）— Firebase Emulator Suite
 
 ---
 
