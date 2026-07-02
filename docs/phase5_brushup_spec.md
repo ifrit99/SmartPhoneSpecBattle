@@ -1,6 +1,6 @@
 # SPEC BATTLE — Phase 5 ブラッシュアップ仕様書
 
-バージョン: 0.1.0（ドラフト・ユーザー確認待ち）
+バージョン: 0.1.1（ユーザー承認済み・Codexレビュー指摘反映）
 作成日: 2026-07-02
 目的: Web版MVP公開後の次期ブラッシュアップに向けた要件定義・機能設計・画面設計・テスト観点の策定
 参照: `docs/product_spec.md`（現行仕様）、`docs/release-monetization-assessment.md`（リリース・収益化評価）
@@ -69,7 +69,7 @@ Phase 5 のゴールは **「計測できる無料Web運用を確立し、サー
 - 開発者として、初回起動〜初回バトル〜初回ガチャの到達ファネルを見たい。
   - 受け入れ基準: 本番環境で計測イベント（§2-1のイベント表）が分析コンソールに到達する。
 - プレイヤーとして、計測されることを起動時に知り、拒否できる。
-  - 受け入れ基準: 同意前にイベントが1件も送信されない。拒否してもゲームは全機能遊べる。
+  - 受け入れ基準: 同意前にイベントが1件も送信されない（`first_visit` / `session_start` 等のSDK自動収集イベントを含む）。拒否してもゲームは全機能遊べる。
 
 **F2: エラー監視**
 - 開発者として、本番の未捕捉例外をスタックトレース付きで受け取りたい。
@@ -96,7 +96,7 @@ Phase 5 のゴールは **「計測できる無料Web運用を確立し、サー
 
 | 項目 | 要件 |
 |------|------|
-| プライバシー | 計測・ランキングとも任意参加。PII（氏名・メール等）は一切収集しない。匿名IDはクライアント生成のランダムUUID |
+| プライバシー | 計測・ランキングとも任意参加。PII（氏名・メール等）は一切収集しない。ユーザー識別子は **Firebase Anonymous Auth が発行する匿名UID** のみ（ランキング参加時に初めて取得。Firestoreセキュリティルールの `request.auth.uid` 照合に使用し、PIIとの紐付けは行わない） |
 | オフライン耐性 | サーバー機能（ランキング）が到達不能でも既存機能は一切劣化しない（推定表示へフォールバック） |
 | パフォーマンス | 追加SDK（分析・監視）による初期ロード増加を計測し、`flutter build web` の main.dart.js サイズ増を記録する（目安: +15%以内） |
 | コスト | サーバーは無料枠内で運用できる構成を選ぶ（詳細は §2-4） |
@@ -121,7 +121,7 @@ Phase 5 のゴールは **「計測できる無料Web運用を確立し、サー
 
 **構成**
 - `lib/domain/services/analytics_service.dart`: 抽象インターフェース。`logEvent(name, params)` と同意状態管理（`isEnabled`）。ドメイン層はFirebaseに依存しない。
-- `lib/data/firebase_analytics_client.dart`: 実装。未同意時は全イベントを破棄。
+- `lib/data/firebase_analytics_client.dart`: 実装。Firebase Analyticsは**収集無効の状態で初期化する**（`setAnalyticsCollectionEnabled(false)` ＋ Consent Mode を既定 `denied` で設定）。同意取得後に初めて収集を有効化することで、`first_visit` / `session_start` 等のSDK自動収集イベントも同意前には送信されない。未同意・拒否時はラッパー側でも全イベントを破棄する（二重ガード）。
 - `ServiceLocator` に登録。テストでは No-op 実装に差し替え。
 - 同意フラグは SharedPreferences（`analytics_consent`: 未回答/許可/拒否 の3値）。バックアップ対象外（端末ごとの判断）。
 
@@ -185,8 +185,9 @@ rankings/{weekId}/entries/{anonUid}:
   updatedAt: timestamp
 ```
 
+- `anonUid` は **Firebase Anonymous Auth のUID**（ランキング参加ON時にサインインして取得。クライアント生成のUUIDは使わない）。
 - `weekId` はローカルリーグと同一の週ID計算を使用（週次リセット）。
-- 書き込みはセキュリティルールで制約: 自分のuidのみ / powerRating は 0〜理論上限（全端末Lv上限×覚醒+5から算出した定数）/ characterCode 長さ上限。
+- 書き込みはセキュリティルールで制約: `request.auth.uid == anonUid` を強制（他人のエントリへの書き込み拒否）/ powerRating は 0〜理論上限（全端末Lv上限×覚醒+5から算出した定数）/ characterCode 長さ上限。
 - 順位取得: 上位50件の取得＋自分より高スコアの件数カウント（`count()` 集計クエリ）で順位・上位%を算出。
 
 **不正対策の割り切り（既知リスク）**
@@ -207,8 +208,13 @@ rankings/{weekId}/entries/{anonUid}:
 ### 2-6. F5: バックアップコード v2
 
 - 現行: `SPEC-BATTLE-BACKUP:` + Base64url JSON（整合性検証なし）。
-- v2: `SPEC-BATTLE-BACKUP2:` + Base64url(JSON) + HMAC-SHA256先頭4バイトのチェックサム。`CharacterCodec` v2と同じ方式・実装を再利用する。
-- 復元時: v2プレフィックスならチェックサム検証（失敗時は `IntegrityException` → F3-7の文言で拒否）。v1プレフィックスは従来どおり復元可（後方互換）。生成は常にv2。
+- v2 エンコード手順（`CharacterCodec` v2 と同一方式・実装を再利用）:
+  1. JSONペイロードをUTF-8バイト列化する
+  2. そのバイト列のHMAC-SHA256を計算し、**先頭4バイト**をチェックサムとする
+  3. `ペイロードバイト列 + チェックサム4バイト` を連結し、**まとめて1回だけBase64url化**する
+  4. 先頭に `SPEC-BATTLE-BACKUP2:` プレフィックスを付与する
+- v2 復元手順: プレフィックス除去 → Base64urlデコード → 末尾4バイトをチェックサムとして分離 → 残りのバイト列からHMAC-SHA256先頭4バイトを再計算して比較。不一致なら `IntegrityException`（F3-7の文言で拒否）。
+- v1プレフィックスは従来どおり復元可（後方互換）。生成は常にv2。
 - 既知の限界: HMAC鍵はクライアント埋め込みのため改ざん防止ではなく**破損検知**が目的（`product_spec.md` 7-1と同じ制約）。
 
 ### 2-7. F7/F8（P2・設計メモのみ、今回実装しない）
@@ -314,6 +320,7 @@ rankings/{weekId}/entries/{anonUid}:
 ### 4-3. ブラウザ結合テスト（手動・Playwright）
 
 - 初回起動 → 同意ダイアログ → 拒否 → 全コアフロー（バトル/ガチャ/共有）が動作すること
+- 未同意・拒否状態でDebugViewに**自動収集イベント（`first_visit` / `session_start` 等）を含めて**1件も到達しないこと
 - 同意 → 分析コンソール（DebugView）で `battle_start` 〜 `battle_result` の到達確認
 - ランキング: 2ブラウザ（別プロファイル）で参加し、相互の順位が反映されること
 - オフライン（DevToolsでOffline化）: ホーム表示・バトル・ガチャが劣化なく動き、ランキングが推定表示に戻ること
