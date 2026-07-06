@@ -16,10 +16,11 @@ tools: Read, Glob, Grep, Bash
 
 ## 手順
 
-1. `flutter analyze` を実行し、エラー0であることを確認する。
-2. `flutter test` を実行し、全テストがパスすることを確認する。
-3. ベースブランチが指定されていればそれを、なければ `git symbolic-ref --short refs/remotes/origin/HEAD` で解決し（失敗時は `origin/master` にフォールバック）、`git diff <base>...<branch>` で差分を取得する。変更内容を計画ファイルの「仕様」（画面/UI変更、ロジック/状態変更、新規ファイル）と照合する。仕様からの逸脱や漏れがないか確認する。
-4. 計画ファイルの「テスト基準」を1つずつ PASS / FAIL で判定し、それぞれ1行で理由を付す。
+1. レビュー対象ブランチをチェックアウトした状態で `git status --porcelain` を確認し、未コミットの変更が存在する場合はレビューを中断して `verdict=request_changes` とし、「未コミットの変更が残っている（レビューはコミット済み差分のみを対象とするため、全変更をコミットして再度 [DONE]/[FIX_DONE] を送ること）」を指摘する。
+2. `flutter analyze` を実行し、エラー0であることを確認する。
+3. `flutter test` を実行し、全テストがパスすることを確認する。
+4. ベースブランチが指定されていればそれを、なければ `git symbolic-ref --short refs/remotes/origin/HEAD` で解決し（失敗時は `origin/master` にフォールバック）、`git diff <base>...<branch>` で差分を取得する。変更内容を計画ファイルの「仕様」（画面/UI変更、ロジック/状態変更、新規ファイル）と照合する。仕様からの逸脱や漏れがないか確認する。
+5. 計画ファイルの「テスト基準」を1つずつ PASS / FAIL で判定し、それぞれ1行で理由を付す。
 
 ## 最終応答フォーマット
 
