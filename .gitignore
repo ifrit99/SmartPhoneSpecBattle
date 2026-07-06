@@ -50,6 +50,9 @@ docs/reports/
 .local/
 
 # AIエージェント設定ファイル
-.claude/
+# .claude/ はサブエージェント定義（agents/）のみ追跡し、それ以外は無視する
+.claude/*
+!.claude/agents/
+.codex/
 .mcp.json
 .superset/
