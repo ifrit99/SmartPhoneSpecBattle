@@ -20,15 +20,10 @@ fi
 register_agent() {
   local agent_id="$1"
   local agent_type="$2"
-  local whoami_out
 
-  whoami_out="$("$AGMSG_SCRIPTS/whoami.sh" "$REPO_ROOT" "$agent_type" || true)"
-
-  # 登録済み判定: 出力が agent=/multiple= で始まる（not_joined/suggest は未登録）ことに加え、
-  # agents と teams のフィールド値そのものに一致すること（available_teams= への誤マッチを防ぐ）
-  if echo "$whoami_out" | grep -qE '^(agent=|multiple=true)' \
-    && echo "$whoami_out" | grep -qE "(^|[[:space:]])agents?=([^[:space:]]*,)?${agent_id}(,|[[:space:]]|$)" \
-    && echo "$whoami_out" | grep -qE "(^|[[:space:]])teams=([^[:space:]]*,)?${TEAM}(,|[[:space:]]|$)"; then
+  # (team, agent) ペアの完全一致で登録済みか判定する（identities.sh はタブ区切りでペアを出力）
+  if "$AGMSG_SCRIPTS/identities.sh" "$REPO_ROOT" "$agent_type" 2>/dev/null \
+    | grep -qxF "${TEAM}"$'\t'"${agent_id}"; then
     echo "[${agent_id}] 登録済みのためスキップします"
   else
     echo "[${agent_id}] チーム ${TEAM} へ登録します"
