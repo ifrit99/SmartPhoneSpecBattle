@@ -52,10 +52,16 @@ bash scripts/agmsg/setup.sh
 Codex の起動:
 
 ```bash
+# タスクを渡して起動（推奨）
+bash scripts/agmsg/start_codex.sh "[TASK] t1 <目的> branch=feature/xxx spec=docs/plans/xxx.md 完了条件=analyze/testグリーン"
+
+# 起動のみ
 bash scripts/agmsg/start_codex.sh
 ```
 
 tmux内ならペイン分割、tmux外なら新規ターミナルウィンドウで Codex が起動し、自動的にチームへ参加する。
+
+turnモードのCodexはアイドル中に受信箱を確認しないため、初回タスクは**起動前に送信**する必要がある。start_codex.sh に第1引数でタスクを渡すと、spawn前に送信してから起動する。
 
 ---
 
@@ -79,6 +85,8 @@ tmux内ならペイン分割、tmux外なら新規ターミナルウィンドウ
        → docs/plans/{feature}.md 出力（Status: PLANNING）
             ↓
 2. メインが [TASK] を codex へ送信
+       （Codex未起動なら start_codex.sh "[TASK] ..." で送信→起動。
+         起動済みなら待機ループ中のCodexが受信）
        （不明点は [QUESTION] / [ANSWER] 往復）
             ↓
 3. Codex が feature/ブランチ作成 → 実装
@@ -106,7 +114,7 @@ tmux内ならペイン分割、tmux外なら新規ターミナルウィンドウ
 
 - **完了条件**: `flutter analyze` エラー0 / `flutter test` 全パスをCodexが実装完了の必須条件とする。
 - **ブランチ規約**: 全ての実装は `feature/` ブランチで行う（`CLAUDE.md` のGit運用ルールに準拠）。
-- **single-writer原則**: 同時にコードを触るのはCodexのみ。`agmsg-reviewer` によるレビュー中、Codexは待機する。
+- **single-writer原則**: 同時にコードを触るのはCodexのみ。`agmsg-reviewer` によるレビュー中、Codexは待機ループ（`AGENTS.md` 参照）で `[REVIEW]` を待つ。
 - **push/PR作成のタイミング**: `[REVIEW] approve` を受け取るまで、Codexはpush・PR作成を行わない。
 - **PRレビュー**: ハーネスモードではPRレビューはClaude側（`agmsg-reviewer`）が担当する。GitHub PRへの `@codex review` は任意の追加確認として扱う。
 
@@ -115,6 +123,7 @@ tmux内ならペイン分割、tmux外なら新規ターミナルウィンドウ
 ## 7. トラブルシュート
 
 - **メッセージが届かない**: 手動で `$agmsg`（受信箱確認コマンド）を実行する。
+- **アイドルのCodexにメッセージが届かない**: turnモードではメッセージはCodexのターン終了時にのみ配信される。対処: (1) 初回タスクは `start_codex.sh` の引数で渡す（起動前送信）、(2) Codexは `[DONE]`/`[QUESTION]` 送信後に待機ループ（`AGENTS.md` 参照）で返信を待つ運用とする、(3) それでもアイドルになった場合はCodexのターミナルで何か入力すれば次のターン終了時に配信される。リアルタイム配信が必要な場合は agmsg の Codex monitor bridge（BETA）があるが本ハーネスでは対象外。
 - **monitorモードが効かない**: monitorモードはセッション再起動後に有効になる。設定直後のセッションでは反映されない。
 - **sandbox利用時に書き込みエラーが出る**: `~/.agents/skills/agmsg/` への書き込み許可が必要。
   - Claude Code: settingsの `sandbox.filesystem.allowWrite` に `~/.agents/skills/agmsg` を追加する。

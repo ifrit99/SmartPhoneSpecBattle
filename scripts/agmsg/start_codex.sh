@@ -5,7 +5,20 @@ set -euo pipefail
 # tmux 内ならペイン分割、tmux 外なら新規ターミナルウィンドウで Codex が起動し、
 # `/agmsg actas codex` が自動実行されてチームへ参加する。
 #
-# 実行方法: bash scripts/agmsg/start_codex.sh
+# 使い方:
+#   bash scripts/agmsg/start_codex.sh
+#   bash scripts/agmsg/start_codex.sh "[TASK] t1 <目的> branch=feature/xxx spec=docs/plans/xxx.md"
+#
+# 第1引数が `-` で始まらない文字列として存在する場合、それを「初回タスクメッセージ」
+# として扱い、spawn 前に codex 宛てに送信する。残りの引数は spawn にそのまま渡す。
+#
+# なぜ「送信→起動」なのか:
+#   Codex はturnモード（自分のターン終了時のみ受信箱をチェックする）で動作する。
+#   起動済みでアイドル状態のCodexにメッセージを送っても、次にCodexのターンが
+#   発生するまで届かない＝人間の入力なしには実装が始まらない。
+#   一方、Codex起動時の初回ターン（`/agmsg actas codex`）が終了した時点ではturnフック
+#   （Stop hook）が受信箱をチェックするため、spawn前に送っておいた [TASK] はそこで
+#   配信され、人手なしに実装が始まる。
 
 AGMSG_SCRIPTS="$HOME/.agents/skills/agmsg/scripts"
 
@@ -20,5 +33,18 @@ if [ ! -x "$AGMSG_SCRIPTS/spawn.sh" ]; then
 fi
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+TASK_MSG=""
+if [ $# -gt 0 ] && [ "${1#-}" = "$1" ]; then
+  TASK_MSG="$1"
+  shift
+fi
+
+if [ -n "$TASK_MSG" ]; then
+  "$AGMSG_SCRIPTS/send.sh" specbattle claude codex "$TASK_MSG"
+  echo "[TASK]を送信しました。Codex起動後の初回ターン終了時に自動配信されます"
+else
+  echo "注意: turnモードのCodexはアイドル中に受信箱を確認しません。タスクを自動で始めさせるには、起動前にメッセージを送るか、このスクリプトの第1引数でタスクを渡してください。"
+fi
 
 exec "$AGMSG_SCRIPTS/spawn.sh" codex codex --project "$REPO_ROOT" --team specbattle "$@"

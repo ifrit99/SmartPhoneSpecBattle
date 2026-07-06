@@ -23,3 +23,13 @@
 - タスクに画像・アセット生成が含まれる場合は Codex 自身の image gen で生成し `assets/` へ配置する。
 - `[REVIEW] request_changes` を受けたら修正して `[FIX_DONE]` を送信する。`[REVIEW] approve` を受けるまで push・マージ・PR作成をしない。
 - 不明点は `[QUESTION]` で claude に確認し、続行不能なら `[BLOCKED]` を送信する。
+- turnモードではアイドル中に受信箱が自動確認されない。そのため `[DONE]` や `[QUESTION]` を送信した後はターンを終了せず、次のコマンドで返信を待つこと（30秒間隔・最大60回=約30分。受信したら内容に従って作業を再開する）:
+
+```bash
+for i in $(seq 1 60); do
+  out="$(~/.agents/skills/agmsg/scripts/inbox.sh specbattle codex)"
+  case "$out" in "No new messages."*) sleep 30 ;; *) echo "$out"; break ;; esac
+done
+```
+
+- 待機がタイムアウトした場合は、その旨をユーザーに伝えてターンを終了してよい（以降のメッセージは次のターン終了時まで配信されない）。
