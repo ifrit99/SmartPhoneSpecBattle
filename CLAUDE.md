@@ -12,6 +12,7 @@
 - **Hermes**: 秘書担当。TODO管理、Wiki/ドキュメント整備、進捗追跡、エージェント間調整を担当する。
 - 原則として、同時に複数エージェントがコードを触らないこと。
 - Hermesからの依頼やメモがある場合も、コード変更の実行責任はClaude Codeが持つこと。
+- agmsgハーネスモード（`docs/agmsg_harness.md`）利用時は役割が入れ替わり、Claude Code=オーケストレーター＋設計/レビュー（設計は `agmsg-designer`、レビューは `agmsg-reviewer` サブエージェントに分離し、同一エージェントが自分の成果物を評価しない）、Codex=実装＋画像生成（image gen）となる。
 
 ## 📚 ドキュメント構成
 - `README.md`: プロジェクトの目的と使用技術スタック等の概要
@@ -25,6 +26,7 @@
 - `docs/gacha_browser_test_cases.md`: ガチャ機能のブラウザ結合テストケース
 - `docs/device_info.md`: デバイス情報取得状況（プラットフォーム別取得可否・ステータス反映）
 - `docs/plans/`: Planner/Generator/Evaluator ワークフロー用の計画・評価ドキュメント（運用ルールは `docs/plans/TEMPLATES.md` を参照）
+- `docs/agmsg_harness.md`: agmsgによるエージェント間連携ハーネスの運用仕様（役割分担・メッセージプロトコル・セットアップ手順）
 - `PHASE4_SPEC_DRAFT.md`: 将来の機能拡張案（ガチャ・QR対戦等）の詳細仕様
 
 **※注意:** 新規ドキュメントを作成する場合は `docs/` ディレクトリ内に配置し、このファイルから適宜リンクを追加してください。

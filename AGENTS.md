@@ -15,3 +15,21 @@
 - Check state/flag management carefully.
 - Check branch漏れ for empty states and skip flows.
 - Point out missing tests when relevant.
+
+## agmsg ハーネス（実装担当モード）
+- このリポジトリには agmsg によるエージェント間連携ハーネスがある（詳細: `docs/agmsg_harness.md`）。
+- ハーネスモードでは Codex は**実装担当**。セッション開始時（`/agmsg actas codex` の初回プロンプトで起動された直後を含む）は、**同じターン内で必ず** `$agmsg`（受信箱確認）を実行し、`[TASK]` があれば直ちに着手する。turnフックには60秒クールダウンがあり起動直後の自動チェックがスキップされることがあるため、この手動確認で取りこぼしを防ぐ。
+- `[TASK]` 受領 → feature/ブランチ作成 → 実装 → `flutter analyze` / `flutter test` グリーン → **変更をすべてコミットし、`git status --porcelain` が空（clean）であることを確認**（レビューはコミット済み差分に対して行われるため、未コミットの変更はレビュー対象から漏れる） → `[DONE]` を claude へ送信する。
+- タスクに画像・アセット生成が含まれる場合は Codex 自身の image gen で生成し `assets/` へ配置する。
+- `[REVIEW] request_changes` を受けたら修正し、**修正をすべてコミットしてから** `[FIX_DONE]` を送信する。`[REVIEW] approve` を受けるまで push・マージ・PR作成をしない。
+- 不明点は `[QUESTION]` で claude に確認し、続行不能なら `[BLOCKED]` を送信する。
+- turnモードではアイドル中に受信箱が自動確認されない。そのため `[DONE]`・`[QUESTION]`・`[FIX_DONE]` を送信した後はターンを終了せず、次のコマンドで返信を待つこと（30秒間隔・最大60回=約30分。受信したら内容に従って作業を再開する）:
+
+```bash
+for i in $(seq 1 60); do
+  out="$(~/.agents/skills/agmsg/scripts/inbox.sh specbattle codex)"
+  case "$out" in "No new messages."*) sleep 30 ;; *) echo "$out"; break ;; esac
+done
+```
+
+- 待機がタイムアウトした場合は、その旨をユーザーに伝えてターンを終了してよい（以降のメッセージは次のターン終了時まで配信されない）。
