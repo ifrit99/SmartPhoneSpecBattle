@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'data/sound_service.dart';
+import 'data/error_monitoring.dart';
 import 'data/firebase_analytics_client.dart';
 import 'domain/services/service_locator.dart';
 import 'domain/services/qr_battle_service.dart';
@@ -19,27 +20,30 @@ final RouteObserver<ModalRoute<void>> routeObserver =
 /// 起動時のURL対戦パラメータ（Webのみ）
 String? _initialBattleParam;
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+void main() {
+  // Sentry のエラー監視下でアプリを起動する（DSN未設定時はno-opで素通し）。
+  runWithErrorMonitoring(() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  // ステータスバーを透明に
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-  ));
+    // ステータスバーを透明に
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+    ));
 
-  // サービスロケータの初期化
-  await ServiceLocator().init();
+    // サービスロケータの初期化
+    await ServiceLocator().init();
 
-  // Web: URLパラメータから対戦データを検出
-  if (kIsWeb) {
-    final battleParam = QrBattleService.extractBattleParam(Uri.base);
-    if (battleParam != null && battleParam.isNotEmpty) {
-      _initialBattleParam = battleParam;
+    // Web: URLパラメータから対戦データを検出
+    if (kIsWeb) {
+      final battleParam = QrBattleService.extractBattleParam(Uri.base);
+      if (battleParam != null && battleParam.isNotEmpty) {
+        _initialBattleParam = battleParam;
+      }
     }
-  }
 
-  runApp(const SpecBattleApp());
+    runApp(const SpecBattleApp());
+  });
 }
 
 class SpecBattleApp extends StatefulWidget {

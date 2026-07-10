@@ -19,6 +19,7 @@ dependencies:
   # X共有で使用。対象はWeb公開（GitHub Pages）。
   # Androidネイティブビルドは compileSdk 34 / AGP 8.1+ への更新が別途必要。
   url_launcher: ^6.3.0
+  sentry_flutter: ^8.14.2
 
 dev_dependencies:
   flutter_test:
