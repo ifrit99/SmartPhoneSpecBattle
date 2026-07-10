@@ -10,6 +10,7 @@ import '../widgets/stat_bar.dart';
 import '../widgets/damage_popup.dart';
 import '../widgets/skill_effect_overlay.dart';
 import '../../domain/services/enemy_generator.dart';
+import '../../domain/services/service_locator.dart';
 import 'result_screen.dart';
 
 /// バトル画面 — 自動バトルのアニメーション表示
@@ -96,6 +97,16 @@ class _BattleScreenState extends State<BattleScreen>
     setState(() {
       _supportSelected = true;
     });
+
+    ServiceLocator().analyticsService.logEvent(
+      'battle_start',
+      params: {
+        'mode': widget.isCpuBattle ? 'cpu' : 'friend',
+        'difficulty': widget.enemyDifficulty.name,
+        'tactic': widget.playerTactic.name,
+        'support': supportCommand.name,
+      },
+    );
 
     final engine = BattleEngine();
     _result = engine.executeBattle(

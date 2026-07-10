@@ -29,6 +29,7 @@ import 'inventory_screen.dart';
 import 'qr_menu_screen.dart';
 import 'data_backup_screen.dart';
 import 'help_screen.dart';
+import 'privacy_settings_screen.dart';
 
 import '../../data/local_storage_service.dart';
 import '../../domain/services/daily_reward_service.dart';
@@ -632,6 +633,25 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
               ),
               const SizedBox(width: 12),
+              Expanded(
+                child: _buildMenuButton(
+                  icon: Icons.privacy_tip_outlined,
+                  label: 'Privacy',
+                  color: Colors.pinkAccent,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const PrivacySettingsScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
               Expanded(
                 child: _buildMenuButton(
                   icon: Icons.cloud_upload,
@@ -1637,6 +1657,10 @@ class _HomeScreenState extends State<HomeScreen>
     SoundService().playButton();
     final result = await _sl.dailyMissionService.claim(id);
     if (!mounted || result == null) return;
+    await _sl.analyticsService.logEvent(
+      'mission_claimed',
+      params: {'kind': 'daily', 'id': id},
+    );
 
     await _reloadData();
     if (!mounted) return;
@@ -1649,6 +1673,10 @@ class _HomeScreenState extends State<HomeScreen>
     SoundService().playButton();
     final result = await _sl.dailyMissionService.claimAllAvailable();
     if (!mounted || result == null) return;
+    await _sl.analyticsService.logEvent(
+      'mission_claimed',
+      params: {'kind': 'daily_all', 'count': result.claimedCount},
+    );
 
     await _reloadData();
     if (!mounted) return;
@@ -1665,6 +1693,13 @@ class _HomeScreenState extends State<HomeScreen>
     SoundService().playButton();
     final result = await _sl.dailyShopService.purchase(id);
     if (!mounted || result == null) return;
+    await _sl.analyticsService.logEvent(
+      'shop_purchased',
+      params: {
+        'id': id,
+        'summary': result.summary,
+      },
+    );
 
     await _reloadData();
     if (!mounted) return;
@@ -1679,6 +1714,10 @@ class _HomeScreenState extends State<HomeScreen>
     SoundService().playButton();
     final result = await _sl.weeklyChallengeService.claim();
     if (!mounted || result == null) return;
+    await _sl.analyticsService.logEvent(
+      'mission_claimed',
+      params: {'kind': 'weekly_challenge'},
+    );
 
     await _reloadData();
     if (!mounted) return;
@@ -1695,6 +1734,10 @@ class _HomeScreenState extends State<HomeScreen>
     SoundService().playButton();
     final result = await _sl.limitedEventService.claim();
     if (!mounted || result == null) return;
+    await _sl.analyticsService.logEvent(
+      'mission_claimed',
+      params: {'kind': 'limited_event'},
+    );
 
     await _reloadData();
     if (!mounted) return;
@@ -1711,6 +1754,13 @@ class _HomeScreenState extends State<HomeScreen>
     SoundService().playButton();
     final result = await _sl.limitedEventService.claimAvailableMilestones();
     if (!mounted || result == null) return;
+    await _sl.analyticsService.logEvent(
+      'mission_claimed',
+      params: {
+        'kind': 'limited_event_milestones',
+        'count': result.claimedCount
+      },
+    );
 
     await _reloadData();
     if (!mounted) return;
@@ -1727,6 +1777,10 @@ class _HomeScreenState extends State<HomeScreen>
     SoundService().playButton();
     final result = await _sl.seasonPassService.claimAllAvailable();
     if (!mounted || result == null) return;
+    await _sl.analyticsService.logEvent(
+      'mission_claimed',
+      params: {'kind': 'season_pass', 'count': result.claimedCount},
+    );
 
     await _reloadData();
     if (!mounted) return;
