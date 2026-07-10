@@ -42,7 +42,7 @@ jobs:
         run: flutter test
 
       - name: Web ビルド
-        run: flutter build web --release --base-href "/SmartPhoneSpecBattle/"
+        run: flutter build web --release --base-href "/SmartPhoneSpecBattle/" --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} --dart-define=SENTRY_RELEASE=${{ github.sha }}
 
       - name: OGP 画像の絶対パスを設定
         run: |
