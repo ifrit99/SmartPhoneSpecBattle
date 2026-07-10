@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../data/local_storage_service.dart';
+import '../../domain/services/service_locator.dart';
 import 'home_screen.dart';
 
 /// 初回起動時に表示するオンボーディング画面（3ページ構成）
@@ -28,7 +29,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       icon: Icons.auto_awesome,
       gradientColors: [Color(0xFF00B894), Color(0xFF55EFC4)],
       title: 'スペックが\n能力値に変わる',
-      description: 'CPU → 攻撃力、RAM → HP、\nストレージ → 防御力、バッテリー → 素早さ\nに変換されてバトルします。',
+      description:
+          'CPU → 攻撃力、RAM → HP、\nストレージ → 防御力、バッテリー → 素早さ\nに変換されてバトルします。',
     ),
     _OnboardingPageData(
       icon: Icons.flash_on,
@@ -40,6 +42,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   void _nextPage() {
     if (_currentPage < _totalPages - 1) {
+      ServiceLocator().analyticsService.logEvent(
+        'onboarding_step',
+        params: {'step': _currentPage + 2, 'action': 'next'},
+      );
       _pageController.nextPage(
         duration: const Duration(milliseconds: 400),
         curve: Curves.easeInOut,
@@ -50,11 +56,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _skip() {
+    ServiceLocator().analyticsService.logEvent(
+      'onboarding_step',
+      params: {'step': _currentPage + 1, 'action': 'skip'},
+    );
     _completeOnboarding();
   }
 
   Future<void> _completeOnboarding() async {
     await LocalStorageService().setOnboardingCompleted();
+    await ServiceLocator().analyticsService.logEvent(
+      'onboarding_step',
+      params: {'step': _currentPage + 1, 'action': 'complete'},
+    );
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
@@ -128,9 +142,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     width: isActive ? 24 : 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: isActive
-                          ? const Color(0xFF6C5CE7)
-                          : Colors.white24,
+                      color:
+                          isActive ? const Color(0xFF6C5CE7) : Colors.white24,
                       borderRadius: BorderRadius.circular(4),
                     ),
                   );

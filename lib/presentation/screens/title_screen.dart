@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../data/local_storage_service.dart';
 import '../../data/sound_service.dart';
+import '../widgets/analytics_consent_dialog.dart';
 import 'home_screen.dart';
 import 'onboarding_screen.dart';
 
@@ -38,6 +39,7 @@ class _TitleScreenState extends State<TitleScreen>
   final _random = Random();
 
   bool _navigating = false;
+
   /// Web: 初回タップでAudioContextアンロック+BGM開始済みか
   bool _webAudioReady = !kIsWeb;
 
@@ -145,11 +147,13 @@ class _TitleScreenState extends State<TitleScreen>
     SoundService().playButton();
     SoundService().stopBgm(); // BGMをフェードアウト停止
 
+    await ensureAnalyticsConsent(context);
+    if (!mounted) return;
+
     // 初回起動ならオンボーディングへ、2回目以降はホームへ直行
     final isFirstTime = !LocalStorageService().isOnboardingCompleted();
-    final Widget destination = isFirstTime
-        ? const OnboardingScreen()
-        : const HomeScreen();
+    final Widget destination =
+        isFirstTime ? const OnboardingScreen() : const HomeScreen();
 
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(

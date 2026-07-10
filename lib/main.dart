@@ -2,19 +2,22 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'data/sound_service.dart';
+import 'data/firebase_analytics_client.dart';
 import 'domain/services/service_locator.dart';
 import 'domain/services/qr_battle_service.dart';
 import 'presentation/screens/title_screen.dart';
 import 'presentation/screens/qr_guest_preview_screen.dart';
+import 'presentation/widgets/analytics_consent_dialog.dart';
 
 /// グローバルナビゲーターキー（URL対戦からの画面遷移に使用）
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 /// グローバルRouteObserver（RouteAwareによる画面復帰検知に使用）
-final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
+final RouteObserver<ModalRoute<void>> routeObserver =
+    RouteObserver<ModalRoute<void>>();
 
 /// 起動時のURL対戦パラメータ（Webのみ）
-QrBattleGuest? _initialBattleGuest;
+String? _initialBattleParam;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,12 +35,7 @@ void main() async {
   if (kIsWeb) {
     final battleParam = QrBattleService.extractBattleParam(Uri.base);
     if (battleParam != null && battleParam.isNotEmpty) {
-      try {
-        _initialBattleGuest =
-            ServiceLocator().qrBattleService.decodeAsGuest(battleParam);
-      } catch (e) {
-        debugPrint('Invalid battle param in URL: $e');
-      }
+      _initialBattleParam = battleParam;
     }
   }
 
@@ -59,15 +57,33 @@ class _SpecBattleAppState extends State<SpecBattleApp>
     WidgetsBinding.instance.addObserver(this);
 
     // URL対戦パラメータがあれば、初回フレーム後にプレビュー画面へ遷移
-    if (_initialBattleGuest != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final guest = _initialBattleGuest!;
-        _initialBattleGuest = null;
-        navigatorKey.currentState?.push(
-          MaterialPageRoute(
-            builder: (context) => QrGuestPreviewScreen(guest: guest),
-          ),
-        );
+    if (_initialBattleParam != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final battleParam = _initialBattleParam!;
+        _initialBattleParam = null;
+        final context = navigatorKey.currentContext;
+        if (context == null) return;
+        await ensureAnalyticsConsent(context);
+        if (!mounted) return;
+
+        try {
+          final guest =
+              ServiceLocator().qrBattleService.decodeAsGuest(battleParam);
+          await ServiceLocator().analyticsService.logEvent(
+            'share_url_opened',
+            params: {
+              'source': 'direct_link',
+              'is_gacha': guest.isGacha,
+            },
+          );
+          navigatorKey.currentState?.push(
+            MaterialPageRoute(
+              builder: (context) => QrGuestPreviewScreen(guest: guest),
+            ),
+          );
+        } catch (e) {
+          debugPrint('Invalid battle param in URL: $e');
+        }
       });
     }
   }
@@ -92,7 +108,10 @@ class _SpecBattleAppState extends State<SpecBattleApp>
   Widget build(BuildContext context) {
     return MaterialApp(
       navigatorKey: navigatorKey,
-      navigatorObservers: [routeObserver],
+      navigatorObservers: [
+        routeObserver,
+        AnalyticsNavigatorObserver(ServiceLocator().analyticsService),
+      ],
       title: 'Spec Battle',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

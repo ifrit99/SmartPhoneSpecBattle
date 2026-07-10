@@ -66,6 +66,7 @@ class _GachaScreenState extends State<GachaScreen>
   /// 単発ガチャを実行
   Future<void> _pullSingle() async {
     if (_currentCoins < PlayerCurrency.singlePullCost) {
+      _logGachaBlocked('single', 'coins', PlayerCurrency.singlePullCost);
       _showInsufficientCurrency(
         label: 'コイン',
         unit: 'Coin',
@@ -75,12 +76,13 @@ class _GachaScreenState extends State<GachaScreen>
       );
       return;
     }
-    await _executePull(() => _gachaService.pullSingle());
+    await _executePull('single', () => _gachaService.pullSingle());
   }
 
   /// 10連ガチャを実行
   Future<void> _pullTen() async {
     if (_currentCoins < PlayerCurrency.tenPullCost) {
+      _logGachaBlocked('ten', 'coins', PlayerCurrency.tenPullCost);
       _showInsufficientCurrency(
         label: 'コイン',
         unit: 'Coin',
@@ -90,12 +92,13 @@ class _GachaScreenState extends State<GachaScreen>
       );
       return;
     }
-    await _executePull(() => _gachaService.pullTen());
+    await _executePull('ten', () => _gachaService.pullTen());
   }
 
   /// プレミアム解析ガチャを実行
   Future<void> _pullPremium() async {
     if (_currentGems < PlayerCurrency.premiumPullCost) {
+      _logGachaBlocked('premium', 'gems', PlayerCurrency.premiumPullCost);
       _showInsufficientCurrency(
         label: 'ジェム',
         unit: 'Gems',
@@ -105,12 +108,17 @@ class _GachaScreenState extends State<GachaScreen>
       );
       return;
     }
-    await _executePull(() => _gachaService.pullPremium());
+    await _executePull('premium', () => _gachaService.pullPremium());
   }
 
   /// 期間限定イベント解析ガチャを実行
   Future<void> _pullEventLimited() async {
     if (_currentGems < PlayerCurrency.eventLimitedPullCost) {
+      _logGachaBlocked(
+        'event_limited',
+        'gems',
+        PlayerCurrency.eventLimitedPullCost,
+      );
       _showInsufficientCurrency(
         label: 'ジェム',
         unit: 'Gems',
@@ -120,7 +128,18 @@ class _GachaScreenState extends State<GachaScreen>
       );
       return;
     }
-    await _executePull(() => _gachaService.pullEventLimited());
+    await _executePull('event_limited', () => _gachaService.pullEventLimited());
+  }
+
+  void _logGachaBlocked(String type, String currency, int required) {
+    _sl.analyticsService.logEvent(
+      'gacha_blocked',
+      params: {
+        'type': type,
+        'currency': currency,
+        'required': required,
+      },
+    );
   }
 
   void _showInsufficientCurrency({
@@ -175,7 +194,10 @@ class _GachaScreenState extends State<GachaScreen>
   }
 
   /// ガチャ演出と結果表示の共通処理
-  Future<void> _executePull(Future<GachaResult?> Function() pullFn) async {
+  Future<void> _executePull(
+    String type,
+    Future<GachaResult?> Function() pullFn,
+  ) async {
     setState(() => _isPulling = true);
 
     // 演出開始
@@ -194,6 +216,15 @@ class _GachaScreenState extends State<GachaScreen>
     setState(() => _isPulling = false);
 
     if (result == null) return;
+    await _sl.analyticsService.logEvent(
+      'gacha_pull',
+      params: {
+        'type': type,
+        'count': result.characters.length,
+        'duplicate_upgrades': result.duplicateUpgrades,
+        'duplicate_refund_coins': result.duplicateRefundCoins,
+      },
+    );
 
     // 結果表示
     if (result.characters.length == 1) {

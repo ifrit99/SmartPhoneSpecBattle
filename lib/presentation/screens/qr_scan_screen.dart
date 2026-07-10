@@ -69,6 +69,13 @@ class _UrlInputScreenState extends State<UrlInputScreen> {
     try {
       final encoded = QrBattleService.normalizeBattleInput(input);
       final guest = ServiceLocator().qrBattleService.decodeAsGuest(encoded);
+      ServiceLocator().analyticsService.logEvent(
+        'share_url_opened',
+        params: {
+          'source': 'manual_input',
+          'is_gacha': guest.isGacha,
+        },
+      );
 
       if (mounted) {
         Navigator.of(context).pushReplacement(

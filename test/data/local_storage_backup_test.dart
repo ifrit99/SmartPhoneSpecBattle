@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:spec_battle_game/data/local_storage_service.dart';
+import 'package:spec_battle_game/domain/services/analytics_service.dart';
 
 void main() {
   late LocalStorageService storage;
@@ -140,6 +143,25 @@ void main() {
     await storage.importBackupCode(body);
 
     expect(storage.getCoins(), 120);
+  });
+
+  test('analytics_consentはバックアップ対象外で復元時も現在値を維持する', () async {
+    await storage.setAnalyticsConsent(AnalyticsConsent.granted);
+    await storage.saveCoins(120);
+
+    final code = await storage.exportBackupCode();
+    final body = code.replaceFirst('SPEC-BATTLE-BACKUP:', '');
+    final payload =
+        jsonDecode(utf8.decode(base64Url.decode(body))) as Map<String, dynamic>;
+    final data = payload['data'] as Map<String, dynamic>;
+
+    expect(data.containsKey('analytics_consent'), isFalse);
+
+    await storage.setAnalyticsConsent(AnalyticsConsent.denied);
+    await storage.importBackupCode(code);
+
+    expect(storage.getCoins(), 120);
+    expect(storage.getAnalyticsConsent(), AnalyticsConsent.denied);
   });
 
   test('対戦履歴は直近20件だけ保持する', () async {

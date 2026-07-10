@@ -113,6 +113,18 @@ class _ResultScreenState extends State<ResultScreen>
         );
 
     _applyPersistedResult(persisted);
+    await ServiceLocator().analyticsService.logEvent(
+      'battle_result',
+      params: {
+        'mode': widget.isCpuBattle ? 'cpu' : 'friend',
+        'difficulty': widget.enemyDifficulty.name,
+        'won': widget.result.playerWon,
+        'turns': widget.result.turnsPlayed,
+        'exp_gained': widget.result.expGained,
+        'coins_gained': persisted.coinsGained,
+        'first_battle': persisted.isFirstBattle,
+      },
+    );
 
     if (mounted) {
       setState(() {
@@ -672,8 +684,7 @@ class _ResultScreenState extends State<ResultScreen>
 
   /// 勝因ハイライト（勝利時）／次への対策（敗北時）カード
   Widget _buildInsightCard(bool won) {
-    final accentColor =
-        won ? const Color(0xFFFFD700) : const Color(0xFF74B9FF);
+    final accentColor = won ? const Color(0xFFFFD700) : const Color(0xFF74B9FF);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),

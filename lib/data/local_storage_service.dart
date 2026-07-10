@@ -1,7 +1,8 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../domain/services/analytics_service.dart';
 
 class BattleHistoryEntry {
   final String id;
@@ -134,6 +135,7 @@ class LocalStorageService {
       'season.passClaimedRewards';
   static const String _keyLastBossBountyDate = 'bossBounty.lastClaimDate';
   static const String _keyBossBestTurns = 'boss.bestTurns';
+  static const String _keyAnalyticsConsent = 'analytics_consent';
   static const String _backupPrefix = 'SPEC-BATTLE-BACKUP:';
   static const int maxBattleHistoryEntries = 20;
 
@@ -148,7 +150,6 @@ class LocalStorageService {
   }
 
   /// テスト用: SharedPreferencesインスタンスをリセットして再取得する
-  @visibleForTesting
   Future<void> resetForTest() async {
     _prefs = await SharedPreferences.getInstance();
   }
@@ -376,6 +377,18 @@ class LocalStorageService {
   /// 初回バトル完了フラグを保存
   Future<void> setFirstBattleCompleted() async {
     await _store.setBool(_keyFirstBattleCompleted, true);
+  }
+
+  // --- Analytics 同意 ---
+
+  AnalyticsConsent getAnalyticsConsent() {
+    return AnalyticsConsentX.fromStorageValue(
+      _store.getString(_keyAnalyticsConsent),
+    );
+  }
+
+  Future<void> setAnalyticsConsent(AnalyticsConsent consent) async {
+    await _store.setString(_keyAnalyticsConsent, consent.storageValue);
   }
 
   // --- デイリー報酬 ---
@@ -715,6 +728,7 @@ class LocalStorageService {
 
   /// バックアップデータを全消去のうえ書き込む（importBackupCode専用）
   Future<void> _importBackupData(Map<String, dynamic> data) async {
+    final currentAnalyticsConsent = getAnalyticsConsent();
     await _store.clear();
     await _store.setInt(_keyLevel, _asInt(data[_keyLevel], 1));
     await _store.setInt(_keyCurrentExp, _asInt(data[_keyCurrentExp], 0));
@@ -860,6 +874,9 @@ class LocalStorageService {
     final bossBestTurns = data[_keyBossBestTurns];
     if (bossBestTurns is int && bossBestTurns > 0) {
       await _store.setInt(_keyBossBestTurns, bossBestTurns);
+    }
+    if (currentAnalyticsConsent != AnalyticsConsent.unanswered) {
+      await setAnalyticsConsent(currentAnalyticsConsent);
     }
   }
 

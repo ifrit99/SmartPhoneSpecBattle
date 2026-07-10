@@ -41,6 +41,7 @@ class _DataBackupScreenState extends State<DataBackupScreen> {
 
   Future<void> _loadBackupCode() async {
     final code = await _sl.storage.exportBackupCode();
+    await _sl.analyticsService.logEvent('backup_created');
     if (!mounted) return;
     setState(() => _exportController.text = code);
   }
@@ -100,6 +101,7 @@ class _DataBackupScreenState extends State<DataBackupScreen> {
     try {
       await _sl.storage.importBackupCode(code);
       await SoundService().init(_sl.storage);
+      await _sl.analyticsService.logEvent('backup_restored');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('バックアップから復元しました')),

@@ -991,6 +991,11 @@ class _CollectionScreenState extends State<CollectionScreen> {
   Future<void> _claimAchievement(String id) async {
     final result = await _sl.achievementService.claim(id);
     if (!mounted || result == null) return;
+    await _sl.analyticsService.logEvent(
+      'mission_claimed',
+      params: {'kind': 'achievement', 'id': id},
+    );
+    if (!mounted) return;
     setState(_loadData);
 
     ScaffoldMessenger.of(context).showSnackBar(

@@ -1,5 +1,9 @@
+import 'package:flutter/foundation.dart';
+
+import '../../data/firebase_analytics_client.dart';
 import '../../data/local_storage_service.dart';
 import '../../data/sound_service.dart';
+import 'analytics_service.dart';
 import 'boss_bounty_service.dart';
 import 'daily_reward_service.dart';
 import 'daily_mission_service.dart';
@@ -89,27 +93,29 @@ class ServiceLocator {
   bool _initialized = false;
   bool get isInitialized => _initialized;
 
-  late final LocalStorageService storage;
-  late final ExperienceService experienceService;
-  late final CurrencyService currencyService;
-  late final GachaService gachaService;
-  late final QrBattleService qrBattleService;
-  late final DailyRewardService dailyRewardService;
-  late final DailyMissionService dailyMissionService;
-  late final BossBountyService bossBountyService;
-  late final WeeklyChallengeService weeklyChallengeService;
-  late final LimitedEventService limitedEventService;
-  late final SeasonPassService seasonPassService;
-  late final BattleResultService battleResultService;
-  late final AchievementService achievementService;
-  late final PlayerRankService playerRankService;
-  late final LocalLeagueService localLeagueService;
-  late final GachaPlanService gachaPlanService;
-  late final RosterBonusService rosterBonusService;
-  late final DailyShopService dailyShopService;
-  late final RivalRoadService rivalRoadService;
-  late final PlayerTitleService playerTitleService;
-  late final PowerRatingService powerRatingService;
+  late LocalStorageService storage;
+  late ExperienceService experienceService;
+  late CurrencyService currencyService;
+  late GachaService gachaService;
+  late QrBattleService qrBattleService;
+  late DailyRewardService dailyRewardService;
+  late DailyMissionService dailyMissionService;
+  late BossBountyService bossBountyService;
+  late WeeklyChallengeService weeklyChallengeService;
+  late LimitedEventService limitedEventService;
+  late SeasonPassService seasonPassService;
+  late BattleResultService battleResultService;
+  late AchievementService achievementService;
+  late PlayerRankService playerRankService;
+  late LocalLeagueService localLeagueService;
+  late GachaPlanService gachaPlanService;
+  late RosterBonusService rosterBonusService;
+  late DailyShopService dailyShopService;
+  late RivalRoadService rivalRoadService;
+  late PlayerTitleService playerTitleService;
+  late PowerRatingService powerRatingService;
+  AnalyticsService _analyticsService = NoopAnalyticsService();
+  AnalyticsService get analyticsService => _analyticsService;
 
   /// 全サービスの初期化（アプリ起動時に1回だけ呼ぶ）
   Future<void> init() async {
@@ -117,6 +123,8 @@ class ServiceLocator {
 
     storage = LocalStorageService();
     await storage.init();
+    _analyticsService = FirebaseAnalyticsClient(storage);
+    await _analyticsService.initialize();
     await SoundService().init(storage);
 
     // 旧デバイス名ベースの図鑑データをIDベースにマイグレーション
@@ -159,5 +167,14 @@ class ServiceLocator {
     );
 
     _initialized = true;
+  }
+
+  @visibleForTesting
+  Future<void> resetForTest({AnalyticsService? analytics}) async {
+    _initialized = false;
+    storage = LocalStorageService();
+    await storage.resetForTest();
+    _analyticsService = analytics ?? FirebaseAnalyticsClient(storage);
+    await _analyticsService.initialize();
   }
 }

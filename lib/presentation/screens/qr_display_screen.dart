@@ -34,8 +34,13 @@ class _ShareScreenState extends State<ShareScreen> {
       final equipped = sl.gachaService.findById(equippedId);
       if (equipped != null) {
         final encoded = sl.qrBattleService.encodeGachaCharacter(equipped);
+        final url = sl.qrBattleService.generateShareUrl(encoded);
+        await sl.analyticsService.logEvent(
+          'share_url_created',
+          params: {'source': 'gacha', 'rarity': equipped.rarity.name},
+        );
         return _SharePayload(
-          url: sl.qrBattleService.generateShareUrl(encoded),
+          url: url,
           character: equipped.character,
           sourceLabel: '${equipped.rarity.label} / ${equipped.deviceName}',
         );
@@ -48,8 +53,13 @@ class _ShareScreenState extends State<ShareScreen> {
     final exp = sl.experienceService.loadExperience();
     final character = CharacterGenerator.generate(specs, experience: exp);
     final encoded = sl.qrBattleService.encodePlayerCharacter(character);
+    final url = sl.qrBattleService.generateShareUrl(encoded);
+    await sl.analyticsService.logEvent(
+      'share_url_created',
+      params: {'source': 'device'},
+    );
     return _SharePayload(
-      url: sl.qrBattleService.generateShareUrl(encoded),
+      url: url,
       character: character,
       sourceLabel: '実機スペック',
     );
