@@ -26,6 +26,7 @@
 - `docs/gacha_browser_test_cases.md`: ガチャ機能のブラウザ結合テストケース
 - `docs/device_info.md`: デバイス情報取得状況（プラットフォーム別取得可否・ステータス反映）
 - `docs/plans/`: Planner/Generator/Evaluator ワークフロー用の計画・評価ドキュメント（運用ルールは `docs/plans/TEMPLATES.md` を参照）
+- `docs/agent/`: 短い実装ループ（Loop Engineering）用の今やる1件ハーネス。運用は `docs/agent/README.md`、起動文は `docs/agent/START_PROMPT.md`
 - `docs/agmsg_harness.md`: agmsgによるエージェント間連携ハーネスの運用仕様（役割分担・メッセージプロトコル・セットアップ手順）
 - `docs/rfc_character_art.md`: キャラクターグラフィック刷新RFC（擬人化・成人女性キャラ。アート方針・ポートレートID導出・アセットパイプライン・第1スライス）
 - `PHASE4_SPEC_DRAFT.md`: 将来の機能拡張案（ガチャ・QR対戦等）の詳細仕様
@@ -64,6 +65,21 @@
 コードの追加や変更を行った後、タスクを「完了」とする前に、以下を実行しエラーゼロであることを確認すること。
 - **静的解析**: `flutter analyze`
 - **ユニットテスト**: `flutter test`
+
+### 3.5 短い実装ループ（Loop Engineering）
+小さなタスク（CI修正・バグ・2ファイル以下）は、会話履歴より **`docs/agent/`** を状態の単一ソースにする。
+
+| 規模 | 使うもの |
+|------|----------|
+| 小 | `docs/agent/`（GOAL / PLAN / DECISIONS / VERIFY） |
+| 中〜大 | 既存の `docs/plans/` Planner/Generator/Evaluator |
+
+手順:
+1. `docs/agent/GOAL.md` と `VERIFY.md` に今の1件だけ書く
+2. Claude Code に `docs/agent/START_PROMPT.md` を貼る
+3. observe → act → verify → 記録 を回す（進捗は `PLAN.md` / `DECISIONS.md` に残す）
+4. `VERIFY.md` 全 PASS で完了。停止条件に当たったら人間へ戻る
+5. 中規模以上に膨らんだら `docs/plans/` へ切り替える
 
 ### 4. コア原則 (Core Principles)
 Karpathy-inspired guidelines をこのリポジトリ向けに適用する。AIは「賢く大きく動く」より、**前提を確認し、最小差分で、検証可能に進める**ことを優先する。
