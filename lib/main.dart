@@ -7,8 +7,7 @@ import 'data/firebase_analytics_client.dart';
 import 'domain/services/service_locator.dart';
 import 'domain/services/qr_battle_service.dart';
 import 'presentation/screens/title_screen.dart';
-import 'presentation/screens/qr_guest_preview_screen.dart';
-import 'presentation/widgets/analytics_consent_dialog.dart';
+import 'presentation/battle_deep_link.dart';
 
 /// グローバルナビゲーターキー（URL対戦からの画面遷移に使用）
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -67,27 +66,7 @@ class _SpecBattleAppState extends State<SpecBattleApp>
         _initialBattleParam = null;
         final context = navigatorKey.currentContext;
         if (context == null) return;
-        await ensureAnalyticsConsent(context);
-        if (!mounted) return;
-
-        try {
-          final guest =
-              ServiceLocator().qrBattleService.decodeAsGuest(battleParam);
-          await ServiceLocator().analyticsService.logEvent(
-            'share_url_opened',
-            params: {
-              'source': 'direct_link',
-              'is_gacha': guest.isGacha,
-            },
-          );
-          navigatorKey.currentState?.push(
-            MaterialPageRoute(
-              builder: (context) => QrGuestPreviewScreen(guest: guest),
-            ),
-          );
-        } catch (e) {
-          debugPrint('Invalid battle param in URL: $e');
-        }
+        await openBattleDeepLink(context, battleParam);
       });
     }
   }

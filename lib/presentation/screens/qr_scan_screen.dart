@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../domain/services/qr_battle_service.dart';
 import '../../domain/services/service_locator.dart';
+import '../decode_failure_copy.dart';
 import 'qr_guest_preview_screen.dart';
 
 /// URL入力画面（対戦コードをペーストして対戦相手を読み取る）
@@ -90,7 +91,7 @@ class _UrlInputScreenState extends State<UrlInputScreen> {
     } catch (e) {
       setState(() {
         _isProcessing = false;
-        _errorMessage = '無効な対戦コードです。正しいURLまたはコードを入力してください。';
+        _errorMessage = BattleDecodeFailureCopy.urlInputMessage(e);
       });
     }
   }

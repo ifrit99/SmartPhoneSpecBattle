@@ -8,7 +8,9 @@ import '../../domain/services/character_generator.dart';
 import '../../data/device_info_service.dart';
 import '../../data/sound_service.dart';
 import '../../domain/enums/element_type.dart';
+import '../decode_failure_copy.dart';
 import '../theme/app_colors.dart';
+import '../widgets/empty_state_card.dart';
 import '../widgets/pixel_character.dart';
 import '../widgets/stat_bar.dart';
 import 'battle_screen.dart';
@@ -18,7 +20,9 @@ import 'qr_menu_screen.dart';
 
 /// URLから読み取ったゲストキャラクターのプレビュー画面
 class QrGuestPreviewScreen extends StatefulWidget {
-  final QrBattleGuest guest;
+  final QrBattleGuest? guest;
+  final Object? decodeError;
+  final VoidCallback? onOpenUrlInput;
 
   /// フレンドメニュー経由で遷移してきたかどうか
   /// true の場合、friend選択時はpopで既存メニューに戻る
@@ -26,9 +30,11 @@ class QrGuestPreviewScreen extends StatefulWidget {
 
   const QrGuestPreviewScreen({
     super.key,
-    required this.guest,
+    this.guest,
+    this.decodeError,
+    this.onOpenUrlInput,
     this.fromFriendMenu = false,
-  });
+  }) : assert(guest != null || decodeError != null);
 
   @override
   State<QrGuestPreviewScreen> createState() => _QrGuestPreviewScreenState();
@@ -36,14 +42,16 @@ class QrGuestPreviewScreen extends StatefulWidget {
 
 class _QrGuestPreviewScreenState extends State<QrGuestPreviewScreen> {
   bool _loading = false;
-  late final Future<Character> _playerFuture;
+  Future<Character>? _playerFuture;
   BattleTactic? _selectedTactic;
 
   @override
   void initState() {
     super.initState();
+    final guest = widget.guest;
+    if (guest == null) return;
     _playerFuture = _getEquippedPlayer().then((player) {
-      final recommended = _MatchupAnalysis(player, widget.guest.battleCharacter)
+      final recommended = _MatchupAnalysis(player, guest.battleCharacter)
           .recommendedTactic;
       if (mounted) {
         setState(() => _selectedTactic ??= recommended);
@@ -55,12 +63,19 @@ class _QrGuestPreviewScreenState extends State<QrGuestPreviewScreen> {
   }
 
   void _startBattle() async {
+    final guest = widget.guest;
+    if (guest == null) return;
     setState(() => _loading = true);
     SoundService().playButton();
 
     late final Character player;
     try {
-      player = await _playerFuture;
+      final future = _playerFuture;
+      if (future == null) {
+        setState(() => _loading = false);
+        return;
+      }
+      player = await future;
     } catch (_) {
       if (!mounted) return;
       setState(() => _loading = false);
@@ -73,14 +88,14 @@ class _QrGuestPreviewScreenState extends State<QrGuestPreviewScreen> {
     if (!mounted) return;
     setState(() => _loading = false);
     final tactic = _selectedTactic ??
-        _MatchupAnalysis(player, widget.guest.battleCharacter)
+        _MatchupAnalysis(player, guest.battleCharacter)
             .recommendedTactic;
 
     final nextAction = await Navigator.of(context).push<String?>(
       MaterialPageRoute(
         builder: (context) => BattleScreen(
           player: player,
-          enemy: widget.guest.battleCharacter,
+          enemy: guest.battleCharacter,
           enemyDeviceId: null,
           isCpuBattle: false,
           playerTactic: tactic,
@@ -141,7 +156,12 @@ class _QrGuestPreviewScreenState extends State<QrGuestPreviewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final enemy = widget.guest.battleCharacter;
+    final decodeError = widget.decodeError;
+    if (decodeError != null || widget.guest == null) {
+      return _buildDecodeErrorScaffold(decodeError ?? Exception('decode failed'));
+    }
+
+    final enemy = widget.guest!.battleCharacter;
     final elemColor = elementColor(enemy.element);
 
     return Scaffold(
@@ -202,9 +222,41 @@ class _QrGuestPreviewScreenState extends State<QrGuestPreviewScreen> {
     );
   }
 
+  Widget _buildDecodeErrorScaffold(Object error) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0D1B2A),
+      appBar: AppBar(title: const Text('対戦プレビュー')),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 28),
+          child: Center(
+            child: EmptyStateCard(
+              icon: Icons.error_outline,
+              title: BattleDecodeFailureCopy.previewTitle(error),
+              actionLabel: '入力画面へ',
+              onAction: _openUrlInput,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openUrlInput() {
+    final openUrlInput = widget.onOpenUrlInput;
+    if (openUrlInput != null) {
+      openUrlInput();
+      return;
+    }
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+  }
+
   Widget _buildGuestHeader(Character enemy, Color elemColor) {
-    final rarityLabel = widget.guest.rarity?.label;
-    final sourceLabel = widget.guest.isGacha ? 'ガチャキャラ' : '実機スペック';
+    final guest = widget.guest!;
+    final rarityLabel = guest.rarity?.label;
+    final sourceLabel = guest.isGacha ? 'ガチャキャラ' : '実機スペック';
 
     return Container(
       padding: const EdgeInsets.all(16),

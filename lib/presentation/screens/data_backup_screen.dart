@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
 import '../../data/sound_service.dart';
 import '../../domain/services/service_locator.dart';
+import '../decode_failure_copy.dart';
+import '../widgets/empty_state_card.dart';
 
 class DataBackupScreen extends StatefulWidget {
   const DataBackupScreen({super.key});
@@ -17,6 +18,7 @@ class _DataBackupScreenState extends State<DataBackupScreen> {
   final _importController = TextEditingController();
   bool _busy = false;
   bool _hasImportInput = false;
+  Object? _restoreError;
 
   @override
   void initState() {
@@ -35,8 +37,11 @@ class _DataBackupScreenState extends State<DataBackupScreen> {
 
   void _onImportTextChanged() {
     final hasInput = _importController.text.trim().isNotEmpty;
-    if (hasInput == _hasImportInput) return;
-    setState(() => _hasImportInput = hasInput);
+    if (hasInput == _hasImportInput && _restoreError == null) return;
+    setState(() {
+      _hasImportInput = hasInput;
+      _restoreError = null;
+    });
   }
 
   Future<void> _loadBackupCode() async {
@@ -107,11 +112,9 @@ class _DataBackupScreenState extends State<DataBackupScreen> {
         const SnackBar(content: Text('バックアップから復元しました')),
       );
       Navigator.of(context).pop(true);
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('バックアップコードを読み取れませんでした')),
-      );
+      setState(() => _restoreError = e);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -171,6 +174,14 @@ class _DataBackupScreenState extends State<DataBackupScreen> {
                 _codeField(_importController),
                 const SizedBox(height: 10),
                 _restoreStatus(),
+                if (_restoreError != null) ...[
+                  const SizedBox(height: 12),
+                  EmptyStateCard(
+                    icon: Icons.error_outline,
+                    title: BackupRestoreFailureCopy.title(_restoreError!),
+                    message: BackupRestoreFailureCopy.retryHint,
+                  ),
+                ],
                 const SizedBox(height: 12),
                 Row(
                   children: [
