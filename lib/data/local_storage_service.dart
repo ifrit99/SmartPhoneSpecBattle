@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/services/analytics_service.dart';
+import '../domain/services/character_codec.dart';
 
 class BattleHistoryEntry {
   final String id;
@@ -136,7 +138,8 @@ class LocalStorageService {
   static const String _keyLastBossBountyDate = 'bossBounty.lastClaimDate';
   static const String _keyBossBestTurns = 'boss.bestTurns';
   static const String _keyAnalyticsConsent = 'analytics_consent';
-  static const String _backupPrefix = 'SPEC-BATTLE-BACKUP:';
+  static const String _backupPrefixV1 = 'SPEC-BATTLE-BACKUP:';
+  static const String _backupPrefixV2 = 'SPEC-BATTLE-BACKUP2:';
   static const int maxBattleHistoryEntries = 20;
 
   SharedPreferences? _prefs;
@@ -691,17 +694,28 @@ class LocalStorageService {
         _keyBossBestTurns: getBossBestTurns(),
       },
     };
-    final encoded = base64UrlEncode(utf8.encode(jsonEncode(payload)));
-    return '$_backupPrefix$encoded';
+    final payloadBytes = utf8.encode(jsonEncode(payload));
+    final checksum = CharacterCodec.computeChecksum(payloadBytes);
+    final combined =
+        Uint8List(payloadBytes.length + CharacterCodec.checksumSize);
+    combined.setRange(0, payloadBytes.length, payloadBytes);
+    combined.setRange(payloadBytes.length, combined.length, checksum);
+    return '$_backupPrefixV2${base64Url.encode(combined)}';
   }
 
   Future<void> importBackupCode(String rawCode) async {
     final trimmed = rawCode.trim();
-    final body = trimmed.startsWith(_backupPrefix)
-        ? trimmed.substring(_backupPrefix.length)
-        : trimmed;
+    // BACKUP2 は BACKUP の接頭辞でもあるため、v2を先に判定する。
+    final String decoded;
+    if (trimmed.startsWith(_backupPrefixV2)) {
+      decoded = _decodeBackupV2(trimmed.substring(_backupPrefixV2.length));
+    } else {
+      final body = trimmed.startsWith(_backupPrefixV1)
+          ? trimmed.substring(_backupPrefixV1.length)
+          : trimmed;
+      decoded = utf8.decode(base64Url.decode(body));
+    }
 
-    final decoded = utf8.decode(base64Url.decode(body));
     final payload = jsonDecode(decoded) as Map<String, dynamic>;
     if (payload['version'] != 1) {
       throw FormatException('未対応のバックアップ形式です');
@@ -724,6 +738,28 @@ class LocalStorageService {
       await _restoreSnapshot(snapshot);
       rethrow;
     }
+  }
+
+  /// v2本文: Base64url → 末尾4バイトを分離 → HMAC再計算。不一致は [IntegrityException]。
+  String _decodeBackupV2(String body) {
+    final Uint8List bytes;
+    try {
+      bytes = base64Url.decode(body);
+    } on FormatException {
+      throw const FormatException('不正なBase64urlデータです');
+    }
+    if (bytes.length < CharacterCodec.checksumSize) {
+      throw const FormatException('データが短すぎます');
+    }
+
+    final payloadEnd = bytes.length - CharacterCodec.checksumSize;
+    final payload = bytes.sublist(0, payloadEnd);
+    final storedChecksum = bytes.sublist(payloadEnd);
+    final expectedChecksum = CharacterCodec.computeChecksum(payload);
+    if (!CharacterCodec.checksumEquals(storedChecksum, expectedChecksum)) {
+      throw const IntegrityException('コードが破損しています');
+    }
+    return utf8.decode(payload);
   }
 
   /// バックアップデータを全消去のうえ書き込む（importBackupCode専用）

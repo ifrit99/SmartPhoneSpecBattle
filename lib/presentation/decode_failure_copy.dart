@@ -32,7 +32,7 @@ class BackupRestoreFailureCopy {
   static String title(Object error) {
     return switch (classifyDecodeFailure(error)) {
       DecodeFailureKind.format => '形式',
-      DecodeFailureKind.integrity => 'チェックサム',
+      DecodeFailureKind.integrity => 'コードが破損しています',
     };
   }
 
