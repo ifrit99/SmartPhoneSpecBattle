@@ -21,16 +21,16 @@ Status: EVAL
 - データ保護画面: v2コード生成、復元失敗理由の明示（§3-1。F3-7チェックサム文言＝「コードが破損しています」）。
 
 ## テスト基準（§4-1 転記）
-- [ ] 正常往復
-- [ ] 1文字破損で `IntegrityException`
-- [ ] v1コード復元互換
-- [ ] v2生成プレフィックス
-- [ ] 既存 `economy_balance_test.dart` が無変更でパス
-- [ ] Character v1/v2/v3 デコード互換の既存テスト維持
+- [x] 正常往復
+- [x] 1文字破損で `IntegrityException`
+- [x] v1コード復元互換
+- [x] v2生成プレフィックス
+- [x] 既存 `economy_balance_test.dart` が無変更でパス
+- [x] Character v1/v2/v3 デコード互換の既存テスト維持
 
 ## 完了条件
-- [ ] flutter analyze: エラー0
-- [ ] flutter test: 全パス
+- [x] flutter analyze: エラー0
+- [x] flutter test: 全パス
 
 ---
 ## Generator ログ
@@ -40,4 +40,6 @@ Status: EVAL
 
 ---
 ## 評価
-（Evaluator が検証結果を追記）
+- flutter analyze: PASS — `No issues found! (ran in 8.3s)`
+- flutter test: PASS — `00:16 +409: All tests passed!`
+- economy_balance / CharacterCodec v1/v2/v3: 既存テスト維持・パス
