@@ -7,6 +7,7 @@ import '../../domain/services/achievement_service.dart';
 import '../../domain/services/player_rank_service.dart';
 import '../../domain/services/local_league_service.dart';
 import '../../domain/services/player_title_service.dart';
+import '../widgets/empty_state_card.dart';
 import '../widgets/pixel_character.dart';
 
 class CollectionScreen extends StatefulWidget {
@@ -222,36 +223,51 @@ class _CollectionScreenState extends State<CollectionScreen> {
                   fontSize: 20,
                   fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                  child: _buildStatBox('トータルバトル数', '$battles', Icons.sports_mma,
-                      Colors.blueAccent)),
-              const SizedBox(width: 16),
-              Expanded(
-                  child: _buildStatBox(
-                      '勝利数', '$wins', Icons.emoji_events, Colors.amber)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                  child: _buildStatBox(
-                      '勝率', '$winRate%', Icons.pie_chart, Colors.greenAccent)),
-              const SizedBox(width: 16),
-              Expanded(
-                  child: _buildStatBox('撃破した種類', '${_defeatedEnemies.length}種',
-                      Icons.catching_pokemon, Colors.purpleAccent)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildStatBox(
-            'BOSS最短',
-            bossBestTurns == null ? '-' : '${bossBestTurns}T',
-            Icons.timer,
-            Colors.redAccent,
-          ),
+          if (battles == 0)
+            EmptyStateCard(
+              icon: Icons.sports_mma,
+              title: 'まだバトルしていません',
+              actionLabel: 'バトルへ',
+              onAction: _openBattle,
+            )
+          else ...[
+            Row(
+              children: [
+                Expanded(
+                    child: _buildStatBox(
+                        'トータルバトル数',
+                        '$battles',
+                        Icons.sports_mma,
+                        Colors.blueAccent)),
+                const SizedBox(width: 16),
+                Expanded(
+                    child: _buildStatBox(
+                        '勝利数', '$wins', Icons.emoji_events, Colors.amber)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                    child: _buildStatBox(
+                        '勝率', '$winRate%', Icons.pie_chart, Colors.greenAccent)),
+                const SizedBox(width: 16),
+                Expanded(
+                    child: _buildStatBox(
+                        '撃破した種類',
+                        '${_defeatedEnemies.length}種',
+                        Icons.catching_pokemon,
+                        Colors.purpleAccent)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _buildStatBox(
+              'BOSS最短',
+              bossBestTurns == null ? '-' : '${bossBestTurns}T',
+              Icons.timer,
+              Colors.redAccent,
+            ),
+          ],
           const SizedBox(height: 32),
           _buildRankCard(_rankSnapshot),
           const SizedBox(height: 16),
@@ -305,18 +321,12 @@ class _CollectionScreenState extends State<CollectionScreen> {
         ),
         const SizedBox(height: 12),
         if (_battleHistory.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1B2838),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white10),
-            ),
-            child: const Text(
-              'まだ記録がありません。CPU戦やフレンド対戦の結果がここに残ります。',
-              style: TextStyle(color: Colors.white54, fontSize: 13),
-            ),
+          EmptyStateCard(
+            icon: Icons.history,
+            title: 'まだバトル履歴がありません',
+            message: 'バトルすると直近20件が残ります',
+            actionLabel: 'バトルへ',
+            onAction: _openBattle,
           )
         else
           ..._battleHistory.take(8).map((entry) => Padding(
@@ -749,6 +759,11 @@ class _CollectionScreenState extends State<CollectionScreen> {
             ],
           ),
           const SizedBox(height: 10),
+          const Text(
+            '今週のRPを稼いで順位を上げよう',
+            style: TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+          const SizedBox(height: 8),
           Text(
             nextRival == null
                 ? '今週のローカルリーグ首位です'
@@ -827,10 +842,13 @@ class _CollectionScreenState extends State<CollectionScreen> {
   Widget _buildAchievementsTab() {
     final claimableCount =
         _achievements.where((achievement) => achievement.claimable).length;
+    final displayed = _achievementsForDisplay();
+    final highlightEasiest = _achievements.isNotEmpty &&
+        _achievements.every((achievement) => !achievement.completed);
 
     return ListView.separated(
       padding: const EdgeInsets.all(16),
-      itemCount: _achievements.length + 1,
+      itemCount: displayed.length + 1,
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         if (index == 0) {
@@ -877,25 +895,38 @@ class _CollectionScreenState extends State<CollectionScreen> {
           );
         }
 
-        return _achievementCard(_achievements[index - 1]);
+        return _achievementCard(
+          displayed[index - 1],
+          highlighted: highlightEasiest && index == 1,
+        );
       },
     );
   }
 
-  Widget _achievementCard(AchievementSnapshot achievement) {
+  Widget _achievementCard(
+    AchievementSnapshot achievement, {
+    bool highlighted = false,
+  }) {
     final definition = achievement.definition;
-    final accent = achievement.claimed
-        ? Colors.white24
-        : achievement.completed
-            ? const Color(0xFFFFD700)
-            : Colors.blueAccent;
+    final accent = highlighted
+        ? const Color(0xFFFFD700)
+        : achievement.claimed
+            ? Colors.white24
+            : achievement.completed
+                ? const Color(0xFFFFD700)
+                : Colors.blueAccent;
 
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF1B2838),
+        color: highlighted
+            ? const Color(0xFFFFD700).withValues(alpha: 0.08)
+            : const Color(0xFF1B2838),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: accent.withValues(alpha: 0.3)),
+        border: Border.all(
+          color: accent.withValues(alpha: highlighted ? 0.7 : 0.3),
+          width: highlighted ? 2 : 1,
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -986,6 +1017,35 @@ class _CollectionScreenState extends State<CollectionScreen> {
         ],
       ),
     );
+  }
+
+  void _openBattle() {
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  /// 全未達成時は残り進捗が少ない（達成しやすい）実績を先頭にする。
+  List<AchievementSnapshot> _achievementsForDisplay() {
+    if (_achievements.isEmpty) return _achievements;
+    final noneCompleted =
+        _achievements.every((achievement) => !achievement.completed);
+    if (!noneCompleted) return List.of(_achievements);
+
+    final indexed = [
+      for (var i = 0; i < _achievements.length; i++) (i, _achievements[i]),
+    ];
+    indexed.sort((a, b) {
+      final remainA = a.$2.definition.target - a.$2.progress;
+      final remainB = b.$2.definition.target - b.$2.progress;
+      final remainCompare = remainA.compareTo(remainB);
+      if (remainCompare != 0) return remainCompare;
+      final targetCompare =
+          a.$2.definition.target.compareTo(b.$2.definition.target);
+      if (targetCompare != 0) return targetCompare;
+      return a.$1.compareTo(b.$1);
+    });
+    return [for (final entry in indexed) entry.$2];
   }
 
   Future<void> _claimAchievement(String id) async {

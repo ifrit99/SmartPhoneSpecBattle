@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spec_battle_game/data/local_storage_service.dart';
 import 'package:spec_battle_game/domain/services/service_locator.dart';
 import 'package:spec_battle_game/presentation/screens/collection_screen.dart';
+import 'package:spec_battle_game/presentation/widgets/empty_state_card.dart';
 
 void main() {
   group('CollectionScreen rank', () {
@@ -43,6 +44,7 @@ void main() {
       expect(find.text('ローカルリーグ'), findsOneWidget);
       expect(find.text('YOU'), findsOneWidget);
       expect(find.textContaining('次の相手:'), findsOneWidget);
+      expect(find.text('今週のRPを稼いで順位を上げよう'), findsOneWidget);
     });
 
     testWidgets('到達済みランク報酬を受け取れる', (tester) async {
@@ -72,6 +74,84 @@ void main() {
       expect(storage.getClaimedRankRewards(), ['hunter']);
       expect(
           find.textContaining('300 Coin / 10 Gems を受け取りました'), findsOneWidget);
+    });
+  });
+
+  group('CollectionScreen empty states', () {
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      await LocalStorageService().resetForTest();
+      await ServiceLocator().init();
+      await LocalStorageService().resetForTest();
+    });
+
+    testWidgets('バトル0回の戦績は空状態とバトル導線を出す', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: CollectionScreen(initialTabIndex: 1),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('まだバトルしていません'), findsOneWidget);
+      expect(find.text('トータルバトル数'), findsNothing);
+      expect(find.text('バトルすると直近20件が残ります'), findsOneWidget);
+      expect(find.text('今週のRPを稼いで順位を上げよう'), findsOneWidget);
+      expect(find.byType(EmptyStateCard), findsWidgets);
+    });
+
+    testWidgets('戦績のバトルへ導線で前の画面に戻る', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) =>
+                          const CollectionScreen(initialTabIndex: 1),
+                    ),
+                  );
+                },
+                child: const Text('open'),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      final statsCard = find.ancestor(
+        of: find.text('まだバトルしていません'),
+        matching: find.byType(EmptyStateCard),
+      );
+      await tester.tap(find.descendant(
+        of: statsCard,
+        matching: find.text('バトルへ'),
+      ));
+      await tester.pumpAndSettle();
+      expect(find.text('open'), findsOneWidget);
+    });
+
+    testWidgets('全未達成の実績は達成しやすい初陣を上部にハイライトする', (tester) async {
+      tester.view.physicalSize = const Size(800, 4000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: CollectionScreen(initialTabIndex: 2),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final firstTitle = find.text('初陣');
+      final lastTitle = find.text('ライバル制覇');
+      expect(firstTitle, findsOneWidget);
+      expect(tester.getTopLeft(firstTitle).dy,
+          lessThan(tester.getTopLeft(lastTitle).dy));
     });
   });
 }

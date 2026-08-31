@@ -32,6 +32,27 @@ void main() {
       expect(find.text('復元コードを読み取り準備完了'), findsOneWidget);
       expect(_restoreButton(tester).onPressed, isNotNull);
     });
+
+    testWidgets('復元失敗時は形式とコピーし直し案内を出す', (tester) async {
+      tester.view.physicalSize = const Size(800, 2000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await _pumpScreen(tester);
+
+      await tester.enterText(
+          find.byType(TextField).last, 'SPEC-BATTLE-BACKUP:not-valid');
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.ensureVisible(find.widgetWithText(ElevatedButton, '復元'));
+      await tester.tap(find.widgetWithText(ElevatedButton, '復元'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('復元する'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('形式'), findsOneWidget);
+      expect(find.text('コード全体をコピーし直してください'), findsOneWidget);
+    });
   });
 }
 
