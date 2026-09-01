@@ -6,7 +6,7 @@
 ---
 
 ## 🤖 現在の作業状態 (2026-09-01)
-- **現在地**: F5 complete, F4 split first PR in progress.
+- **現在地**: F4 split second PR in progress.
 - **直近の実装**:
   - 初回オンボーディング・初回バトル後案内をmasterへマージ（PR #9）
   - CLAUDE.md/CONTEXT.md最適化・AGENTS.md追加・product_spec.md整備（PR #10）
@@ -153,9 +153,10 @@
   - Phase 5 F1 分析基盤（PR #24）・F2 エラー監視（PR #26）
   - Phase 5 F3 空状態・エラー状態UX（EmptyStateCard。master 5d4ee748）
   - Phase 5 F5 バックアップコード v2（チェックサム）
+  - Phase 5 F4 ホーム画面分割 第1PR（RecordCard / DailyRewardCard / NextActionCard。PR #29）
 - **進行中**:
-  - Phase 5 F4 ホーム画面分割（第1PR: カード2〜4枚の抽出）
-- **現在の位置づけ**: F5 complete, F4 split first PR in progress. F6 オンラインランキングは未着手。
+  - Phase 5 F4 ホーム画面分割（第2PR: カード2〜4枚の抽出）
+- **現在の位置づけ**: F4 split second PR in progress. F6 オンラインランキングは未着手。
 
 ---
 
