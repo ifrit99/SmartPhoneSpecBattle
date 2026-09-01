@@ -17,6 +17,9 @@ import '../../domain/services/power_rating_service.dart';
 import '../../domain/services/season_pass_service.dart';
 import '../../domain/services/service_locator.dart';
 import '../../domain/models/player_currency.dart';
+import '../widgets/home/daily_reward_card.dart';
+import '../widgets/home/next_action_card.dart';
+import '../widgets/home/record_card.dart';
 import '../widgets/pixel_character.dart';
 import '../widgets/power_rating_card.dart';
 import '../widgets/stat_bar.dart';
@@ -927,46 +930,9 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildRecordCard(Map<String, int> record) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1B2838),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _recordItem('バトル数', '${record['battles']}', Icons.sports_mma),
-          Container(width: 1, height: 30, color: Colors.white10),
-          _recordItem('勝利数', '${record['wins']}', Icons.emoji_events),
-          Container(width: 1, height: 30, color: Colors.white10),
-          _recordItem(
-            '勝率',
-            record['battles']! > 0
-                ? '${(record['wins']! / record['battles']! * 100).toStringAsFixed(0)}%'
-                : '-',
-            Icons.trending_up,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _recordItem(String label, String value, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.white30, size: 18),
-        const SizedBox(height: 4),
-        Text(value,
-            style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold)),
-        Text(label,
-            style: const TextStyle(color: Colors.white38, fontSize: 10)),
-      ],
+    return RecordCard(
+      battles: record['battles']!,
+      wins: record['wins']!,
     );
   }
 
@@ -1054,100 +1020,15 @@ class _HomeScreenState extends State<HomeScreen>
     final streakDays = _sl.dailyRewardService.previewNextLoginStreakDays();
     final cycleDay = _sl.dailyRewardService.loginCycleDay(streakDays);
     final nextBonus = _sl.dailyRewardService.loginStreakBonusFor(streakDays);
-    final cycleProgress =
-        cycleDay == 0 ? 0.0 : cycleDay / DailyRewardService.streakCycleDays;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1B2838),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: const Color(0xFFE056FD).withValues(alpha: 0.3),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.card_giftcard, color: Color(0xFFE056FD), size: 18),
-              SizedBox(width: 6),
-              Text(
-                'デイリー報酬',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(999),
-                  child: LinearProgressIndicator(
-                    minHeight: 6,
-                    value: cycleProgress.clamp(0.0, 1.0).toDouble(),
-                    backgroundColor: Colors.white.withValues(alpha: 0.08),
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Color(0xFFFFD700),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text(
-                cycleDay == 0
-                    ? '0/${DailyRewardService.streakCycleDays}日'
-                    : '$cycleDay/${DailyRewardService.streakCycleDays}日',
-                style: const TextStyle(
-                  color: Colors.white70,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            nextBonus > 0 && !loginClaimed
-                ? '今日のログインでストリークボーナス +$nextBonus Gems'
-                : '連続ログインで3日目・7日目にボーナス',
-            style: const TextStyle(
-              color: Colors.white54,
-              fontSize: 11,
-              height: 1.2,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _dailyRewardItem(
-                  icon: Icons.wb_sunny,
-                  label: 'ログイン',
-                  gems: DailyRewardService.loginRewardGems,
-                  claimed: loginClaimed,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _dailyRewardItem(
-                  icon: Icons.flash_on,
-                  label: 'バトル1回',
-                  gems: DailyRewardService.battleRewardGems,
-                  claimed: battleClaimed,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+    return DailyRewardCard(
+      loginClaimed: loginClaimed,
+      battleClaimed: battleClaimed,
+      cycleDay: cycleDay,
+      streakCycleDays: DailyRewardService.streakCycleDays,
+      nextBonus: nextBonus,
+      loginRewardGems: DailyRewardService.loginRewardGems,
+      battleRewardGems: DailyRewardService.battleRewardGems,
     );
   }
 
@@ -1873,86 +1754,13 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildNextObjectiveCard(Character player) {
     final objective = _nextObjective(player);
 
-    return InkWell(
+    return NextActionCard(
+      icon: objective.icon,
+      title: objective.title,
+      description: objective.description,
+      buttonLabel: objective.buttonLabel,
+      color: objective.color,
       onTap: objective.onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: const Color(0xFF1B2838),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: objective.color.withValues(alpha: 0.35)),
-          boxShadow: [
-            BoxShadow(
-              color: objective.color.withValues(alpha: 0.08),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: objective.color.withValues(alpha: 0.14),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: objective.color.withValues(alpha: 0.35),
-                ),
-              ),
-              child: Icon(objective.icon, color: objective.color, size: 24),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    objective.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    objective.description,
-                    style: const TextStyle(
-                      color: Colors.white54,
-                      fontSize: 12,
-                      height: 1.25,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: objective.color.withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                objective.buttonLabel,
-                style: TextStyle(
-                  color: objective.color,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -2960,53 +2768,6 @@ class _HomeScreenState extends State<HomeScreen>
           MaterialPageRoute(builder: (_) => const FriendBattleMenuScreen()),
         );
       },
-    );
-  }
-
-  Widget _dailyRewardItem({
-    required IconData icon,
-    required String label,
-    required int gems,
-    required bool claimed,
-  }) {
-    final color = claimed ? Colors.white24 : const Color(0xFFE056FD);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: claimed
-            ? Colors.white.withValues(alpha: 0.03)
-            : const Color(0xFFE056FD).withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                      color: color, fontSize: 11, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  claimed ? '受取済' : '💎 +$gems',
-                  style: TextStyle(
-                    color: claimed ? Colors.white24 : const Color(0xFFE056FD),
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (claimed)
-            const Icon(Icons.check_circle, color: Colors.white24, size: 18),
-        ],
-      ),
     );
   }
 
