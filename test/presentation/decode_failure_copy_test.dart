@@ -21,7 +21,7 @@ void main() {
       expect(BackupRestoreFailureCopy.title(const FormatException('bad')), '形式');
       expect(
         BackupRestoreFailureCopy.title(const IntegrityException('tampered')),
-        'チェックサム',
+        'コードが破損しています',
       );
       expect(BackupRestoreFailureCopy.retryHint, 'コード全体をコピーし直してください');
     });

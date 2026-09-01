@@ -23,7 +23,7 @@ class CharacterCodec {
   static const int currentVersion = 3;
   static const int _fixedHeaderSizeV2 = 19; // v1/v2: visual 5バイトまで
   static const int _fixedHeaderSize = 21; // v3: accessory/aura を含む
-  static const int _checksumSize = 4;
+  static const int checksumSize = 4;
 
   /// チェックサム計算用の秘密鍵
   ///
@@ -40,10 +40,10 @@ class CharacterCodec {
     String? deviceName,
   }) {
     final payload = _toBytes(character, rarity, deviceName);
-    final checksum = _computeChecksum(payload);
+    final checksum = computeChecksum(payload);
 
     // payload + checksum(4bytes) を結合
-    final result = Uint8List(payload.length + _checksumSize);
+    final result = Uint8List(payload.length + checksumSize);
     result.setRange(0, payload.length, payload);
     result.setRange(payload.length, result.length, checksum);
 
@@ -74,16 +74,16 @@ class CharacterCodec {
     } else if (version == 2 || version == currentVersion) {
       // v2/v3: チェックサム検証
       final minHeader = version == 2 ? _fixedHeaderSizeV2 : _fixedHeaderSize;
-      if (bytes.length < minHeader + 1 + _checksumSize) {
+      if (bytes.length < minHeader + 1 + checksumSize) {
         throw const FormatException('データが短すぎます');
       }
 
-      final payloadEnd = bytes.length - _checksumSize;
+      final payloadEnd = bytes.length - checksumSize;
       final payload = bytes.sublist(0, payloadEnd);
       final storedChecksum = bytes.sublist(payloadEnd);
-      final expectedChecksum = _computeChecksum(payload);
+      final expectedChecksum = computeChecksum(payload);
 
-      if (!_constantTimeEquals(storedChecksum, expectedChecksum)) {
+      if (!checksumEquals(storedChecksum, expectedChecksum)) {
         throw const IntegrityException('データの整合性チェックに失敗しました（改ざんの可能性）');
       }
 
@@ -110,7 +110,7 @@ class CharacterCodec {
 
     if (version >= 2) {
       // v2以降はチェックサム付き（検証はせず除去のみ）
-      final payloadEnd = bytes.length - _checksumSize;
+      final payloadEnd = bytes.length - checksumSize;
       final payload = bytes.sublist(0, payloadEnd);
       return _fromBytes(payload, version: version);
     } else {
@@ -118,16 +118,18 @@ class CharacterCodec {
     }
   }
 
-  /// HMAC-SHA256 の先頭4バイトをチェックサムとして計算
-  static Uint8List _computeChecksum(Uint8List payload) {
+  /// HMAC-SHA256 の先頭4バイトをチェックサムとして計算する。
+  ///
+  /// バックアップコード v2 でも同一実装を再利用する。
+  static Uint8List computeChecksum(List<int> payload) {
     final key = utf8.encode(_hmacKey);
     final hmacSha256 = Hmac(sha256, key);
     final digest = hmacSha256.convert(payload);
-    return Uint8List.fromList(digest.bytes.sublist(0, _checksumSize));
+    return Uint8List.fromList(digest.bytes.sublist(0, checksumSize));
   }
 
   /// タイミング攻撃を防ぐための定数時間比較
-  static bool _constantTimeEquals(List<int> a, List<int> b) {
+  static bool checksumEquals(List<int> a, List<int> b) {
     if (a.length != b.length) return false;
     int result = 0;
     for (int i = 0; i < a.length; i++) {

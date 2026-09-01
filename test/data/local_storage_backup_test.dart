@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:spec_battle_game/data/local_storage_service.dart';
 import 'package:spec_battle_game/domain/services/analytics_service.dart';
+import 'package:spec_battle_game/domain/services/character_codec.dart';
 
 void main() {
   late LocalStorageService storage;
@@ -77,6 +78,7 @@ void main() {
     await storage.saveAvatarCustomization('3,-1,2,-1,9,0,5');
 
     final code = await storage.exportBackupCode();
+    expect(code.startsWith('SPEC-BATTLE-BACKUP2:'), isTrue);
 
     await storage.clearAll();
     expect(storage.getCoins(), 0);
@@ -134,10 +136,10 @@ void main() {
     expect(storage.getAvatarCustomization(), '3,-1,2,-1,9,0,5');
   });
 
-  test('prefixなしのバックアップ本文も復元できる', () async {
+  test('prefixなしのv1バックアップ本文も復元できる', () async {
     await storage.saveCoins(120);
     final code = await storage.exportBackupCode();
-    final body = code.replaceFirst('SPEC-BATTLE-BACKUP:', '');
+    final body = _v1BodyFromV2(code);
 
     await storage.clearAll();
     await storage.importBackupCode(body);
@@ -145,14 +147,50 @@ void main() {
     expect(storage.getCoins(), 120);
   });
 
+  test('既存v1プレフィックスのコードは復元できる', () async {
+    await storage.saveCoins(120);
+    final v2 = await storage.exportBackupCode();
+    final v1 = 'SPEC-BATTLE-BACKUP:${_v1BodyFromV2(v2)}';
+
+    await storage.clearAll();
+    await storage.importBackupCode(v1);
+
+    expect(storage.getCoins(), 120);
+  });
+
+  test('1文字破損したv2はIntegrityExceptionで拒否しデータを壊さない', () async {
+    await storage.saveCoins(320);
+    final code = await storage.exportBackupCode();
+    await storage.saveCoins(999);
+
+    const prefix = 'SPEC-BATTLE-BACKUP2:';
+    expect(code.startsWith(prefix), isTrue);
+    final body = code.substring(prefix.length);
+    final flipped = body[0] == 'A' ? 'B' : 'A';
+    final corrupted = '$prefix$flipped${body.substring(1)}';
+
+    expect(
+      () => storage.importBackupCode(corrupted),
+      throwsA(
+        isA<IntegrityException>().having(
+          (e) => e.message,
+          'message',
+          'コードが破損しています',
+        ),
+      ),
+    );
+    expect(storage.getCoins(), 999);
+  });
+
   test('analytics_consentはバックアップ対象外で復元時も現在値を維持する', () async {
     await storage.setAnalyticsConsent(AnalyticsConsent.granted);
     await storage.saveCoins(120);
 
     final code = await storage.exportBackupCode();
-    final body = code.replaceFirst('SPEC-BATTLE-BACKUP:', '');
+    expect(code.startsWith('SPEC-BATTLE-BACKUP2:'), isTrue);
+    final payloadBytes = _v2PayloadBytes(code);
     final payload =
-        jsonDecode(utf8.decode(base64Url.decode(body))) as Map<String, dynamic>;
+        jsonDecode(utf8.decode(payloadBytes)) as Map<String, dynamic>;
     final data = payload['data'] as Map<String, dynamic>;
 
     expect(data.containsKey('analytics_consent'), isFalse);
@@ -199,3 +237,13 @@ void main() {
     );
   });
 }
+
+List<int> _v2PayloadBytes(String code) {
+  const prefix = 'SPEC-BATTLE-BACKUP2:';
+  final body = code.startsWith(prefix) ? code.substring(prefix.length) : code;
+  final bytes = base64Url.decode(body);
+  return bytes.sublist(0, bytes.length - CharacterCodec.checksumSize);
+}
+
+String _v1BodyFromV2(String v2Code) => base64Url.encode(_v2PayloadBytes(v2Code));
+
