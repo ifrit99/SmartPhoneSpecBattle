@@ -1,12 +1,12 @@
 # SPEC BATTLE — TODO
 
 バージョン: 0.1.0
-最終更新: 2026-08-31
+最終更新: 2026-09-01
 
 ---
 
-## 🤖 現在の作業状態 (2026-08-31)
-- **現在地**: F3 complete, F5 in progress.
+## 🤖 現在の作業状態 (2026-09-01)
+- **現在地**: F5 complete, F4 split first PR in progress.
 - **直近の実装**:
   - 初回オンボーディング・初回バトル後案内をmasterへマージ（PR #9）
   - CLAUDE.md/CONTEXT.md最適化・AGENTS.md追加・product_spec.md整備（PR #10）
@@ -152,9 +152,10 @@
   - CLAUDE.md/AGENTS.md整備、product_spec.md追加（PR #10）
   - Phase 5 F1 分析基盤（PR #24）・F2 エラー監視（PR #26）
   - Phase 5 F3 空状態・エラー状態UX（EmptyStateCard。master 5d4ee748）
+  - Phase 5 F5 バックアップコード v2（チェックサム）
 - **進行中**:
-  - Phase 5 F5 バックアップコード v2（チェックサム付与）
-- **現在の位置づけ**: F3 complete, F5 in progress. F4 ホーム分割 / F6 オンラインランキングは未着手。
+  - Phase 5 F4 ホーム画面分割（第1PR: カード2〜4枚の抽出）
+- **現在の位置づけ**: F5 complete, F4 split first PR in progress. F6 オンラインランキングは未着手。
 
 ---
 
