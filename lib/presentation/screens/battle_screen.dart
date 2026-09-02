@@ -279,58 +279,70 @@ class _BattleScreenState extends State<BattleScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0D1B2A),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
+      body: Stack(
+        children: [
+          // 戦場背景。cover + 上寄せで下部2/3の暗部を残し、12x12キャラの可読性を確保する
+          const Positioned.fill(
+            child: Image(
+              image: AssetImage('assets/images/battle_bg.png'),
+              fit: BoxFit.cover,
+              alignment: Alignment.topCenter,
+            ),
+          ),
+          SafeArea(
+            child: Stack(
               children: [
-                // バトルフィールド上部
-                _buildBattleField(),
-                // バトルログ
-                Expanded(child: _buildBattleLog()),
-                // ボタン
-                _buildActionButtons(),
+                Column(
+                  children: [
+                    // バトルフィールド上部
+                    _buildBattleField(),
+                    // バトルログ
+                    Expanded(child: _buildBattleLog()),
+                    // ボタン
+                    _buildActionButtons(),
+                  ],
+                ),
+                // BGM/SEミュートボタン（右上に配置）
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: StatefulBuilder(
+                    builder: (context, setIconState) {
+                      return Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildMuteButton(
+                            label: 'BGM',
+                            isMuted: _sound.isBgmMuted,
+                            onIcon: Icons.music_note,
+                            offIcon: Icons.music_off,
+                            onTap: () {
+                              _sound.toggleBgmMute();
+                              setIconState(() {});
+                            },
+                          ),
+                          const SizedBox(width: 6),
+                          _buildMuteButton(
+                            label: 'SE',
+                            isMuted: _sound.isSeMuted,
+                            onIcon: Icons.volume_up,
+                            offIcon: Icons.volume_off,
+                            onTap: () {
+                              _sound.toggleSeMute();
+                              setIconState(() {});
+                            },
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                // スキルエフェクトオーバーレイ（背景より前面）
+                if (_currentSkillOverlay != null) _currentSkillOverlay!,
               ],
             ),
-            // BGM/SEミュートボタン（右上に配置）
-            Positioned(
-              top: 8,
-              right: 8,
-              child: StatefulBuilder(
-                builder: (context, setIconState) {
-                  return Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildMuteButton(
-                        label: 'BGM',
-                        isMuted: _sound.isBgmMuted,
-                        onIcon: Icons.music_note,
-                        offIcon: Icons.music_off,
-                        onTap: () {
-                          _sound.toggleBgmMute();
-                          setIconState(() {});
-                        },
-                      ),
-                      const SizedBox(width: 6),
-                      _buildMuteButton(
-                        label: 'SE',
-                        isMuted: _sound.isSeMuted,
-                        onIcon: Icons.volume_up,
-                        offIcon: Icons.volume_off,
-                        onTap: () {
-                          _sound.toggleSeMute();
-                          setIconState(() {});
-                        },
-                      ),
-                    ],
-                  );
-                },
-              ),
-            ),
-            // スキルエフェクトオーバーレイ
-            if (_currentSkillOverlay != null) _currentSkillOverlay!,
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -347,16 +359,6 @@ class _BattleScreenState extends State<BattleScreen>
       height: fieldHeight,
       width: double.infinity,
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF1B2838),
-            Color(0xFF0D1B2A),
-          ],
-        ),
-      ),
       child: Stack(
         children: [
           // ターン表示
