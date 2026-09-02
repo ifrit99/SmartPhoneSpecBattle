@@ -32,4 +32,5 @@ flutter:
   assets:
     - assets/sounds/
     - assets/sounds/Crimson_Gauntlet.mp3
+    - assets/images/
 

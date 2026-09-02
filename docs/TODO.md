@@ -6,8 +6,9 @@
 ---
 
 ## 🤖 現在の作業状態 (2026-09-01)
-- **現在地**: F4 split second PR in progress.
+- **現在地**: F4 split second PR in progress. タイトル背景 / OGP 画像を追加中。
 - **直近の実装**:
+  - タイトル画面背景（`assets/images/title_bg.png`）と OGP 画像（`assets/images/ogp.png` / `web/ogp.png`）を追加
   - 初回オンボーディング・初回バトル後案内をmasterへマージ（PR #9）
   - CLAUDE.md/CONTEXT.md最適化・AGENTS.md追加・product_spec.md整備（PR #10）
   - 共有URL生成修正（`Uri.base` ベース化 + query/fragment除去）（PR #11）

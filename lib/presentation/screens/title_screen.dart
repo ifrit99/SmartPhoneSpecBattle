@@ -175,6 +175,15 @@ class _TitleScreenState extends State<TitleScreen>
         onTap: _onTap,
         child: Stack(
           children: [
+            // 夜景背景。cover + 上寄せで暗部上空を残し、ロゴ可読性を確保する
+            const Positioned.fill(
+              child: Image(
+                image: AssetImage('assets/images/title_bg.png'),
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+              ),
+            ),
+
             // 背景パーティクル
             AnimatedBuilder(
               animation: _particleController,
