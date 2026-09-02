@@ -30,7 +30,10 @@ High-difficulty from home challenge card is a **different** entry that still lan
 ## Driving it with Playwright
 
 ```text
-await page.getByRole('button', { name: 'バトル開始' }).scrollIntoViewIfNeeded();
+await page.getByRole('button', { name: 'バトル開始' }).waitFor();
+# semantics scroll does not move the canvas; wheel the canvas if the painted
+# button is below the fold, then click. force: true does not replace a canvas scroll.
+await page.mouse.wheel(0, 2400);
 await page.getByRole('button', { name: 'バトル開始' }).click();
 await page.getByText('挑戦者が現れた！').waitFor();
 await page.getByText('戦術を選択').waitFor();
@@ -41,7 +44,10 @@ await page.getByRole('button', { name: '支援なし' }).click();
 await page.getByRole('button', { name: 'スキップ ▶▶' }).click();
 await page.getByRole('button', { name: 'リザルトへ' }).click();
 await page.getByText(/勝利！|敗北…/).waitFor();
-await page.getByRole('button', { name: 'ホームに戻る' }).scrollIntoViewIfNeeded();
+await page.getByRole('button', { name: 'ホームに戻る' }).waitFor();
+# same canvas-scroll gotcha if the painted button is below the fold
+await page.mouse.wheel(0, 800);
+await page.getByRole('button', { name: 'ホームに戻る' }).click();
 ```
 
 Dismiss extra dialogs if they appear: `受け取る` (daily battle gems), `あとで` (first-battle complete).
@@ -66,4 +72,5 @@ Do not wait out a 50-turn playback at `x1`. Skip is the user-facing fast path (`
 - `もう一戦` exists only for `isCpuBattle`. Friend battles go home without it (`result_screen_test.dart`).
 - BGM starts on battle (`playBgm` + `playBattleStart`). `--mute-audio` is mandatory. Do not use audible BGM as proof.
 - Overlay `BGM`/`SE` are not Material buttons; `getByText('BGM')` after semantics.
+- `scrollIntoViewIfNeeded()` on a semantics node does not move the Flutter canvas. Wheel/drag the canvas to click below-fold painted buttons (`バトル開始` on home, `ホームに戻る` on result).
 - Random enemy: do not assert a specific device name unless you entered via HARD/BOSS/rival-road which pins the catalog entry.

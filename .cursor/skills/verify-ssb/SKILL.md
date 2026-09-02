@@ -56,25 +56,36 @@ Prefer the helper (records pid/port, refuses a busy port):
 
 ```bash
 ./.cursor/skills/verify-ssb/helpers/launch-web.sh 8091 "$RUN_DIR"
+# optional third arg: release (default) | debug
 ```
 
-Equivalent raw command:
+The helper **detaches** with `nohup` + `disown` so the Flutter process group survives when the launching command exits. A bare `flutter ... &` dies with SIGHUP (Mac live failure). Plain `setsid cmd &` EPERMs because a background job is already a process-group leader. After the serve line appears, the helper records `spawn_pid`, `pgid`, and the **listen pid that owns the port** (`pid`).
+
+Equivalent raw command (must detach; default verify mode is `--release`):
 
 ```bash
 FLUTTER_BIN="$(command -v flutter || true)"
 [ -x "$FLUTTER_BIN" ] || FLUTTER_BIN="$HOME/development/flutter/bin/flutter"
-"$FLUTTER_BIN" run -d web-server \
+nohup "$FLUTTER_BIN" run -d web-server --release \
   --web-hostname 127.0.0.1 \
-  --web-port 8091
+  --web-port 8091 \
+  >"$RUN_DIR/flutter.log" 2>&1 < /dev/null &
+disown
 ```
 
-**Ready when** the log contains a serve URL, typically:
+`--release` avoids the debug-DDC wedge after a failed first client (blank body, only `flutter_bootstrap.js`). Pass `debug` as the helper's third argument only if you intentionally want DDC; then do not hit the server until the serve line appears.
+
+**Ready when** `flutter.log` contains the serve URL line (this is the only ready signal):
 
 ```text
 lib/main.dart is being served at http://127.0.0.1:8091
 ```
 
-or `Waiting for connection from debug service on http://127.0.0.1:8091`. Then `curl -fsS http://127.0.0.1:8091` returns HTML whose `<title>` is `SPEC BATTLE` (`web/index.html`).
+**Not ready:**
+
+- `Waiting for connection from debug service on Web Server...` (too early; Dart is not served yet)
+- HTTP 200 with `<title>SPEC BATTLE</title>` from `web/index.html` (static shell; also served during the wait)
+- `curl` succeeding before the serve line exists
 
 Do **not** use:
 
@@ -98,10 +109,11 @@ Read-only. Run whenever the page looks stale, a click no-ops, or after a hot res
 
 Pass means all of:
 
-1. `pid` file in `RUN_DIR` still refers to a live process (and that process is still a descendant of the `flutter run` we started — do not doctor a random listener).
-2. `lsof`/`lsof -iTCP:<port> -sTCP:LISTEN` shows **that pid** (or its child dart/flutter) owns the port.
-3. `GET http://127.0.0.1:<port>/` is HTTP 200 and the body contains `<title>SPEC BATTLE</title>`.
-4. After Playwright connects: the document has a Flutter surface (`canvas`, `flt-glass-pane`, or `flutter-view`) **and** enabling accessibility (below) reveals `SPEC BATTLE` and `TAP TO START` (`test/presentation/title_screen_test.dart`).
+1. `pid` in `RUN_DIR` is the **listen pid that owns the port** and is still alive. `spawn_pid` (the detached `flutter run`) is still alive. Do not doctor a random listener.
+2. `lsof -iTCP:<port> -sTCP:LISTEN` matches that listen pid (or a child of spawn/listen).
+3. `flutter.log` contains `lib/main.dart is being served at http://127.0.0.1:<port>` (`serve-url` file exists). HTML title alone is **not** a pass.
+4. `GET http://127.0.0.1:<port>/` is HTTP 200 and the body contains `<title>SPEC BATTLE</title>` (identity check that this is Spec Battle, after the serve line).
+5. After Playwright connects: the document has a Flutter surface (`canvas`, `flt-glass-pane`, or `flutter-view`) **and** enabling accessibility (below) reveals `SPEC BATTLE` and `TAP TO START` (`test/presentation/title_screen_test.dart`).
 
 Fail means: do not Drive. Re-Launch on a free port, or Cleanup the stranded run first. Do not attach to someone else's Flutter process.
 
@@ -128,10 +140,11 @@ The app paints with CanvasKit/skwasm. Visible pixels are on a canvas; **stable h
 
 After `page.goto(http://127.0.0.1:<port>/)` and Flutter first-frame:
 
-1. If `getByRole('button', { name: 'Enable accessibility' })` or `flt-semantics-placeholder` exists, click it once. Wait for `flt-semantics`.
+1. If `getByRole('button', { name: 'Enable accessibility' })` or `flt-semantics-placeholder` exists, click it **once with `force: true`** (or click the DOM node: `locator('flt-semantics-placeholder').click({ force: true })`). That control sits **outside the 390×844 viewport**; a normal Playwright click waits for actionability and **times out**. Wait for `flt-semantics`.
 2. Prefer `getByRole('button', { name: '<exact label>' })`. Material `ElevatedButton` / `OutlinedButton` / `TextButton` expose their child text.
 3. For `GestureDetector` / `InkWell` chrome that is **not** a Material button, use `getByText('<exact string>')` after semantics are on, then click. Do not use coordinates except as a last resort on the title canvas.
 4. There are almost **no** `ValueKey`s on primary CTAs. Exceptions (input-state only, not navigation): URL input `ValueKey('error'|'ready'|'empty')` in `lib/presentation/screens/qr_scan_screen.dart`; backup import `ValueKey(_hasImportInput)` in `data_backup_screen.dart`. Do not invent `data-testid`s.
+5. **Semantics in the tree ≠ painted in the canvas fold.** `scrollIntoViewIfNeeded()` on a Flutter semantics node does **not** move the canvas. `Party` / `Gacha` / `バトル開始` (and the home card stack) can be present in the semantics tree while still below the first 390×844 painted fold. Presence in semantics is a valid "we are on home" proof. To **click** a below-fold painted control, wheel/drag the canvas (`page.mouse.wheel`) until it is in view; do not assume semantics-scroll will do it.
 
 ### Boot path (every cold context)
 
@@ -140,11 +153,11 @@ Web title (`lib/presentation/screens/title_screen.dart`):
 1. Wait until `getByText('SPEC BATTLE')` and `getByText('TAP TO START')` are in the tree. Subtitle `スマホのスペックで戦え` fades in ~0.8s after logo; tap prompt ~1.4s. `v0.1.0` is at the bottom.
 2. **First tap anywhere on the view** (the body is one `GestureDetector`). This only runs `SoundService.unlockAudio()` + `playBgm()` and **stays on the title**. Chromium `--mute-audio` keeps AirPods quiet; the Dart gate still requires this tap.
 3. **Second tap** leaves the title (`pushReplacement` fade 600ms).
-4. If `analytics_consent` is unanswered, dialog `プレイデータ送信へのご協力` with buttons `協力しない` / `協力する` (`analytics_consent_dialog.dart`). For a feature proof that is not Privacy, click **`協力しない`**.
+4. If `analytics_consent` is unanswered, dialog `プレイデータ送信へのご協力` with buttons `協力しない` / `協力する` (`analytics_consent_dialog.dart`). For a feature proof that is not Privacy, click **`協力しない`**. Never type `协力しない` (simplified 协); the label is Japanese `協力しない`.
 5. If `onboarding_completed` is false, `OnboardingScreen`: `スキップ` (always visible) or `次へ` ×2 then `はじめる！`. Fast path: **`スキップ`**. Pages: `あなたのスマホが\nキャラクターに！` → `スペックが\n能力値に変わる` → `まずは1回\nバトルしてみよう！`.
 6. Home (`HomeScreen`). First-run also shows `はじめてのバトル！` banner. Login popup `ログインボーナス！` / button `受け取る` may appear; dismiss with `受け取る` before asserting home chrome.
 
-You are on home when several of these are visible (home is a long `SingleChildScrollView` — scroll):
+You are on home when several of these are in the **semantics tree** (home is a long `SingleChildScrollView`; many sit below the first canvas fold — see Drive gotcha above). Live proof of `features/home.md` used semantics presence of the menu row plus `バトル開始`:
 
 | Handle | Kind | Source |
 |---|---|---|
@@ -161,6 +174,11 @@ You are on home when several of these are visible (home is a long `SingleChildSc
 | `Lv.` | player level | character card |
 | `バトル数` / `勝利数` / `勝率` | RecordCard | `record_card.dart` |
 | `推定上位` | PowerRatingCard | `power_rating_card.dart` |
+| `解析ロードマップ` | card title | `home_screen.dart` |
+| `日替わりショップ` | card title | `home_screen.dart` |
+| `ライバルロード` | card title | `rival_road_card.dart` |
+| `高難度チャレンジ` | card title | `home_screen.dart` |
+| `シーズンパス YYYY-MM` | card title | `season_pass_card.dart` (`'シーズンパス ${pass.seasonId}'`; live semantics may drop the space, e.g. `シーズンパス2026-09`) |
 
 AppBar titles after navigation (use these as "we arrived" checks):
 
@@ -226,7 +244,7 @@ Suggested files:
 ./.cursor/skills/verify-ssb/helpers/cleanup.sh "$RUN_DIR"
 ```
 
-- Kills **only** the pid recorded at Launch (process group of that `flutter run`). Never `pkill flutter` / `killall dart`.
+- Kills **only** the process group recorded at Launch (`pgid` / `spawn_pid` / listen `pid`). Never `pkill flutter` / `killall dart`.
 - Removes `$RUN_DIR` (pid/port/log).
 - **Leaves** `.local/verify-ssb/evidence/<run-id>/` in place.
 - Closes the Playwright browser/context this run opened. Do not close other browsers.
@@ -241,9 +259,9 @@ All under `.cursor/skills/verify-ssb/helpers/`. Executable. Invocation is in Lau
 
 | Script | Purpose |
 |---|---|
-| `helpers/launch-web.sh <port> <run-dir>` | `flutter run -d web-server` on `127.0.0.1:<port>`; writes `pid`, `port`, `flutter.log`; refuses a busy port |
-| `helpers/doctor.sh <run-dir>` | pid live, port owned by us, HTTP 200 + title `SPEC BATTLE` |
-| `helpers/cleanup.sh <run-dir>` | SIGTERM the recorded pid group; delete run-dir; do not touch evidence |
+| `helpers/launch-web.sh <port> <run-dir> [release\|debug]` | detached `flutter run -d web-server` (`--release` default) on `127.0.0.1:<port>`; waits for the serve line; writes listen `pid`, `spawn_pid`, `pgid`, `serve-url`, `flutter.log`; refuses a busy port |
+| `helpers/doctor.sh <run-dir>` | listen/spawn alive, port owned by us, **serve line in log**, then HTTP 200 + title |
+| `helpers/cleanup.sh <run-dir>` | SIGTERM the recorded process group; delete run-dir; do not touch evidence |
 
 ---
 

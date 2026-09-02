@@ -11,36 +11,68 @@ if [[ -z "$RUN_DIR" ]]; then
 fi
 
 PID_FILE="$RUN_DIR/pid"
-if [[ ! -f "$PID_FILE" ]]; then
-  echo "cleanup: no pid file in $RUN_DIR (nothing to kill)"
+SPAWN_FILE="$RUN_DIR/spawn_pid"
+PGID_FILE="$RUN_DIR/pgid"
+
+stop_pid() {
+  local pid="${1:-}"
+  if [[ -z "$pid" ]] || ! kill -0 "$pid" 2>/dev/null; then
+    return 0
+  fi
+  kill -TERM "$pid" 2>/dev/null || true
+  local _i
+  for _i in $(seq 1 20); do
+    if ! kill -0 "$pid" 2>/dev/null; then
+      return 0
+    fi
+    sleep 0.2
+  done
+  kill -KILL "$pid" 2>/dev/null || true
+}
+
+if [[ ! -f "$PID_FILE" && ! -f "$SPAWN_FILE" && ! -f "$PGID_FILE" ]]; then
+  echo "cleanup: no pid/spawn/pgid in $RUN_DIR (nothing to kill)"
   rm -rf "$RUN_DIR"
   exit 0
 fi
 
-PID="$(tr -d '[:space:]' <"$PID_FILE")"
-if [[ -n "$PID" ]] && kill -0 "$PID" 2>/dev/null; then
-  # Kill the flutter run process group if we started it in its own group;
-  # otherwise the pid and known children.
-  if command -v pkill >/dev/null 2>&1; then
-    pkill -TERM -P "$PID" 2>/dev/null || true
-  fi
-  kill -TERM "$PID" 2>/dev/null || true
+PGID=""
+if [[ -f "$PGID_FILE" ]]; then
+  PGID="$(tr -d '[:space:]' <"$PGID_FILE")"
+fi
+SPAWN_PID=""
+if [[ -f "$SPAWN_FILE" ]]; then
+  SPAWN_PID="$(tr -d '[:space:]' <"$SPAWN_FILE")"
+fi
+LISTEN_PID=""
+if [[ -f "$PID_FILE" ]]; then
+  LISTEN_PID="$(tr -d '[:space:]' <"$PID_FILE")"
+fi
+
+# Kill the session/process group we created (setsid/nohup), then any leftover
+# listen/spawn pids. Never pkill by name.
+if [[ "$PGID" =~ ^[0-9]+$ ]] && (( PGID > 1 )); then
+  kill -TERM -"$PGID" 2>/dev/null || true
   for _ in $(seq 1 20); do
-    if ! kill -0 "$PID" 2>/dev/null; then
+    alive=0
+    if [[ -n "$SPAWN_PID" ]] && kill -0 "$SPAWN_PID" 2>/dev/null; then
+      alive=1
+    fi
+    if [[ -n "$LISTEN_PID" ]] && kill -0 "$LISTEN_PID" 2>/dev/null; then
+      alive=1
+    fi
+    if [[ "$alive" -eq 0 ]]; then
       break
     fi
     sleep 0.2
   done
-  if kill -0 "$PID" 2>/dev/null; then
-    if command -v pkill >/dev/null 2>&1; then
-      pkill -KILL -P "$PID" 2>/dev/null || true
-    fi
-    kill -KILL "$PID" 2>/dev/null || true
-  fi
-  echo "cleanup: stopped pid $PID"
-else
-  echo "cleanup: pid ${PID:-empty} already gone"
+  kill -KILL -"$PGID" 2>/dev/null || true
 fi
+
+stop_pid "$LISTEN_PID"
+stop_pid "$SPAWN_PID"
+
+echo "cleanup: stopped listen=${LISTEN_PID:-none} spawn=${SPAWN_PID:-none} pgid=${PGID:-none}"
 
 rm -rf "$RUN_DIR"
 echo "cleanup: removed $RUN_DIR (evidence directory was not touched)"
