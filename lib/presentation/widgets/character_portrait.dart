@@ -29,6 +29,7 @@ class CharacterPortrait extends StatelessWidget {
     'wind_3',
     'light_0',
     'light_1',
+    'light_2',
   };
 
   final Character character;
