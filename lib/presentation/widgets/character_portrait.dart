@@ -33,6 +33,7 @@ class CharacterPortrait extends StatelessWidget {
     'light_3',
     'dark_0',
     'dark_1',
+    'dark_2',
   };
 
   final Character character;
