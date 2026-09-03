@@ -54,7 +54,11 @@ void main() {
     await _pumpPortrait(
       tester,
       CharacterPortrait(
-        character: _character(seed: 0),
+        character: _character(
+          name: 'アクア・ナイト',
+          element: ElementType.water,
+          seed: 0,
+        ),
         variant: PortraitVariant.bust,
         height: 80,
       ),
@@ -65,7 +69,7 @@ void main() {
     expect(image.errorBuilder, isNotNull);
     expect(
       (image.image as AssetImage).assetName,
-      'assets/images/characters/fire_0_bust.png',
+      'assets/images/characters/water_0_bust.png',
     );
 
     await tester.pump();
