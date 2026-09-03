@@ -23,6 +23,7 @@ import '../widgets/home/next_action_card.dart';
 import '../widgets/home/record_card.dart';
 import '../widgets/home/rival_road_card.dart';
 import '../widgets/home/season_pass_card.dart';
+import '../widgets/character_portrait.dart';
 import '../widgets/pixel_character.dart';
 import '../widgets/power_rating_card.dart';
 import '../widgets/stat_bar.dart';
@@ -808,7 +809,11 @@ class _HomeScreenState extends State<HomeScreen>
         children: [
           Column(
             children: [
-              PixelCharacter(character: player, size: charSize),
+              CharacterPortrait(
+                character: player,
+                variant: PortraitVariant.bust,
+                height: charSize,
+              ),
               const SizedBox(height: 6),
               GestureDetector(
                 onTap: _openAvatarStudio,

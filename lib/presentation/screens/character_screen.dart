@@ -4,7 +4,7 @@ import '../../domain/enums/element_type.dart';
 import '../../domain/enums/effect_type.dart';
 import '../theme/app_colors.dart';
 import '../../domain/models/skill.dart';
-import '../widgets/pixel_character.dart';
+import '../widgets/character_portrait.dart';
 import '../widgets/stat_bar.dart';
 
 /// キャラクター詳細画面
@@ -70,7 +70,11 @@ class CharacterScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          PixelCharacter(character: character, size: charSize),
+          CharacterPortrait(
+            character: character,
+            variant: PortraitVariant.full,
+            height: charSize,
+          ),
           const SizedBox(height: 16),
           Text(
             character.name,
