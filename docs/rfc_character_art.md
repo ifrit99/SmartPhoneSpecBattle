@@ -1,7 +1,7 @@
 # RFC: キャラクターグラフィック刷新（擬人化・成人女性キャラクター）
 
 Created: 2026-09-03
-Status: PROPOSED（ユーザー承認後、`docs/plans/character-art-1.md` を起点に実装）
+Status: APPROVED（アート方針 2026-09-03 ユーザー承認済み。`docs/plans/character-art-1.md` を起点に実装。本PRはマージしない・Dart変更なし）
 Scope: 設計・要件のみ。本RFCはプロダクトコード（Dart/Flutter）を変更しない。
 
 ---
@@ -13,6 +13,9 @@ Scope: 設計・要件のみ。本RFCはプロダクトコード（Dart/Flutter�
 - **ユーザー決定（2026-09-03）**: キャラクターグラフィックを「端末スペックを擬人化した成人女性キャラクター」を中心に刷新する。戦場をうるさくしない。
 - **ユーザー追加指示（2026-09-03、PR #35 フィードバック）**: 画風は『ブルーアーカイブ』のイラスト言語（クリーンな2Dアニメ立ち絵・鮮やかなシルエット・細線・ツヤ髪・明瞭な顔）を参照する。ただし同作の派生物にはしない（キャラ・ロゴ・学園名・頭上のヘイローを使わない）。高校生に見せない。→ §2-2 / §2-5 / §5-3 に反映。
 - **ユーザー追加指示（2026-09-03、2回目）**: 生成結果が写実的すぎた。明確にアニメ・2Dセル塗りにし、「成人らしさ」を写実で出さない。年齢は設定として成人（子ども・学生ではない）であればよく、アニメ顔が年齢不詳に見えることは許容する。下限（子ども・学生コード・制服・ヘイローの禁止）は維持、上限は「中年に見えない」をネガティブとしてのみ残す。→ §2-2 / §2-4 / §5-3 / §10 に反映。
+- **ユーザー承認（2026-09-03）**: 以下2種のプロトタイプで方針確定（画像バイナリはリポジトリに入れない）。
+  - **立ち絵**: アニメ2Dセル塗りの成人スマホ擬人化（炎・指揮官「フレア」）。カード／ガチャ結果／キャラ詳細／ホームの bust 枠で使う。年齢は顔から読めなくてよい。学生・ヘイロー・写実は不可。
+  - **バトルスプライト**: 同じペルソナを **スーパーファミコン『FF6』風・約3頭身のデフォルメピクセルアート**にしたもの。バトルフィールドではこれを使う（7頭身立ち絵でも、旧 12×12 CustomPaint でもない）。グロー・オーラ・UI は焼き込まない。→ §2-6 / §4 / §5 / §9 に反映。
 
 ## 1. ゴール / 非ゴール
 
@@ -63,7 +66,7 @@ Scope: 設計・要件のみ。本RFCはプロダクトコード（Dart/Flutter�
 | 水 water | `#74B9FF` | 冷却／流体制御（ガラス質のコート） | 液冷チューブ、水面反射 |
 | 地 earth | `#FDCB6E` | ストレージ／アーカイブ管理官（金属板の装甲コート） | 金庫、積層プレート |
 | 風 wind | `#55EFC4` | 通信／ネットワーク（軽量フライトウェア） | アンテナ、信号の弧 |
-| 光 light | `#FFF176` | ディスプレイ／カメラ（白基調の制服） | レンズフレア、発光パネル |
+| 光 light | `#FFF176` | ディスプレイ／カメラ（白基調の職業服: ラボコート／撮影クルーのテックベスト。学生服の白ではない） | レンズフレア、発光パネル |
 | 闇 dark | `#AB47BC` | セキュリティ／暗号（ダークテーラード） | 錠前、暗号パターン |
 
 スペック→衣装の対応（CPU→ガントレット/工具、RAM→コートのボリューム、ストレージ→ケース/シールド、バッテリー→ブーツの光線）は**プロンプトのヒントとしてのみ**使い、v1 では画像を機械的に変化させない。
@@ -87,6 +90,21 @@ Scope: 設計・要件のみ。本RFCはプロダクトコード（Dart/Flutter�
 4. 衣装に小物ディテールが3点以上あり、うち1〜2点が端末由来（§2-1）。
 5. **禁止（IP距離）**: 頭上に浮かぶ光輪・ヘイロー状の図形全般（形状・色を変えても不可）、参照作品の特定キャラに似た髪型＋衣装＋色の組み合わせ、学園・学院・部活を示すエンブレム／腕章／ロゴ、参照作品のロゴ・書体風のテキスト、銃火器を主武装として構える構図。
 6. 文字・ロゴ・ウォーターマークが画像内にない。
+
+### 2-6. バトルスプライト（SFC『FF6』風デフォルメピクセルアート）
+バトルフィールドには立ち絵ではなく、**同じペルソナのデフォルメピクセルアート**を置く（ユーザー承認プロトタイプ）。
+- **様式**: スーパーファミコン時代の『ファイナルファンタジーVI』のフィールド／戦闘キャラ風。約3頭身、頭が大きく手足は短い「かわいいデフォルメ」。限定パレット（1体 16〜24色目安）、1px の暗色アウトライン、ディザなし、アンチエイリアスなし。
+- **同一性**: 立ち絵と同じ髪型・髪色・キーカラー・衣装の主要ディテール（1〜2点の端末由来小物を含む）を保つ。bust 48px と並べて同じキャラと分かること。
+- **静けさ**: グロー・オーラ・影以外のエフェクト・HPバー等の UI・文字を画像に焼き込まない。足元の小さな楕円影は任意（1色）。透過背景。
+- **向き**: 正面〜やや斜め前向きの立ちポーズ 1 枚のみ（スライス1）。敵側は現行どおり `flipHorizontal` で左右反転する。歩行・攻撃アニメはスコープ外。
+- **成人・IP 下限は立ち絵と同じ**: 子ども・学生服・ヘイロー・性的表現は不可（デフォルメで「かわいい」寄りになるが、衣装は職業服のまま）。参照作品（FF6）の特定キャラ・モンスター・ロゴを模倣しない。
+
+**QAゲート C（バトルスプライト）**: 1つでも NG なら再生成。
+1. 約3頭身のデフォルメで、ピクセルアート（等倍で見て格子が揃っている、AA・ぼかしがない）。
+2. 立ち絵と髪型・髪色・キーカラー・衣装が一致し、同一ペルソナと分かる。
+3. 学生服・ヘイロー・子ども表現・性的表現がない（§2-4 項目1・2・4 と同じ基準）。
+4. グロー・オーラ・UI・文字が焼き込まれていない。透過背景でフリンジがない。
+5. 参照作品の特定キャラ・ロゴに似ていない。
 
 ## 3. ユニーク枚数と生成バリエーション
 
@@ -121,7 +139,7 @@ archetype の役柄（指揮官／エンジニア／フィールド／リサー�
 |---|---|---|---|
 | タイトル | キャラなし | 変更なし（背景維持） | — |
 | ホーム プレイヤーカード | Pixel 60–120 | **bust**（上半身） | 1 |
-| バトル フィールド | Pixel 50–100 | **bust**、位置・シェイク・左右反転は現行踏襲、枠・発光なし | 1 |
+| バトル フィールド | Pixel 50–100 | **battle（SFC風デフォルメピクセル、§2-6）**。bust は使わない（バトルだけが例外）。位置・シェイク・左右反転は現行踏襲、枠・発光なし | 1 |
 | ガチャ 単発結果 | Pixel 80 | **full**（全身）高さ 160 | 1 |
 | キャラ詳細（`character_screen.dart`） | Pixel 100–200 | **full** | 1 |
 | リザルト | Pixel 60 | bust 高さ 72 | 2 |
@@ -133,9 +151,9 @@ archetype の役柄（指揮官／エンジニア／フィールド／リサー�
 | Avatar Studio | Pixel 140 / 56 | Pixel のまま。説明文を「ミニアイコンの見た目」に修正 | 2 |
 
 ### 4-1. バトル画面の「静けさ」ルール
-- 追加するのはポートレート画像の差し替えのみ。枠・グロー・台座・アイドルアニメ・追加パーティクルは入れない。
+- 追加するのは 12×12 CustomPaint → `battle` ピクセルスプライト画像の差し替えのみ。枠・グロー・台座・アイドルアニメ・追加パーティクルは入れない。
 - 背景 `battle_bg.png` とその表示方法（cover・上寄せ）は変更しない。
-- サイズ: 各ハーフ（敵／プレイヤー）の利用可能高さから既存 `enemySpriteTopPadding` を差し引いた値を上限に、bust 高さ = clamp(90, 140)、幅 = 高さ × 0.8。360×640〜430×932 の viewport でオーバーフローしないこと。
+- サイズ: 現行の `charSize`（幅の18%、clamp 50–100）の正方形アンカーをそのまま使い、48×48 のスプライトを**整数倍（×1/×2）で最近傍拡大**して収める（`FilterQuality.none`。非整数倍でぼけさせない）。ピクセル密度（DPR）を掛けた実ピクセルで整数倍になるよう、論理サイズは 48 または 96 に丸める。360×640〜430×932 の viewport でオーバーフローしないこと。
 - HP バー・名前・TURN 表示・ダメージポップアップのレイアウトは変更しない。
 
 ## 5. アセットパイプライン
@@ -145,11 +163,13 @@ archetype の役柄（指揮官／エンジニア／フィールド／リサー�
 assets/images/characters/
   {element}_{archetype}_full.png   # 512×768 (2:3)  例: fire_0_full.png
   {element}_{archetype}_bust.png   # 384×480 (4:5)  例: fire_0_bust.png
+  {element}_{archetype}_battle.png # 48×48 ピクセルアート（等倍・透過）例: fire_0_battle.png
 ```
 - `element` は `ElementType.name`（fire/water/earth/wind/light/dark）、`archetype` は 0–3。
-- 端末固有画像（スライス3以降）は `device_{slug}_full.png` / `_bust.png`（slug は英小文字・ハイフン。例 `device_stellar-s25-ultra`）。
+- `battle` は **48×48 の等倍グリッド**で保存する（拡大済み画像を入れない）。キャラ本体は高さ 40〜46px・幅 24〜32px 程度に収め、足元を下端から 2px 以内に置く。表示側は `Image.asset(..., filterQuality: FilterQuality.none)` で最近傍拡大（§4-1）。
+- 端末固有画像（スライス3以降）は `device_{slug}_full.png` / `_bust.png` / `_battle.png`（slug は英小文字・ハイフン。例 `device_stellar-s25-ultra`）。
 - `pubspec.yaml` に `assets/images/characters/` を追加。既存の空ディレクトリ `assets/characters/{heads,bodies,arms,legs}/` は未使用のまま触らない（別タスク候補）。
-- 1ファイル ≤ 300KB（`pngquant --quality 80-100` または `oxipng -o4`）。Flutter Web はアセットを使用時に取得するため初回ロードには乗らない。バトル開始時に対戦2体分を `precacheImage` する。
+- 1ファイル ≤ 300KB（`pngquant --quality 80-100` または `oxipng -o4`）。`battle` はインデックスカラー PNG で数KB になる。Flutter Web はアセットを使用時に取得するため初回ロードには乗らない。バトル開始時に対戦2体分の `battle` を `precacheImage` する。
 
 ### 5-2. 生成マスターと構図テンプレート
 - 生成サイズ 1024×1536（gpt-image-2 の縦長）。透過背景で出力、できない場合は単色背景→切り抜き。
@@ -160,6 +180,12 @@ assets/images/characters/
 # 例（ImageMagick）: master.png → full / bust
 magick master.png -resize 512x768 fire_0_full.png
 magick master.png -gravity North -crop 48%x40%+0+0 +repage -resize 384x480 fire_0_bust.png
+```
+
+- `battle` の生成: 画像生成は等倍 48×48 を直接出せないため、正方形（1024×1024）で「48×48 グリッドのピクセルアート」を生成し、**最近傍で 48×48 に縮小**したうえで格子ずれ・にじみを目視確認する。格子が揃っていない画像は再生成（または手作業でドット修正）。
+```bash
+# 例: battle_master.png (1024×1024, 48×48 グリッド想定) → 等倍 48×48
+magick battle_master.png -filter point -resize 48x48 -colors 32 fire_0_battle.png
 ```
 
 ### 5-3. プロンプトテンプレート（実装者が各IDで埋める）
@@ -186,13 +212,29 @@ logo, text, watermark, background scenery, glow effects, floating UI.
 ```
 - 年齢を表す語（"in her 20s" 等）は任意。入れる場合は `{mid 20s|late 20s|early 30s}` のみとし、顔で年齢を読ませることは求めない。
 - 髪型・髪色・体格はキャラごとに必ず指定し、24体の重複を避ける（§3-1 のグリッドに沿って一覧を計画ファイルに置く）。
-- 使用したプロンプト・採用/却下の理由（ゲート A/B のどの項目で落ちたか）は実装時の計画ファイル（`docs/plans/character-art-N.md`）の Generator ログに ID ごとに残す。
+- 使用したプロンプト・採用/却下の理由（ゲート A/B/C のどの項目で落ちたか）は実装時の計画ファイル（`docs/plans/character-art-N.md`）の Generator ログに ID ごとに残す。
+
+### 5-4. バトルスプライト用プロンプトテンプレート（§2-6）
+立ち絵を確定させてから、その立ち絵を参照画像として渡し、同じ衣装・色で生成する。参照作品名（FF6）はプロンプトに書かない。
+```
+16-bit SNES-era JRPG pixel art battle sprite of the same character as the reference illustration:
+an adult woman, {archetype role}, personification of a fictional smartphone.
+Cute deformed proportions, about 3 heads tall, big head, short limbs, standing idle pose,
+facing front-left. Same hairstyle, hair color, key color {hex} and outfit details as the reference
+({element outfit family}, {1-2 phone-derived details}, holding a {holographic slab|visor|wrist terminal}).
+Strict pixel art on a 48x48 grid, limited palette of 16-24 colors, 1px dark outline,
+no anti-aliasing, no dithering, no gradients, flat transparent background, character centered,
+feet near the bottom edge. Optional single-color small oval shadow under the feet.
+Negative: high resolution, smooth shading, anti-aliasing, blur, glow, aura, particles, HP bar, UI,
+text, logo, watermark, background scenery, school uniform, sailor collar, halo, child, toddler,
+swimsuit, underwear, suggestive pose, realistic, 3D render.
+```
 
 ## 6. 12×12 CustomPaint（`PixelCharacter`）の扱い
 
-- **残す。役割を「ミニアイコン」と「フォールバック」に限定する。**
+- **残す。役割を「ミニアイコン」と「フォールバック」に限定する。バトルフィールドの見た目ではない**（バトルは §2-6 の `battle` スプライト）。
   - ミニアイコン: 32px 以下の密なリスト（ガチャ10連、戦闘力ランキング、リーグ順位表）は引き続き `PixelCharacter`。Avatar Studio の 7 スロットはこのミニアイコンに効く。
-  - フォールバック: 該当 ID のアセットがマニフェストに無い、または読み込みに失敗した場合は `PixelCharacter` を同サイズで描く。
+  - フォールバック: 該当 ID のアセット（full / bust / battle いずれも）がマニフェストに無い、または読み込みに失敗した場合は `PixelCharacter` を同サイズで描く。
 - `pixel_character.dart` の描画ロジックは変更しない。
 
 ## 7. データモデル・シード・URL への影響
@@ -207,8 +249,8 @@ logo, text, watermark, background scenery, glow effects, floating UI.
 
 ## 8. 実装構造（3層）
 
-- `lib/domain/models/portrait_id.dart`【新規】: `PortraitId.fromCharacter(Character)`、`key`、`fullAsset`/`bustAsset` パス。Flutter 非依存の純粋ロジック。
-- `lib/presentation/widgets/character_portrait.dart`【新規】: `CharacterPortrait(character:, variant: PortraitVariant.bust|full, height:, flipHorizontal:)`。`const Set<String> shippedPortraitKeys` をマニフェストとして持ち（Flutter はアセット列挙が煩雑なため明示）、解決順に従い `Image.asset`（`errorBuilder` で `PixelCharacter`）を返す。`Semantics(label: character.name)` を付ける。
+- `lib/domain/models/portrait_id.dart`【新規】: `PortraitId.fromCharacter(Character)`、`key`、`fullAsset`/`bustAsset`/`battleAsset` パス。Flutter 非依存の純粋ロジック。
+- `lib/presentation/widgets/character_portrait.dart`【新規】: `CharacterPortrait(character:, variant: PortraitVariant.bust|full|battle, height:, flipHorizontal:)`。`const Set<String> shippedPortraitKeys` をマニフェストとして持ち（Flutter はアセット列挙が煩雑なため明示）、解決順に従い `Image.asset`（`errorBuilder` で `PixelCharacter`）を返す。`battle` は `filterQuality: FilterQuality.none` で整数倍表示（§4-1）。`Semantics(label: character.name)` を付ける。
 - 呼び出し側は `PixelCharacter(...)` を `CharacterPortrait(...)` に置換するだけ。ドメインサービスやストレージは触らない。
 
 ## 9. 第1スライス（`docs/plans/character-art-1.md` として計画 → 実装 PR）
@@ -216,9 +258,9 @@ logo, text, watermark, background scenery, glow effects, floating UI.
 **名称: character-art-1 — 指揮官6体（archetype 0）＋表示基盤**
 
 含むもの:
-1. アセット 12 ファイル: `fire_0`/`water_0`/`earth_0`/`wind_0`/`light_0`/`dark_0` × {full, bust}（§2-4 / §2-5 の QA ゲート A・B 通過済み）。`pubspec.yaml` 追記。
+1. アセット 18 ファイル: `fire_0`/`water_0`/`earth_0`/`wind_0`/`light_0`/`dark_0` × {full, bust, battle}（full/bust は QA ゲート A・B、battle はゲート C 通過済み）。`pubspec.yaml` 追記。
 2. `portrait_id.dart` と `character_portrait.dart`（§8）。マニフェストは上記 6 キー。
-3. 置換 4 箇所: バトル（敵・プレイヤー、bust）、ホーム プレイヤーカード（bust）、ガチャ単発結果（full 高さ160）、キャラ詳細（full）。バトル開始時の `precacheImage`。
+3. 置換 4 箇所: バトル（敵・プレイヤー、**battle** ピクセルスプライト）、ホーム プレイヤーカード（bust）、ガチャ単発結果（full 高さ160）、キャラ詳細（full）。バトル開始時の `precacheImage`（battle 2 体分）。
 4. テスト:
    - `portrait_id_test.dart`: 同一 seed → 同一 key、負の seed、6属性×4 の範囲、名前接頭語との一致（`_generateName` と同じ index になること）。
    - `character_portrait_test.dart`（widget）: マニフェスト外の key で `PixelCharacter` が描かれる／マニフェスト内で `Image` が使われる。
@@ -229,11 +271,11 @@ logo, text, watermark, background scenery, glow effects, floating UI.
 
 完了条件:
 - [ ] `flutter analyze` エラー0 / `flutter test` 全パス
-- [ ] ブラウザ確認: ホーム→バトルで 6 属性いずれかの bust が表示され、`battle_bg.png` の見え方が変わらない（枠・発光なし）
+- [ ] ブラウザ確認: ホームで bust、バトルで `battle` ピクセルスプライトが表示され、`battle_bg.png` の見え方が変わらない（枠・発光なし）。スプライトが整数倍でくっきり表示される（ぼけ・にじみなし）
 - [ ] 360×640 と 430×932 でバトルフィールドがオーバーフローしない
 - [ ] `?battle=` URL で受け取った相手が、送信側と同じポートレートで表示される（seed/element 由来であることの確認）
-- [ ] 6 画像すべてが §2-4（成人設定の下限）と §2-5（画風・IP距離）のチェックリストを通過（PR 説明にチェック結果を記載）
-- [ ] 6 体を bust 48px に縮小して並べ、髪型・シルエット・キーカラーで互いに区別できる
+- [ ] full/bust 12 画像が §2-4（成人設定の下限）と §2-5（画風・IP距離）、battle 6 画像が §2-6 ゲート C のチェックリストを通過（PR 説明にチェック結果を記載）
+- [ ] 6 体を bust 48px に縮小して並べ、髪型・シルエット・キーカラーで互いに区別できる。各 battle スプライトが対応する bust と同一ペルソナと分かる
 
 ### 後続スライス（順序の目安）
 - **character-art-2**: 残り 18 体、表示箇所の残り（§4 スライス2）、レアリティ枠、Avatar Studio 文言。
@@ -249,12 +291,15 @@ logo, text, watermark, background scenery, glow effects, floating UI.
 | 子ども・学生に見える | ゲート A 項目1・2（子ども体型・制服コード）で NG。年齢不詳・20代前半に見えることは NG にしない |
 | 上に振りすぎて中年に見える | ゲート A 項目3（ソフト上限・ネガティブのみ）。ネガティブに middle-aged / wrinkles |
 | 参照作品（ブルーアーカイブ）の派生物と見なされる | プロンプトに作品名を書かない。ヘイロー・学園エンブレム・制服構成・特定キャラ類似を §2-5 で禁止。画風の共通要素（セル塗り・細線・ツヤ髪）のみ参照 |
-| 画像生成の残量不足 | スライス1は 6 枚に限定。不足時は `{element}_0` へのフォールバックで部分出荷可能 |
-| バトルのレイアウト崩れ | bust を既存アンカーに収め、2 viewport で確認を完了条件に含める |
-| ドット絵とイラストの混在感 | 混在は 32px 以下のミニアイコンに限定し、同一画面で同キャラを両形態で並べない |
+| 画像生成の残量不足 | スライス1は 6 ペルソナ（立ち絵 6 ＋ battle 6）に限定。不足時は `{element}_0` へのフォールバックで部分出荷可能 |
+| バトルのレイアウト崩れ | battle スプライトを既存 `charSize` アンカーに整数倍で収め、2 viewport で確認を完了条件に含める |
+| 生成した「ピクセルアート」の格子ずれ・にじみ | 最近傍で 48×48 に縮小して等倍で目視（ゲート C 項目1）。ずれは再生成か手作業でドット修正 |
+| 立ち絵と battle スプライトが別人に見える | 立ち絵確定後に参照画像として渡して生成（§5-4）。ゲート C 項目2 で並べて確認 |
+| ドット絵とイラストの混在感 | 12×12 ミニアイコンは 32px 以下に限定。バトルの battle スプライトは意図した様式差（SFC風）であり、同一画面で同キャラの立ち絵と並べない |
 | 既存ユーザーの見た目変更への戸惑い | リリースノートに 1 行記載。データ移行は不要 |
 
-## 11. 承認を求める判断点
-1. archetype の役柄（指揮官／エンジニア／フィールド／リサーチャー）と、名前接頭語＝ペルソナ名の対応（§3-1）。
-2. バトルは bust（上半身）で進める。全身立ち絵のためのフィールド再レイアウトはスライス1の結果を見て別途判断。
-3. SSR 端末固有画像を 7 体まで用意する予算（スライス3）。
+## 11. 承認状況
+- **承認済み（2026-09-03）**: アート方針全体。立ち絵＝アニメ2Dセル塗り（フレアのプロトタイプ）、バトル＝SFC『FF6』風・約3頭身デフォルメピクセル（§2-6）。バトルに bust は使わない。
+- 残る判断点（スライス3以降で確認）:
+  1. archetype の役柄（指揮官／エンジニア／フィールド／リサーチャー）と、名前接頭語＝ペルソナ名の対応（§3-1）。スライス1は指揮官のみなので着手を妨げない。
+  2. SSR 端末固有画像を 7 体まで用意する予算（スライス3）。
