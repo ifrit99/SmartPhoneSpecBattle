@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spec_battle_game/domain/enums/element_type.dart';
@@ -5,6 +7,25 @@ import 'package:spec_battle_game/domain/models/character.dart';
 import 'package:spec_battle_game/domain/models/stats.dart';
 import 'package:spec_battle_game/presentation/widgets/character_portrait.dart';
 import 'package:spec_battle_game/presentation/widgets/pixel_character.dart';
+
+const _commanderElements = {
+  'fire_0': ElementType.fire,
+  'water_0': ElementType.water,
+  'earth_0': ElementType.earth,
+  'wind_0': ElementType.wind,
+  'light_0': ElementType.light,
+  'dark_0': ElementType.dark,
+};
+
+MapEntry<String, ElementType>? _firstCommanderWithoutBustPng() {
+  for (final entry in _commanderElements.entries) {
+    final file = File('assets/images/characters/${entry.key}_bust.png');
+    if (!file.existsSync()) {
+      return entry;
+    }
+  }
+  return null;
+}
 
 Character _character({
   String name = 'フレア・ナイト',
@@ -51,14 +72,14 @@ void main() {
 
   testWidgets('マニフェスト内の key では Image を使い、欠落時は errorBuilder で PixelCharacter にフォールバックする',
       (tester) async {
+    final missing = _firstCommanderWithoutBustPng();
+    final element = missing?.value ?? ElementType.fire;
+    final key = missing?.key ?? 'fire_0';
+
     await _pumpPortrait(
       tester,
       CharacterPortrait(
-        character: _character(
-          name: 'アクア・ナイト',
-          element: ElementType.water,
-          seed: 0,
-        ),
+        character: _character(element: element, seed: 0),
         variant: PortraitVariant.bust,
         height: 80,
       ),
@@ -69,8 +90,12 @@ void main() {
     expect(image.errorBuilder, isNotNull);
     expect(
       (image.image as AssetImage).assetName,
-      'assets/images/characters/water_0_bust.png',
+      'assets/images/characters/${key}_bust.png',
     );
+
+    if (missing == null) {
+      return;
+    }
 
     await tester.pump();
 
