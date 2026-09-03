@@ -12,6 +12,7 @@ Scope: 設計・要件のみ。本RFCはプロダクトコード（Dart/Flutter�
 - キャラクターは現在も `PixelCharacter`（`lib/presentation/widgets/pixel_character.dart`）による 12×12 プロシージャルドット絵。見た目は `Character` の 7 インデックス（head/body/arm/leg/colorPalette/accessory/aura）＋ `element` で決まる。
 - **ユーザー決定（2026-09-03）**: キャラクターグラフィックを「端末スペックを擬人化した成人女性キャラクター」を中心に刷新する。戦場をうるさくしない。
 - **ユーザー追加指示（2026-09-03、PR #35 フィードバック）**: 画風は『ブルーアーカイブ』のイラスト言語（クリーンな2Dアニメ立ち絵・鮮やかなシルエット・細線・ツヤ髪・明瞭な顔）を参照する。ただし同作の派生物にはしない（キャラ・ロゴ・学園名・頭上のヘイローを使わない）。高校生に見せない。→ §2-2 / §2-5 / §5-3 に反映。
+- **ユーザー追加指示（2026-09-03、2回目）**: 生成結果が写実的すぎた。明確にアニメ・2Dセル塗りにし、「成人らしさ」を写実で出さない。年齢は設定として成人（子ども・学生ではない）であればよく、アニメ顔が年齢不詳に見えることは許容する。下限（子ども・学生コード・制服・ヘイローの禁止）は維持、上限は「中年に見えない」をネガティブとしてのみ残す。→ §2-2 / §2-4 / §5-3 / §10 に反映。
 
 ## 1. ゴール / 非ゴール
 
@@ -36,10 +37,12 @@ Scope: 設計・要件のみ。本RFCはプロダクトコード（Dart/Flutter�
 ### 2-2. 画風（参照: ブルーアーカイブ系のイラスト言語）
 ユーザー指定（2026-09-03）: 『ブルーアーカイブ』（bluearchive.jp）の**イラスト言語**を参照する。**参照するのは描き方であり、同作の派生物・模倣ではない**（IP要素の禁止事項は §2-5）。
 
+**大前提: 誰が見ても「アニメ・2Dセル塗りのイラスト」であること。** セミリアル、フォトリアル、厚塗り、肌の質感（毛穴・皮膚のテクスチャ）、実写的なライティングはすべて NG。実装者・画像生成は「成人らしさ」を出そうとして写実に寄せないこと（成人であることは設定であり、顔で年齢を読ませる必要はない。§2-4）。
+
 取り入れる要素:
-- **クリーンな2Dアニメ塗りの立ち絵（キービジュアル品質）**: セルシェード2〜3段＋ごく薄いグラデーション。テクスチャやフォトリアル陰影は入れない。「セミリアル」には寄せない。
+- **クリーンな2Dアニメ塗りの立ち絵（キービジュアル品質）**: フラットなセルシェード2〜3段＋ごく薄いグラデーション。肌はフラットな塗りで、テクスチャやフォトリアル陰影を入れない。
 - **細く均一な線画**: 濃茶〜暗色の細線。線幅は全身画で頭部と衣装が同じ太さ、輪郭にジッターがない。
-- **高解像度で明瞭な顔**: 大きめ（ただし成人比率、§2-4）のはっきりした瞳にハイライト2点、明るい虹彩色、整った眉、小さい鼻・口。表情は自信・落ち着き・知性・軽い微笑のいずれか。
+- **高解像度で明瞭なアニメ顔**: 大きくはっきりした瞳にハイライト2点、明るい虹彩色、整った眉、小さい鼻・口。アニメ的な顔の簡略化（鼻は点〜短い線、口は小さく）を保つ。表情は自信・落ち着き・知性・軽い微笑のいずれか。
 - **ツヤのある髪**: 帯状のハイライト（天使の輪）と鮮やかな髪色（自然色に限定しない）。毛束は大きく整理し、細かすぎる描き込みは避ける。
 - **色鮮やかで判別しやすいシルエット**: 24キャラ（§3）はサムネイル（bust 48px）で見分けられること。髪型・シルエット・キーカラーの3点で一意にする。
 - **ディテールの多い衣装**: レイヤードされた職業服・テックウェアに小物（ストラップ、バッジ、ホルスター、ケーブル、ID カード、端末由来ディテール）を配置。**衣装の情報量は高く、線と塗りはクリーン**にする。
@@ -48,7 +51,7 @@ Scope: 設計・要件のみ。本RFCはプロダクトコード（Dart/Flutter�
 このプロジェクト独自の調整:
 - 背景なし（透過PNG）。**リムライトは寒色（青〜紫）**に統一し、夜景ネオンの背景に馴染ませる。ベースの光は正面からの明るい均一光（ブルアカ的な晴れやかな塗り）を保ち、寒色リムは輪郭のみ。
 - キャラ自体に枠・光輪・後光・エフェクト・浮遊するUI表示は焼き込まない（演出はUI側で必要時に重ねる）。
-- 肌色・髪型・体格・年齢感（25〜35歳）を24キャラでばらけさせ、同顔を避ける。「若く見える」寄りの塗りになりやすいため、§2-4 のゲートで成人感を担保する。
+- 肌色・髪型・体格・衣装を24キャラでばらけさせ、同顔を避ける。年齢は「20代後半〜30代前半の成人」を設定として持つが、アニメ顔は年齢不詳に見えてよい。成人であることは体型・衣装・振る舞い（職業服、落ち着いた表情、子ども・学生コードの不在）で示す。
 
 ### 2-3. 属性 → 職能・キーカラー・モチーフ
 
@@ -65,20 +68,20 @@ Scope: 設計・要件のみ。本RFCはプロダクトコード（Dart/Flutter�
 
 スペック→衣装の対応（CPU→ガントレット/工具、RAM→コートのボリューム、ストレージ→ケース/シールド、バッテリー→ブーツの光線）は**プロンプトのヒントとしてのみ**使い、v1 では画像を機械的に変化させない。
 
-### 2-4. 成人表現の必須要件（QAゲート A）
-すべての画像は生成後に以下を確認し、**1つでもNGなら再生成**する。アニメ塗りは年齢が下に見えやすいため、ここは画風より優先する。
-1. 7〜7.5頭身。顔は成人の骨格（顎のラインが出ている、頬がふくらんでいない、目の縦幅は顔の1/5以下、目の位置は顔の中央より上にない）。年齢感 25〜35歳。**36歳以上・40代に見える**（深いほうれい線、目尻の皺、落ちくぼんだ頬）も NG で再生成。
-2. 衣装は職業服・テックウェア・テーラード。**禁止**: 学生服／ブレザー＋スカートの制服構成／セーラー襟／ネクタイ＋校章風ワッペン／ランドセル・スクールバッグ／大きなリボン付きツインテール／幼児的な丸顔・顔幅の1/3を超える瞳。
-3. 一般向け表現。**禁止**: 下着・水着・過度な露出、性的なポーズや構図。
-4. 実在ブランドロゴ、実在人物の顔を含まない。
-5. 背景が透過されている（縁のフリンジがない）。
-6. 構図テンプレート（§5-2）を満たす。
-7. リムライトが寒色で、キャラ自身に発光エフェクトが焼き込まれていない。
-8. 判定に迷う画像（「20代前半にも見える」「30代後半にも見える」など）は**NG扱い**で再生成する。
+### 2-4. 成人設定の下限要件（QAゲート A）
+キャラクターは成人（子どもでも学生でもない）という**設定**を持つ。ただし様式化されたアニメ顔は年齢不詳に見えてよく、**顔から 25〜35歳が読み取れることを要求しない**。ゲート A は「子ども・学生に見せない」下限と、一般向け表現の確認に限定する。すべての画像は生成後に以下を確認し、**1つでもNGなら再生成**する。
+1. 子ども・低年齢コードがない: デフォルメ／チビ／低頭身の子ども体型、幼児的な丸顔、顔幅の1/3を超える瞳、ランドセル・スクールバッグ、大きなリボン付きツインテール。
+2. 学生・制服コードがない: 学生服／ブレザー＋プリーツスカートの制服構成／セーラー襟／ネクタイ＋校章風ワッペン／学園・部活を示すエンブレム・腕章。衣装は職業服・テックウェア・テーラード（§2-3）。
+3. 明確な中年・高齢のサインがない（ソフト上限・ネガティブのみ）: 深いほうれい線や目尻の皺、たるみ、白髪主体など「40代以上・中年」と描かれている場合のみ NG。**「20代前半にも見える」「年齢不詳」は NG 理由にしない。**
+4. 一般向け表現。**禁止**: 下着・水着・過度な露出、性的なポーズや構図。
+5. 実在ブランドロゴ、実在人物の顔を含まない。
+6. 背景が透過されている（縁のフリンジがない）。
+7. 構図テンプレート（§5-2）を満たす。
+8. リムライトが寒色で、キャラ自身に発光エフェクトが焼き込まれていない。
 
 ### 2-5. 画風の必須要件と IP 距離（QAゲート B）
 §2-2 の画風に届いているか、および参照作品の派生物になっていないかを確認する。**1つでもNGなら再生成**。
-1. セルシェードの2Dアニメ塗りであり、フォトリアル／セミリアル／厚塗りになっていない。
+1. 一目で「アニメ・2Dセル塗り」と分かる。フォトリアル／セミリアル／厚塗り／3Dレンダー風になっておらず、肌に毛穴・皮膚テクスチャ・実写的な陰影がない。**これに落ちた画像は、他の項目がすべて OK でも再生成する。**
 2. 線画が細く均一で、顔が明瞭（瞳のハイライトが見える、眉・口がつぶれていない）。
 3. 髪に帯状ハイライトがあり、髪型・シルエット・キーカラーで他の23キャラと bust 48px で区別できる。
 4. 衣装に小物ディテールが3点以上あり、うち1〜2点が端末由来（§2-1）。
@@ -160,25 +163,28 @@ magick master.png -gravity North -crop 48%x40%+0+0 +repage -resize 384x480 fire_
 ```
 
 ### 5-3. プロンプトテンプレート（実装者が各IDで埋める）
-参照作品名はプロンプトに**書かない**（派生物化と生成拒否の両方を避ける）。画風は §2-2 の要素を言葉で指定する。
+参照作品名はプロンプトに**書かない**（派生物化と生成拒否の両方を避ける）。画風は §2-2 の要素を言葉で指定する。**「成人らしさ」を出すための写実的な語（mature proportions / defined jawline / realistic 等）は入れない**。成人であることは "adult woman" と職業服・小物で伝える。
 ```
-Full-body standing character art of an adult woman in her {mid 20s|late 20s|early 30s}, {archetype role},
+Anime-style full-body standing character art of an adult woman, {archetype role},
 personification of a fictional smartphone (human body; the phone appears only as outfit details and a prop).
-Style: clean modern 2D anime illustration, key-art quality, flat cel shading with 2-3 tones and subtle
-gradients, thin uniform dark line art, high-clarity face with bright detailed eyes (two highlights),
+Style: clearly anime, clean 2D cel-shaded illustration, key-art quality, flat cel shading with 2-3 tones
+and subtle gradients, flat smooth skin with no texture, thin uniform dark line art,
+high-clarity anime face with large bright detailed eyes (two highlights), small nose and mouth,
 glossy hair with a band highlight, vivid saturated palette, colorful and readable silhouette,
 detailed layered costume with small accessories (straps, badges, holster, cables, ID card).
 Lighting: bright even frontal light, cool blue-violet rim light on the outline only.
 Transparent background, front-facing or slightly angled standing pose with light contrapposto,
 centered, full body with feet visible, top of head at 8% from the top of the frame.
 Outfit: {element outfit family from §2-3} with {1-2 phone-derived details}. Key color {hex}.
-Holding a {holographic slab|visor|wrist terminal}. Mature adult proportions, 7 to 7.5 heads tall,
-defined jawline, calm confident expression. {skin tone / hair style and color / build for variety}.
-Negative: child, teen, high school student, school uniform, blazer and pleated skirt, sailor collar,
-school emblem, armband, halo, ring of light above head, oversized ribbons, chibi, oversized round eyes,
-middle-aged, elderly, wrinkles, firearm, swimsuit, underwear, suggestive pose, photorealistic, semi-realistic, painterly, thick paint,
+Holding a {holographic slab|visor|wrist terminal}. Calm confident expression.
+{skin tone / hair style and color / build for variety}.
+Negative: realistic, photorealistic, semi-realistic, 3D render, painterly, thick paint, skin pores,
+skin texture, live-action lighting, cinematic lighting, child, teen, high school student, school uniform,
+blazer and pleated skirt, sailor collar, school emblem, armband, halo, ring of light above head,
+oversized ribbons, chibi, middle-aged, elderly, wrinkles, firearm, swimsuit, underwear, suggestive pose,
 logo, text, watermark, background scenery, glow effects, floating UI.
 ```
+- 年齢を表す語（"in her 20s" 等）は任意。入れる場合は `{mid 20s|late 20s|early 30s}` のみとし、顔で年齢を読ませることは求めない。
 - 髪型・髪色・体格はキャラごとに必ず指定し、24体の重複を避ける（§3-1 のグリッドに沿って一覧を計画ファイルに置く）。
 - 使用したプロンプト・採用/却下の理由（ゲート A/B のどの項目で落ちたか）は実装時の計画ファイル（`docs/plans/character-art-N.md`）の Generator ログに ID ごとに残す。
 
@@ -226,7 +232,7 @@ logo, text, watermark, background scenery, glow effects, floating UI.
 - [ ] ブラウザ確認: ホーム→バトルで 6 属性いずれかの bust が表示され、`battle_bg.png` の見え方が変わらない（枠・発光なし）
 - [ ] 360×640 と 430×932 でバトルフィールドがオーバーフローしない
 - [ ] `?battle=` URL で受け取った相手が、送信側と同じポートレートで表示される（seed/element 由来であることの確認）
-- [ ] 6 画像すべてが §2-4（成人表現）と §2-5（画風・IP距離）のチェックリストを通過（PR 説明にチェック結果を記載）
+- [ ] 6 画像すべてが §2-4（成人設定の下限）と §2-5（画風・IP距離）のチェックリストを通過（PR 説明にチェック結果を記載）
 - [ ] 6 体を bust 48px に縮小して並べ、髪型・シルエット・キーカラーで互いに区別できる
 
 ### 後続スライス（順序の目安）
@@ -238,8 +244,10 @@ logo, text, watermark, background scenery, glow effects, floating UI.
 
 | リスク | 対策 |
 |---|---|
-| 生成画像の年齢感・構図のばらつき | §2-4 ゲートと §5-2 テンプレートで画像側を再生成。コードで吸収しない |
-| アニメ塗りで年齢が下に見える／上に振りすぎて40代に見える | ゲート A を画風より優先。25〜35歳の帯から外れたら NG、迷ったら NG（§2-4 項目1・8）。プロンプトに年齢帯・顎・頭身を明示 |
+| 生成画像の構図のばらつき | §5-2 テンプレートで画像側を再生成。コードで吸収しない |
+| 「成人らしさ」を出そうとして写実・セミリアルに寄る | ゲート B 項目1（一目でアニメ）を最優先。プロンプトに写実系の語を入れず、ネガティブで realistic / skin texture / live-action lighting を弾く。年齢は顔で読ませない（§2-4） |
+| 子ども・学生に見える | ゲート A 項目1・2（子ども体型・制服コード）で NG。年齢不詳・20代前半に見えることは NG にしない |
+| 上に振りすぎて中年に見える | ゲート A 項目3（ソフト上限・ネガティブのみ）。ネガティブに middle-aged / wrinkles |
 | 参照作品（ブルーアーカイブ）の派生物と見なされる | プロンプトに作品名を書かない。ヘイロー・学園エンブレム・制服構成・特定キャラ類似を §2-5 で禁止。画風の共通要素（セル塗り・細線・ツヤ髪）のみ参照 |
 | 画像生成の残量不足 | スライス1は 6 枚に限定。不足時は `{element}_0` へのフォールバックで部分出荷可能 |
 | バトルのレイアウト崩れ | bust を既存アンカーに収め、2 viewport で確認を完了条件に含める |
