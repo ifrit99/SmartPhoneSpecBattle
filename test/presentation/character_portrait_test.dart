@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spec_battle_game/domain/enums/element_type.dart';
@@ -7,25 +5,6 @@ import 'package:spec_battle_game/domain/models/character.dart';
 import 'package:spec_battle_game/domain/models/stats.dart';
 import 'package:spec_battle_game/presentation/widgets/character_portrait.dart';
 import 'package:spec_battle_game/presentation/widgets/pixel_character.dart';
-
-const _commanderElements = {
-  'fire_0': ElementType.fire,
-  'water_0': ElementType.water,
-  'earth_0': ElementType.earth,
-  'wind_0': ElementType.wind,
-  'light_0': ElementType.light,
-  'dark_0': ElementType.dark,
-};
-
-MapEntry<String, ElementType>? _firstCommanderWithoutBustPng() {
-  for (final entry in _commanderElements.entries) {
-    final file = File('assets/images/characters/${entry.key}_bust.png');
-    if (!file.existsSync()) {
-      return entry;
-    }
-  }
-  return null;
-}
 
 Character _character({
   String name = 'フレア・ナイト',
@@ -55,6 +34,20 @@ Future<void> _pumpPortrait(
 }
 
 void main() {
+  test('shippedPortraitKeys は三揃い PNG がある 9 キーと一致する', () {
+    expect(CharacterPortrait.shippedPortraitKeys, {
+      'fire_0',
+      'fire_1',
+      'fire_2',
+      'fire_3',
+      'water_0',
+      'water_1',
+      'water_2',
+      'earth_0',
+      'wind_0',
+    });
+  });
+
   testWidgets('マニフェスト外の key では PixelCharacter を描く', (tester) async {
     await _pumpPortrait(
       tester,
@@ -70,18 +63,60 @@ void main() {
     expect(find.byType(Image), findsNothing);
   });
 
-  testWidgets('マニフェスト内の key では Image を使い、欠落時は errorBuilder で PixelCharacter にフォールバックする',
+  testWidgets('未出荷の light_0 はデフォルトマニフェストでも PixelCharacter を描く',
       (tester) async {
-    final missing = _firstCommanderWithoutBustPng();
-    final element = missing?.value ?? ElementType.fire;
-    final key = missing?.key ?? 'fire_0';
-
     await _pumpPortrait(
       tester,
       CharacterPortrait(
-        character: _character(element: element, seed: 0),
+        character: _character(
+          name: 'ルミナ・ナイト',
+          element: ElementType.light,
+          seed: 0,
+        ),
         variant: PortraitVariant.bust,
         height: 80,
+      ),
+    );
+
+    expect(find.byType(PixelCharacter), findsOneWidget);
+    expect(find.byType(Image), findsNothing);
+  });
+
+  testWidgets('出荷済み fire_2 は fire_2 のアセットを使い、fire_0 にフォールバックしない',
+      (tester) async {
+    await _pumpPortrait(
+      tester,
+      CharacterPortrait(
+        character: _character(name: 'ブレイズ・ナイト', seed: 2),
+        variant: PortraitVariant.bust,
+        height: 80,
+      ),
+    );
+
+    expect(find.byType(Image), findsOneWidget);
+    final image = tester.widget<Image>(find.byType(Image));
+    expect(
+      (image.image as AssetImage).assetName,
+      'assets/images/characters/fire_2_bust.png',
+    );
+  });
+
+  testWidgets('マニフェスト内の key では Image を使い、欠落時は errorBuilder で PixelCharacter にフォールバックする',
+      (tester) async {
+    await _pumpPortrait(
+      tester,
+      CharacterPortrait(
+        character: _character(
+          name: 'ルミナ・ナイト',
+          element: ElementType.light,
+          seed: 0,
+        ),
+        variant: PortraitVariant.bust,
+        height: 80,
+        shippedKeysOverride: {
+          ...CharacterPortrait.shippedPortraitKeys,
+          'light_0',
+        },
       ),
     );
 
@@ -90,12 +125,8 @@ void main() {
     expect(image.errorBuilder, isNotNull);
     expect(
       (image.image as AssetImage).assetName,
-      'assets/images/characters/${key}_bust.png',
+      'assets/images/characters/light_0_bust.png',
     );
-
-    if (missing == null) {
-      return;
-    }
 
     await tester.pump();
 

@@ -9,14 +9,17 @@ enum PortraitVariant { bust, full, battle }
 
 /// 擬人化ポートレートを表示する。未出荷・読込失敗時は [PixelCharacter] にフォールバックする。
 class CharacterPortrait extends StatelessWidget {
-  /// スライス1で出荷する指揮官6体のキー（RFC §9）
+  /// full/bust/battle の三揃い PNG があるキーだけを載せる。
   static const Set<String> shippedPortraitKeys = {
     'fire_0',
+    'fire_1',
+    'fire_2',
+    'fire_3',
     'water_0',
+    'water_1',
+    'water_2',
     'earth_0',
     'wind_0',
-    'light_0',
-    'dark_0',
   };
 
   final Character character;

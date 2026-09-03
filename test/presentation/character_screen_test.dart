@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spec_battle_game/domain/data/character_bios.dart';
@@ -9,26 +7,6 @@ import 'package:spec_battle_game/domain/models/stats.dart';
 import 'package:spec_battle_game/presentation/screens/character_screen.dart';
 import 'package:spec_battle_game/presentation/widgets/character_portrait.dart';
 import 'package:spec_battle_game/presentation/widgets/pixel_character.dart';
-
-const _commanderElements = {
-  'fire_0': ElementType.fire,
-  'water_0': ElementType.water,
-  'earth_0': ElementType.earth,
-  'wind_0': ElementType.wind,
-  'light_0': ElementType.light,
-  'dark_0': ElementType.dark,
-};
-
-/// 紹介文はあるが full PNG が未出荷の指揮官。順次アセット追加に追従する。
-MapEntry<String, ElementType>? _firstCommanderWithoutFullPng() {
-  for (final entry in _commanderElements.entries) {
-    final file = File('assets/images/characters/${entry.key}_full.png');
-    if (!file.existsSync()) {
-      return entry;
-    }
-  }
-  return null;
-}
 
 Character _character({
   required String name,
@@ -93,25 +71,15 @@ void main() {
     expect(find.text(characterBios['fire_0']!), findsNothing);
   });
 
-  testWidgets('PNG未出荷の指揮官は PixelCharacter にフォールバックしつつプロフィールを表示する',
+  testWidgets('light_0 は PixelCharacter にフォールバックしつつプロフィールを表示する',
       (tester) async {
-    final missing = _firstCommanderWithoutFullPng();
-    final key = missing?.key ?? 'water_0';
-    final element = missing?.value ?? ElementType.water;
-
     await _pumpScreen(
       tester,
-      _character(
-        name: element.name,
-        element: element,
-        seed: 0,
-      ),
+      _character(name: 'ルミナ・ナイト', element: ElementType.light, seed: 0),
     );
 
+    expect(find.byType(PixelCharacter), findsOneWidget);
     expect(find.text('プロフィール'), findsOneWidget);
-    expect(find.text(characterBios[key]!), findsOneWidget);
-    if (missing != null) {
-      expect(find.byType(PixelCharacter), findsOneWidget);
-    }
+    expect(find.text(characterBios['light_0']!), findsOneWidget);
   });
 }
