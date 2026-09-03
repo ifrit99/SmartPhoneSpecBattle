@@ -1,12 +1,12 @@
 # SPEC BATTLE — TODO
 
 バージョン: 0.1.0
-最終更新: 2026-09-02
+最終更新: 2026-09-03
 
 ---
 
-## 🤖 現在の作業状態 (2026-09-02)
-- **現在地**: F4 split second PR in progress. バトル画面背景画像を追加中。
+## 🤖 現在の作業状態 (2026-09-03)
+- **現在地**: character-art-1 in progress. 指揮官6体の表示基盤（配線＋フォールバック）。PNG は未出荷。
 - **直近の実装**:
   - バトル画面背景（`assets/images/battle_bg.png`）を追加
   - タイトル画面背景（`assets/images/title_bg.png`）と OGP 画像（`assets/images/ogp.png` / `web/ogp.png`）を追加
@@ -158,8 +158,8 @@
   - Phase 5 F5 バックアップコード v2（チェックサム）
   - Phase 5 F4 ホーム画面分割 第1PR（RecordCard / DailyRewardCard / NextActionCard。PR #29）
 - **進行中**:
-  - Phase 5 F4 ホーム画面分割（第2PR: カード2〜4枚の抽出）
-- **現在の位置づけ**: F4 split second PR in progress. F6 オンラインランキングは未着手。
+  - character-art-1（指揮官6体の表示基盤。配線＋フォールバック。アセットは後続）
+- **現在の位置づけ**: character-art-1 in progress. F6 オンラインランキングは未着手。
 
 ---
 
