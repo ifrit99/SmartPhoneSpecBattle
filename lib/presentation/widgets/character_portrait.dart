@@ -18,8 +18,16 @@ class CharacterPortrait extends StatelessWidget {
     'water_0',
     'water_1',
     'water_2',
+    'water_3',
     'earth_0',
+    'earth_1',
+    'earth_2',
+    'earth_3',
     'wind_0',
+    'wind_1',
+    'wind_2',
+    'wind_3',
+    'light_0',
   };
 
   final Character character;
