@@ -6,7 +6,7 @@
 ---
 
 ## 🤖 現在の作業状態 (2026-09-03)
-- **現在地**: character-art-1 in progress. 指揮官6体の表示基盤（配線＋フォールバック）。PNG は未出荷。
+- **現在地**: character-art-detail in progress. キャラ詳細のヒーロー立ち絵＋指揮官6体の紹介文。
 - **直近の実装**:
   - バトル画面背景（`assets/images/battle_bg.png`）を追加
   - タイトル画面背景（`assets/images/title_bg.png`）と OGP 画像（`assets/images/ogp.png` / `web/ogp.png`）を追加
@@ -97,7 +97,7 @@
     - ステージ別の最短ターンを保存し、再戦時の記録更新をリザルト/履歴/ホームで表示
 - **次に取り組むべきタスク**:
   - キャラクターグラフィック刷新（擬人化・成人女性キャラ）— RFC アート方針ユーザー承認済み（2026-09-03: `docs/rfc_character_art.md`。立ち絵=アニメ2Dセル塗り、バトル=SFC『FF6』風3頭身ピクセル。次は第1スライス `character-art-1`＝指揮官6体（full/bust/battle 18ファイル）＋表示基盤。プロダクトコード未変更）
-    - キャラ詳細のヒーロー立ち絵（ビューポート高さ 42%）＋指揮官6体の紹介文 — 計画のみ `docs/plans/character-art-detail.md`（2026-09-03、PR #36 依存、Dart 未変更）
+    - キャラ詳細のヒーロー立ち絵（ビューポート高さ 42%）＋指揮官6体の紹介文 — `docs/plans/character-art-detail.md` を実装中（PR #36 依存）
   - ~~Codex 再レビュー → マージ~~ → **完了**（2026-06-10: PR #14 マージ、レビュー指摘なし）
   - ~~GitHub Pages デプロイの確認~~ → **完了**（2026-06-10: deploy.yml 成功）
   - デプロイ後の最終動作確認（OGPプレビュー、URL対戦フロー、ログイン報酬/バトル報酬）— ユーザー実機テスト待ち
@@ -159,8 +159,8 @@
   - Phase 5 F5 バックアップコード v2（チェックサム）
   - Phase 5 F4 ホーム画面分割 第1PR（RecordCard / DailyRewardCard / NextActionCard。PR #29）
 - **進行中**:
-  - character-art-1（指揮官6体の表示基盤。配線＋フォールバック。アセットは後続）
-- **現在の位置づけ**: character-art-1 in progress. F6 オンラインランキングは未着手。
+  - character-art-detail（キャラ詳細のヒーロー立ち絵＋指揮官6体の紹介文。PR #36 依存）
+- **現在の位置づけ**: character-art-detail in progress. F6 オンラインランキングは未着手。
 
 ---
 

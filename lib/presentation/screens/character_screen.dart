@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../domain/data/character_bios.dart';
 import '../../domain/models/character.dart';
+import '../../domain/models/portrait_id.dart';
 import '../../domain/enums/element_type.dart';
 import '../../domain/enums/effect_type.dart';
 import '../theme/app_colors.dart';
@@ -15,6 +17,7 @@ class CharacterScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bio = characterBioFor(PortraitId.fromCharacter(character).key);
     return Scaffold(
       backgroundColor: const Color(0xFF0D1B2A),
       appBar: AppBar(
@@ -29,6 +32,11 @@ class CharacterScreen extends StatelessWidget {
             // キャラクター表示エリア
             _buildCharacterCard(context),
             const SizedBox(height: 20),
+            // 紹介文（未登録キーではカードごと省略）
+            if (bio != null) ...[
+              _buildBioCard(bio),
+              const SizedBox(height: 20),
+            ],
             // ステータス詳細
             _buildStatsCard(context),
             const SizedBox(height: 20),
@@ -50,8 +58,8 @@ class CharacterScreen extends StatelessWidget {
 
   Widget _buildCharacterCard(BuildContext context) {
     final elemColor = elementColor(character.element);
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final charSize = (screenWidth * 0.35).clamp(100.0, 200.0);
+    final heroHeight =
+        (MediaQuery.sizeOf(context).height * 0.42).clamp(240.0, 420.0);
 
     return Container(
       width: double.infinity,
@@ -73,7 +81,7 @@ class CharacterScreen extends StatelessWidget {
           CharacterPortrait(
             character: character,
             variant: PortraitVariant.full,
-            height: charSize,
+            height: heroHeight,
           ),
           const SizedBox(height: 16),
           Text(
@@ -100,6 +108,40 @@ class CharacterScreen extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBioCard(String bio) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1B2838),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'プロフィール',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            bio,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+              height: 1.6,
+            ),
           ),
         ],
       ),
