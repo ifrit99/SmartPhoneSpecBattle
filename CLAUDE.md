@@ -27,6 +27,7 @@
 - `docs/device_info.md`: デバイス情報取得状況（プラットフォーム別取得可否・ステータス反映）
 - `docs/plans/`: Planner/Generator/Evaluator ワークフロー用の計画・評価ドキュメント（運用ルールは `docs/plans/TEMPLATES.md` を参照）
 - `docs/agmsg_harness.md`: agmsgによるエージェント間連携ハーネスの運用仕様（役割分担・メッセージプロトコル・セットアップ手順）
+- `docs/rfc_character_art.md`: キャラクターグラフィック刷新RFC（擬人化・成人女性キャラ。アート方針・ポートレートID導出・アセットパイプライン・第1スライス）
 - `PHASE4_SPEC_DRAFT.md`: 将来の機能拡張案（ガチャ・QR対戦等）の詳細仕様
 
 **※注意:** 新規ドキュメントを作成する場合は `docs/` ディレクトリ内に配置し、このファイルから適宜リンクを追加してください。
