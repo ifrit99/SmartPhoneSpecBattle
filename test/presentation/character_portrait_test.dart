@@ -57,22 +57,6 @@ MapEntry<String, ElementType>? _firstKeyWithoutBustPng() {
   return null;
 }
 
-/// PNG が無く、指揮官フォールバック先も未出荷のキー（PixelCharacter 直出し）。
-MapEntry<String, ElementType>? _firstUnresolvedKey() {
-  final shipped = CharacterPortrait.shippedPortraitKeys;
-  for (final entry in _gridElements.entries) {
-    if (File('assets/images/characters/${entry.key}_bust.png').existsSync()) {
-      continue;
-    }
-    final commanderKey = '${entry.value.name}_0';
-    if (shipped.contains(entry.key) || shipped.contains(commanderKey)) {
-      continue;
-    }
-    return entry;
-  }
-  return null;
-}
-
 Character _character({
   String name = 'フレア・ナイト',
   ElementType element = ElementType.fire,
@@ -120,21 +104,14 @@ void main() {
     expect(find.byType(Image), findsNothing);
   });
 
-  testWidgets('未出荷キーはデフォルトマニフェストでも PixelCharacter を描く', (tester) async {
-    final missing = _firstUnresolvedKey();
-    if (missing == null) {
-      return;
-    }
+  testWidgets('マニフェストに無い合成キー fire_9 では PixelCharacter を描く', (tester) async {
     await _pumpPortrait(
       tester,
       CharacterPortrait(
-        character: _character(
-          name: missing.key,
-          element: missing.value,
-          seed: int.parse(missing.key.split('_').last),
-        ),
+        character: _character(seed: 0),
         variant: PortraitVariant.bust,
         height: 80,
+        shippedKeysOverride: const {'fire_9'},
       ),
     );
 

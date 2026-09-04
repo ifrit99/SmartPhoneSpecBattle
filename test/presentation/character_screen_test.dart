@@ -81,13 +81,14 @@ void main() {
     expect(portrait.height, 268.8);
   });
 
-  testWidgets('fire_2 は紹介カードを出さない', (tester) async {
+  testWidgets('fire_2 はブレイズの紹介文を出し、フレアの文は出さない', (tester) async {
     await _pumpScreen(
       tester,
       _character(name: 'ブレイズ・ナイト', element: ElementType.fire, seed: 2),
     );
 
-    expect(find.text('プロフィール'), findsNothing);
+    expect(find.text('プロフィール'), findsOneWidget);
+    expect(find.text(characterBios['fire_2']!), findsOneWidget);
     expect(find.text(characterBios['fire_0']!), findsNothing);
   });
 
