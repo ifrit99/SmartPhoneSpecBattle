@@ -41,56 +41,47 @@ The player's desk after the title: see the generated phone-character, currencies
 
 Returning from a pushed screen (gacha, party, battle result `ホームに戻る`) lands on the same hub; data reloads via `_reloadData()`.
 
-## Driving it with Playwright
+## Driving it with Cursor Agent browser
 
-Boot path is in `SKILL.md` Drive. Then:
+Boot path is in `SKILL.md` Drive (navigate → snapshot → click → screenshot). Then:
 
 ```text
 # flt-semantics-placeholder / Enable accessibility sits OUTSIDE 390x844.
-# A normal click times out. Force (or click the DOM node).
-await page.getByRole('button', { name: 'Enable accessibility' })
-  .click({ force: true }); // if present
-await page.getByText('SPEC BATTLE').waitFor();
-await page.locator('flutter-view, flt-glass-pane, canvas').first.click();
-await page.waitForTimeout(500);
-await page.locator('flutter-view, flt-glass-pane, canvas').first.click();
+# A normal in-view click times out. Force-click (or click the DOM node).
+snapshot
+click "Enable accessibility" (force / off-viewport) if present
+snapshot until SPEC BATTLE + TAP TO START
+screenshot title (user judges)
+click the canvas / flutter view   # tap 1: audio unlock, stay on title
+snapshot — still title
+click the canvas / flutter view   # tap 2
+snapshot
 # consent — Japanese 協力しない, never 协力しない
-if (await page.getByRole('button', { name: '協力しない' }).count()) {
-  await page.getByRole('button', { name: '協力しない' }).click();
-}
-if (await page.getByRole('button', { name: 'スキップ' }).count()) {
-  await page.getByRole('button', { name: 'スキップ' }).click();
-}
-if (await page.getByRole('button', { name: '受け取る' }).count()) {
-  await page.getByRole('button', { name: '受け取る' }).click();
-}
-await page.getByRole('button', { name: 'Party' }).waitFor();
-await page.getByRole('button', { name: 'Gacha' }).waitFor();
-await page.getByRole('button', { name: 'Collection' }).waitFor();
-await page.getByRole('button', { name: 'Friend' }).waitFor();
-await page.getByRole('button', { name: 'Help' }).waitFor();
-await page.getByRole('button', { name: 'Privacy' }).waitFor();
-await page.getByRole('button', { name: 'Backup' }).waitFor();
-await page.getByRole('button', { name: 'バトル開始' }).waitFor();
-# do NOT rely on scrollIntoViewIfNeeded() here — it does not move the canvas
+click button 協力しない if present
+click button スキップ if present
+click button 受け取る if present
+snapshot until buttons exist (tree, even if below the painted fold):
+  Party, Gacha, Collection, Friend, Help, Privacy, Backup, バトル開始
+screenshot home (user judges; no pixel-diff vs master)
+# do NOT rely on a11y scrollIntoView — it does not move the canvas
 ```
 
-Observable home proof (screenshot **and** semantics):
+Observable home proof (screenshot **and** snapshot):
 
 - Menu row + CTA in the tree: `Party`, `Gacha`, `Collection`, `Friend`, `Help`, `Privacy`, `Backup`, `バトル開始`.
 - Cards also seen live: `解析ロードマップ`, `ライバルロード`, `高難度チャレンジ`, `シーズンパス2026-09` (or `シーズンパス 2026-09`), `日替わりショップ`.
 - A `Lv.` string on the character card.
 
-Smoke a door without finishing the destination: click `Help`, wait for AppBar `遊び方`, screenshot, back.
+Smoke a door without finishing the destination: click `Help`, snapshot until AppBar `遊び方`, screenshot, back.
 
 ## Gotchas
 
 - **Two taps on web.** One tap is not a bug; `_webAudioReady` returns early (`title_screen.dart`).
-- **Enable accessibility is off-viewport.** `flt-semantics-placeholder` sits outside 390×844. Click with `{ force: true }` (or DOM). Without `force`, Playwright times out on actionability.
-- **Semantics scroll does not move the canvas.** `scrollIntoViewIfNeeded()` on a semantics node leaves the painted Flutter view where it was. `Party` / `Gacha` / `バトル開始` can be in the tree while still below the first canvas fold. Arrival proof = semantics presence. To click a below-fold painted control, wheel/drag the canvas; do not assume semantics-scroll.
+- **Enable accessibility is off-viewport.** `flt-semantics-placeholder` sits outside 390×844. Force-click it (or click the DOM node). Without force, Cursor Agent browser treats it as not actionable and the click never lands.
+- **Semantics scroll does not move the canvas.** Scrolling an a11y node into view leaves the painted Flutter view where it was. `Party` / `Gacha` / `バトル開始` can be in the snapshot while still below the first canvas fold. Arrival proof = snapshot presence. To click a below-fold painted control, wheel/drag the canvas; do not assume a11y-scroll.
 - **Do not confuse** home `バトル開始` with preview sheet `バトル！` or guest preview `バトル開始`.
 - Consent button is `協力しない` (協力). Do not write `协力しない`.
 - Login / mission claim dialogs steal clicks. If a button no-ops, screenshot and look for `受け取る` / `ログインボーナス！`.
-- Home is not a URL route. Reload (`page.goto` again) restarts at the title, but a **same-origin** reload keeps `shared_preferences` (onboarding already done).
+- Home is not a URL route. Reload (navigate to `/` again) restarts at the title, but a **same-origin** reload keeps `shared_preferences` (onboarding already done).
 - First-run `はじめてのバトル！` disappears after the first completed battle (`first_battle_completed`).
 - Docker's published 8080 is not this hub unless you exec'd `flutter run` inside the container. Default verify port is 8091.

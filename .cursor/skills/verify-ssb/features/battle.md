@@ -27,27 +27,25 @@ Friend/URL battles share `BattleScreen` but **do not** grant CPU coins (`isCpuBa
 
 High-difficulty from home challenge card is a **different** entry that still lands on the same preview/battle/result chain; use it only when the change is HARD/BOSS/rival-road.
 
-## Driving it with Playwright
+## Driving it with Cursor Agent browser
 
 ```text
-await page.getByRole('button', { name: 'バトル開始' }).waitFor();
-# semantics scroll does not move the canvas; wheel the canvas if the painted
-# button is below the fold, then click. force: true does not replace a canvas scroll.
-await page.mouse.wheel(0, 2400);
-await page.getByRole('button', { name: 'バトル開始' }).click();
-await page.getByText('挑戦者が現れた！').waitFor();
-await page.getByText('戦術を選択').waitFor();
-# optional: await page.getByText('オーバークロック').click();
-await page.getByRole('button', { name: 'バトル！' }).click();
-await page.getByText('サポートコマンドを選択').waitFor();
-await page.getByRole('button', { name: '支援なし' }).click();
-await page.getByRole('button', { name: 'スキップ ▶▶' }).click();
-await page.getByRole('button', { name: 'リザルトへ' }).click();
-await page.getByText(/勝利！|敗北…/).waitFor();
-await page.getByRole('button', { name: 'ホームに戻る' }).waitFor();
-# same canvas-scroll gotcha if the painted button is below the fold
-await page.mouse.wheel(0, 800);
-await page.getByRole('button', { name: 'ホームに戻る' }).click();
+snapshot until button バトル開始 exists (may be below the painted fold)
+# a11y scroll does not move the canvas; wheel/drag the canvas, then click
+wheel/drag canvas downward
+click button バトル開始
+snapshot until 挑戦者が現れた！ and 戦術を選択
+# optional: click オーバークロック
+click button バトル！
+snapshot until サポートコマンドを選択
+click button 支援なし
+click button スキップ ▶▶
+click button リザルトへ
+snapshot until 勝利！ or 敗北…
+screenshot result (user judges)
+# same canvas-scroll gotcha if ホームに戻る is below the fold
+wheel/drag if needed
+click button ホームに戻る
 ```
 
 Dismiss extra dialogs if they appear: `受け取る` (daily battle gems), `あとで` (first-battle complete).
@@ -70,7 +68,7 @@ Do not wait out a 50-turn playback at `x1`. Skip is the user-facing fast path (`
 - Auto-battle can take many seconds even at `x3` if you forget skip. Prefer skip unless proving log cadence.
 - Result `ガチャ` is hidden when the player cannot afford a pull (`_canOpenGacha`). Absence is not a regression if coins/gems are below 100/20/30.
 - `もう一戦` exists only for `isCpuBattle`. Friend battles go home without it (`result_screen_test.dart`).
-- BGM starts on battle (`playBgm` + `playBattleStart`). `--mute-audio` is mandatory. Do not use audible BGM as proof.
-- Overlay `BGM`/`SE` are not Material buttons; `getByText('BGM')` after semantics.
-- `scrollIntoViewIfNeeded()` on a semantics node does not move the Flutter canvas. Wheel/drag the canvas to click below-fold painted buttons (`バトル開始` on home, `ホームに戻る` on result).
+- BGM starts on battle (`playBgm` + `playBattleStart`). Prefer muted Cursor Agent browser / OS output / in-game `BGM` chip. Do not use audible BGM as proof. Do not open headed Chrome.
+- Overlay `BGM`/`SE` are not Material buttons; snapshot then click text `BGM`.
+- Scrolling an a11y node into view does not move the Flutter canvas. Wheel/drag the canvas to click below-fold painted buttons (`バトル開始` on home, `ホームに戻る` on result).
 - Random enemy: do not assert a specific device name unless you entered via HARD/BOSS/rival-road which pins the catalog entry.

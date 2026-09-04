@@ -28,15 +28,16 @@ A brand-new profile has **0 coins / 0 gems**. Login bonus (`受け取る` on hom
 
 Leave with AppBar back. Home header `🪙` / `💎` should drop after a paid pull.
 
-## Driving it with Playwright
+## Driving it with Cursor Agent browser
 
 **Shortage (fresh context, no CPU wins):**
 
 ```text
-await page.getByRole('button', { name: 'Gacha' }).click();
-await page.getByText('ガチャ').waitFor();  # AppBar; also appears in other copy — prefer the bar
-await page.getByRole('button', { name: /1回引く/ }).click();
-await page.getByText(/コインが足りません: あと100 Coin/).waitFor();
+click button Gacha
+snapshot until AppBar ガチャ   # also appears in other copy — prefer the bar
+click button whose name starts with 1回引く
+snapshot until コインが足りません: あと100 Coin
+screenshot snackbar (user judges)
 ```
 
 Screenshot the snackbar **and** unchanged `🪙 0` (or whatever the header showed before the tap). That is a valid proof of the empty-wallet path.
@@ -44,10 +45,11 @@ Screenshot the snackbar **and** unchanged `🪙 0` (or whatever the header showe
 **Paid single pull (after at least 100 coins from CPU battles — [battle.md](battle.md)):**
 
 ```text
-await page.getByRole('button', { name: /1回引く/ }).click();
-# wait out shake; buttons are disabled
-await page.getByRole('button', { name: '閉じる' }).waitFor({ timeout: 15000 });
-# or equip: getByRole('button', { name: 'このキャラで戦う' })  — not Party's このキャラクターで戦う
+click button whose name starts with 1回引く
+# wait out shake; buttons are disabled — snapshot until 閉じる
+snapshot until button 閉じる
+# or click このキャラで戦う — not Party's このキャラクターで戦う
+screenshot result dialog
 ```
 
 Then `Party` and assert the new device name is on a card.
@@ -56,7 +58,7 @@ Then `Party` and assert the new device name is on a card.
 
 ## Gotchas
 
-- Flutter may expose the pull control as name `1回引く` **or** `1回引く 🪙 100` (icon-button child texts concatenate). Use a regex `/1回引く/` rather than an example selector from another app.
+- Flutter may expose the pull control as name `1回引く` **or** `1回引く 🪙 100` (icon-button child texts concatenate). Match a name that **starts with** `1回引く` rather than an example selector from another app.
 - `Gacha` (home English) vs AppBar `ガチャ` (Japanese). After navigation, do not click home `Gacha` again.
 - First-run 0 coin is expected. The old browser-case doc `docs/gacha_browser_test_cases.md` assumed a funded account; this map does not.
 - Duplicate pulls convert to 覚醒 (max +5) or coin refund — result copy changes. Still a success if the dialog appears and roster count does not drop.

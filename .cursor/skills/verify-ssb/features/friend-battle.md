@@ -23,44 +23,45 @@ From home: tap `Friend`.
 
 **Receive (URL bar):** paste a full share URL into the same or second instance. Preview should appear without `TAP TO START`.
 
-Two-instance flow (preferred isolation): Launch 8091 (host) and 8092 (guest), copy URL on 8091, `page.goto` the URL on 8092 (different origin → different save data, still valid payload).
+Two-instance flow (preferred isolation): Launch 8091 (host) and 8092 (guest), copy URL on 8091, **navigate** the URL on 8092 (different origin → different save data, still valid payload).
 
-## Driving it with Playwright
+## Driving it with Cursor Agent browser
 
 **Share URL exists**
 
 ```text
-await page.getByRole('button', { name: 'Friend' }).click();
-await page.getByText('フレンド対戦').waitFor();
-await page.getByRole('button', { name: /URLでシェアする/ }).click();
-await page.getByText('対戦URLを共有').waitFor();
-await page.getByText(/\?battle=/).waitFor();
-await page.getByRole('button', { name: 'URLをコピー' }).click();
-await page.getByText('URLをコピーしました！').waitFor();
+click button Friend
+snapshot until フレンド対戦
+click button URLでシェアする
+snapshot until 対戦URLを共有 and text containing ?battle=
+click button URLをコピー
+snapshot until URLをコピーしました！
+screenshot share card (user judges)
 ```
 
-Read the `?battle=` string from the page text (selectable URL). Screenshot the share card so the character on the card matches home.
+Read the `?battle=` string from the snapshot (selectable URL). Screenshot the share card so the character on the card matches home.
 
 **Paste on the same instance** (single-port fallback; overwrites nothing until battle completes):
 
 ```text
-await page.getByRole('button', { name: /URLを入力して対戦/ }).click();
-await page.getByText('対戦コードを入力').waitFor();
-await page.getByLabel('対戦URL / コード').fill(shareUrl);
-await page.getByText('読み取り準備完了').waitFor();
-await page.getByRole('button', { name: '読み取る' }).click();
-await page.getByText('対戦プレビュー').waitFor();
-await page.getByRole('button', { name: 'バトル開始' }).click();
+click button URLを入力して対戦
+snapshot until 対戦コードを入力
+fill field 対戦URL / コード  (or placeholder https://.../?battle=) with the share URL
+snapshot until 読み取り準備完了
+click button 読み取る
+snapshot until 対戦プレビュー
+click button バトル開始   # preview CTA, not home
 ```
 
-If `getByLabel` misses (Flutter semantics sometimes names the field from hint only), `getByPlaceholder('https://.../?battle=')` or fill the textbox role.
+If the labeled field misses (Flutter semantics sometimes names it from the hint only), fill the textbox / placeholder `https://.../?battle=`.
 
 **Garbage input**
 
 ```text
-await page.getByLabel('対戦URL / コード').fill('not-a-battle-code');
-await page.getByRole('button', { name: '読み取る' }).click();
-await page.getByText('形式不正').waitFor();
+fill field 対戦URL / コード with not-a-battle-code
+click button 読み取る
+snapshot until 形式不正
+screenshot
 ```
 
 **Proof:** share page shows `?battle=` once (no doubled query); preview shows two names; after battle, result **lacks** `もう一戦`; home coins did not jump by a CPU-win amount if you noted coins before.
@@ -68,9 +69,9 @@ await page.getByText('形式不正').waitFor();
 ## Gotchas
 
 - **Deep link vs title.** `/?battle=` must not require `TAP TO START`. If it does, the param parse in `main.dart` / `QrBattleService.extractBattleParam` failed (padding, fragment, or `battle=` stripped).
-- Clipboard `貼り付け` in headless Playwright is flaky unless you grant clipboard permissions and set `navigator.clipboard`. Prefer `fill()` on the text field.
+- Clipboard `貼り付け` can be flaky unless the Agent browser has clipboard access. Prefer **fill** on the text field.
 - `読み取る` stays disabled (`_canSubmit`) while the field is empty — that is the backup-style empty UX, not a broken button.
-- Guest `バトル開始` is the **preview** CTA. Home also has `バトル開始`. Assert AppBar `対戦プレビュー` before clicking it.
+- Guest `バトル開始` is the **preview** CTA. Home also has `バトル開始`. Snapshot AppBar `対戦プレビュー` before clicking it.
 - Do not use production GitHub Pages (`ifrit99.github.io`) as `baseUrl` for a local character unless you mean to mix deploys. Local `generateShareUrl` uses `Uri.base` (PR #11), so a local server issues `http://127.0.0.1:<port>/?battle=...`.
-- Second instance is the right way to simulate "a friend". Same origin + same context will share inventory and look like fighting yourself after equip changes.
-- Refuse to attach a second Playwright to port 8091 while another verify run owns it. Launch 8092 instead.
+- Second instance is the right way to simulate "a friend". Same origin + same profile will share inventory and look like fighting yourself after equip changes.
+- Refuse to navigate a second Drive session to port 8091 while another verify run owns it. Launch 8092 instead.

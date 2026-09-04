@@ -1,6 +1,6 @@
 # Feature map — SmartPhoneSpecBattle (Flutter web)
 
-Index for `verify-ssb`. Drive the **web UI** with Playwright (headless, `--mute-audio`). Native android/ios exist but are not the drive path.
+Index for `verify-ssb`. Drive the **web UI** with **Mac Cursor Agent browser** (navigate, click, snapshot, screenshot). The user judges screenshots. Native android/ios exist but are not the drive path.
 
 A proof that only opens one convenient screen is incomplete when the change touches another row.
 
@@ -14,4 +14,4 @@ A proof that only opens one convenient screen is incomplete when the change touc
 
 Also shipped, not seeded as top-level files (reach from home; expand when a change lands there): `Help` → `遊び方`, `Privacy`, `Backup` → `データ保護`, `Collection` tabs `敵キャラ図鑑` / `プレイヤー履歴` / `実績`.
 
-Merge visual check (Grok Bot pixel-diff of home vs `master`) is **not** in this map.
+Pixel-diff vs `master` is **not** this map. That is the separate merge-gate skill, and only when the user asks for it.

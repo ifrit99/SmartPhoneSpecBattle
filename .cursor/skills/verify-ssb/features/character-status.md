@@ -23,18 +23,16 @@ From home (see [home.md](home.md)):
 
 Back via the AppBar back affordance (Flutter semantics: often `Back` / `戻る`) or Android-style leading icon.
 
-## Driving it with Playwright
+## Driving it with Cursor Agent browser
 
 **Character screen**
 
 ```text
-# on home
-await page.getByText('タップしてキャラクター詳細を見る').waitFor();
-await page.getByText('Lv.', { exact: false }).first.click();
-await page.getByText('キャラクター').waitFor();  # AppBar
-await page.getByText('ステータス').waitFor();
-await page.getByText('ATK').waitFor();
-await page.getByText('スキル').waitFor();
+# on home — snapshot first
+click text タップしてキャラクター詳細を見る  or  the Lv. string on the card
+snapshot until AppBar キャラクター
+snapshot should include ステータス, ATK, スキル
+screenshot for the user
 ```
 
 If the `Lv.` click hits the wrong node, click the player name text instead (whatever string sits above `Lv.` on the card). Screenshot home card, then the `キャラクター` screen showing HP trailing text `N/M`.
@@ -42,28 +40,30 @@ If the `Lv.` click hits the wrong node, click the player name text instead (what
 **Avatar**
 
 ```text
-await page.getByText('見た目').click();
-await page.getByText('アバタースタジオ').waitFor();
+click text 見た目
+snapshot until アバタースタジオ
+screenshot
 ```
 
-Proof: studio AppBar visible; after a visible slot change, pop back and screenshot the home sprite (same run — do not require pixel-match to `master`; that is the other gate).
+Proof: studio AppBar visible; after a visible slot change, pop back and screenshot the home sprite (same run — **user judges**; do not pixel-match to `master`).
 
 **Empty party**
 
 ```text
-await page.getByRole('button', { name: 'Party' }).click();
-await page.getByText('編成・インベントリ').waitFor();
-await page.getByText('まだ編成できるキャラがいません').waitFor();
-await page.getByRole('button', { name: 'ガチャで仲間を獲得' }).waitFor();
+click button Party
+snapshot until 編成・インベントリ
+snapshot should include まだ編成できるキャラがいません
+snapshot should include button ガチャで仲間を獲得
+screenshot
 ```
 
 **Equip (needs a roster — pull first, [gacha.md](gacha.md))**
 
 ```text
-await page.getByRole('button', { name: 'Party' }).click();
+click button Party
 # tap a roster card by device name shown on the tile
-await page.getByRole('button', { name: 'このキャラクターで戦う' }).click();
-await page.getByText('をメインキャラクターに設定しました').waitFor();
+click button このキャラクターで戦う
+snapshot until をメインキャラクターに設定しました
 ```
 
 Home character **name** should now match the gacha device, not the spec-generated name.
