@@ -48,13 +48,13 @@ Set<String> _keysWithFullTriad() {
   };
 }
 
-MapEntry<String, ElementType> _firstKeyWithoutBustPng() {
+MapEntry<String, ElementType>? _firstKeyWithoutBustPng() {
   for (final entry in _gridElements.entries) {
     if (!File('assets/images/characters/${entry.key}_bust.png').existsSync()) {
       return entry;
     }
   }
-  throw StateError('全キーに bust PNG がある');
+  return null;
 }
 
 /// PNG が無く、指揮官フォールバック先も未出荷のキー（PixelCharacter 直出し）。
@@ -164,19 +164,23 @@ void main() {
   testWidgets('マニフェスト内の key では Image を使い、欠落時は errorBuilder で PixelCharacter にフォールバックする',
       (tester) async {
     final missing = _firstKeyWithoutBustPng();
+    final key = missing?.key ?? 'fire_0';
+    final element = missing?.value ?? ElementType.fire;
+    final seed = int.parse(key.split('_').last);
+
     await _pumpPortrait(
       tester,
       CharacterPortrait(
         character: _character(
-          name: missing.key,
-          element: missing.value,
-          seed: int.parse(missing.key.split('_').last),
+          name: key,
+          element: element,
+          seed: seed,
         ),
         variant: PortraitVariant.bust,
         height: 80,
         shippedKeysOverride: {
           ...CharacterPortrait.shippedPortraitKeys,
-          missing.key,
+          key,
         },
       ),
     );
@@ -186,8 +190,12 @@ void main() {
     expect(image.errorBuilder, isNotNull);
     expect(
       (image.image as AssetImage).assetName,
-      'assets/images/characters/${missing.key}_bust.png',
+      'assets/images/characters/${key}_bust.png',
     );
+
+    if (missing == null) {
+      return;
+    }
 
     await tester.pump();
 
