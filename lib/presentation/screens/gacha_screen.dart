@@ -7,6 +7,7 @@ import '../../domain/models/player_currency.dart';
 import '../../domain/services/gacha_service.dart';
 import '../../domain/services/service_locator.dart';
 import '../../data/sound_service.dart';
+import '../widgets/character_portrait.dart';
 import '../widgets/pixel_character.dart';
 
 class GachaScreen extends StatefulWidget {
@@ -308,8 +309,11 @@ class _GachaScreenState extends State<GachaScreen>
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white12),
                       ),
-                      child:
-                          PixelCharacter(character: char.character, size: 80),
+                      child: CharacterPortrait(
+                        character: char.character,
+                        variant: PortraitVariant.full,
+                        height: 160,
+                      ),
                     ),
                     const SizedBox(height: 20),
                     Text(

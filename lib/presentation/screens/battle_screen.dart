@@ -1,11 +1,13 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../../domain/models/character.dart';
+import '../../domain/models/portrait_id.dart';
 import '../../domain/enums/element_type.dart';
 import '../../domain/enums/battle_tactic.dart';
 import '../../domain/services/battle_engine.dart';
 import '../../data/sound_service.dart';
-import '../widgets/pixel_character.dart';
+import '../widgets/character_portrait.dart';
 import '../widgets/stat_bar.dart';
 import '../widgets/damage_popup.dart';
 import '../widgets/skill_effect_overlay.dart';
@@ -61,6 +63,7 @@ class _BattleScreenState extends State<BattleScreen>
   late AnimationController _flashController;
   late Animation<double> _shakeAnimation;
   final ScrollController _logScrollController = ScrollController();
+  bool _didPrecacheBattleSprites = false;
 
   @override
   void initState() {
@@ -82,6 +85,25 @@ class _BattleScreenState extends State<BattleScreen>
     );
 
     // バトル開始前にプレイヤーの支援コマンド選択を待つ
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didPrecacheBattleSprites) {
+      return;
+    }
+    _didPrecacheBattleSprites = true;
+    for (final character in [widget.player, widget.enemy]) {
+      final path = PortraitId.fromCharacter(character).battleAsset;
+      unawaited(
+        precacheImage(
+          AssetImage(path),
+          context,
+          onError: (Object _, StackTrace? __) {},
+        ),
+      );
+    }
   }
 
   @override
@@ -408,10 +430,12 @@ class _BattleScreenState extends State<BattleScreen>
                               top: enemySpriteTopPadding,
                               right: 4,
                             ),
-                            child: PixelCharacter(
-                                character: _currentEnemy,
-                                size: charSize,
-                                flipHorizontal: true),
+                            child: CharacterPortrait(
+                              character: _currentEnemy,
+                              variant: PortraitVariant.battle,
+                              height: charSize,
+                              flipHorizontal: true,
+                            ),
                           ),
                         );
                       },
@@ -436,8 +460,11 @@ class _BattleScreenState extends State<BattleScreen>
                         return Transform.translate(
                           offset: Offset(
                               isPlayerHit ? -_shakeAnimation.value : 0, 0),
-                          child: PixelCharacter(
-                              character: _currentPlayer, size: charSize),
+                          child: CharacterPortrait(
+                            character: _currentPlayer,
+                            variant: PortraitVariant.battle,
+                            height: charSize,
+                          ),
                         );
                       },
                     ),
