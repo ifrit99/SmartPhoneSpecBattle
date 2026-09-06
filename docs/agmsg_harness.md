@@ -1,3 +1,5 @@
+> **旧運用・現在は使わない（2026-09-06）**: 以下の Claude Code / Codex 実装ループは履歴として保持する。自動起動・送信・待機を再開しない。現行の担当・判断基準は [AGENTS.md](../AGENTS.md)、引継ぎは [現行運用](agent-operation.md) を参照。
+
 # agmsg エージェント間連携ハーネス
 
 [agmsg](https://github.com/fujibee/agmsg) は Bash + SQLite で構成されるローカルAIエージェント間メッセージングツール（`~/.agents/skills/agmsg` にインストール済み）。本ハーネスは、agmsgを使って Claude Code と Codex をチーム `specbattle` 上で連携させ、設計・実装・レビューの役割分離を伴う開発フローを実現するためのものである。
@@ -114,7 +116,7 @@ turnモードのCodexはアイドル中に受信箱を確認しないため、�
 
 - **完了条件**: `flutter analyze` エラー0 / `flutter test` 全パス / 変更がすべてコミット済みであること（`git status` clean）をCodexが実装完了の必須条件とする。
 - **ブランチ規約**: 全ての実装は `feature/` ブランチで行う（`CLAUDE.md` のGit運用ルールに準拠）。
-- **single-writer原則**: 同時にコードを触るのはCodexのみ。`agmsg-reviewer` によるレビュー中、Codexは `[DONE]`・`[QUESTION]`・`[FIX_DONE]` 送信後の待機ループ（`AGENTS.md` 参照）で `[REVIEW]` を待つ。
+- **single-writer原則**: 同時にコードを触るのはCodexのみ。`agmsg-reviewer` によるレビュー中、Codexは `[DONE]`・`[QUESTION]`・`[FIX_DONE]` 送信後の待機ループ（本書末尾の旧手順参照）で `[REVIEW]` を待つ。
 - **push/PR作成のタイミング**: `[REVIEW] approve` を受け取るまで、Codexはpush・PR作成を行わない。
 - **PRレビュー**: ハーネスモードではPRレビューはClaude側（`agmsg-reviewer`）が担当する。GitHub PRへの `@codex review` は任意の追加確認として扱う。
 
@@ -123,9 +125,30 @@ turnモードのCodexはアイドル中に受信箱を確認しないため、�
 ## 7. トラブルシュート
 
 - **メッセージが届かない**: 手動で `$agmsg`（受信箱確認コマンド）を実行する。
-- **アイドルのCodexにメッセージが届かない**: turnモードではメッセージはCodexのターン終了時にのみ配信される。対処: (1) 初回タスクは `start_codex.sh` の引数で渡す（起動前送信。agmsg が `--boot-prompt` 対応版の場合、`start_codex.sh` は自動的に初回プロンプトへタスクを載せる方式に切り替わる）、(2) Codexは `[DONE]`/`[QUESTION]`/`[FIX_DONE]` 送信後に待機ループ（`AGENTS.md` 参照）で返信を待つ運用とする、(3) それでもアイドルになった場合はCodexのターミナルで何か入力すれば次のターン終了時に配信される。リアルタイム配信が必要な場合は agmsg の Codex monitor bridge（BETA）があるが本ハーネスでは対象外。
+- **アイドルのCodexにメッセージが届かない**: turnモードではメッセージはCodexのターン終了時にのみ配信される。対処: (1) 初回タスクは `start_codex.sh` の引数で渡す（起動前送信。agmsg が `--boot-prompt` 対応版の場合、`start_codex.sh` は自動的に初回プロンプトへタスクを載せる方式に切り替わる）、(2) Codexは `[DONE]`/`[QUESTION]`/`[FIX_DONE]` 送信後に待機ループ（本書末尾の旧手順参照）で返信を待つ運用とする、(3) それでもアイドルになった場合はCodexのターミナルで何か入力すれば次のターン終了時に配信される。リアルタイム配信が必要な場合は agmsg の Codex monitor bridge（BETA）があるが本ハーネスでは対象外。
 - **monitorモードが効かない**: monitorモードはセッション再起動後に有効になる。設定直後のセッションでは反映されない。
 - **sandbox利用時に書き込みエラーが出る**: `~/.agents/skills/agmsg/` への書き込み許可が必要。
   - Claude Code: settingsの `sandbox.filesystem.allowWrite` に `~/.agents/skills/agmsg` を追加する。
   - Codex: `config.toml` の `writable_roots` に `~/.agents/skills/agmsg` を追加する。
 - **spawnが失敗する**: codex CLI が未導入、またはヘッドレス環境（GUIターミナルを開けない）である可能性がある。
+
+
+## 旧 AGENTS.md の起動・待機手順（無効・履歴）
+
+## agmsg ハーネス（実装担当モード）
+- このリポジトリには agmsg によるエージェント間連携ハーネスがある（詳細: `docs/agmsg_harness.md`）。
+- ハーネスモードでは Codex は**実装担当**。セッション開始時（`/agmsg actas codex` の初回プロンプトで起動された直後を含む）は、**同じターン内で必ず** `$agmsg`（受信箱確認）を実行し、`[TASK]` があれば直ちに着手する。turnフックには60秒クールダウンがあり起動直後の自動チェックがスキップされることがあるため、この手動確認で取りこぼしを防ぐ。
+- `[TASK]` 受領 → feature/ブランチ作成 → 実装 → `flutter analyze` / `flutter test` グリーン → **変更をすべてコミットし、`git status --porcelain` が空（clean）であることを確認**（レビューはコミット済み差分に対して行われるため、未コミットの変更はレビュー対象から漏れる） → `[DONE]` を claude へ送信する。
+- タスクに画像・アセット生成が含まれる場合は Codex 自身の image gen で生成し `assets/` へ配置する。
+- `[REVIEW] request_changes` を受けたら修正し、**修正をすべてコミットしてから** `[FIX_DONE]` を送信する。`[REVIEW] approve` を受けるまで push・マージ・PR作成をしない。
+- 不明点は `[QUESTION]` で claude に確認し、続行不能なら `[BLOCKED]` を送信する。
+- turnモードではアイドル中に受信箱が自動確認されない。そのため `[DONE]`・`[QUESTION]`・`[FIX_DONE]` を送信した後はターンを終了せず、次のコマンドで返信を待つこと（30秒間隔・最大60回=約30分。受信したら内容に従って作業を再開する）:
+
+```bash
+for i in $(seq 1 60); do
+  out="$(~/.agents/skills/agmsg/scripts/inbox.sh specbattle codex)"
+  case "$out" in "No new messages."*) sleep 30 ;; *) echo "$out"; break ;; esac
+done
+```
+
+- 待機がタイムアウトした場合は、その旨をユーザーに伝えてターンを終了してよい（以降のメッセージは次のターン終了時まで配信されない）。

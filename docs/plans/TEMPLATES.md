@@ -1,3 +1,5 @@
+> **旧運用・現在は使わない（2026-09-06）**: 以下の Claude Code / Codex 実装ループは履歴として保持する。自動起動・送信・待機を再開しない。現行の担当・判断基準は [AGENTS.md](../../AGENTS.md)、引継ぎは [現行運用](../agent-operation.md) を参照。
+
 # Planner / Generator / Evaluator ワークフロー
 
 ## 概要

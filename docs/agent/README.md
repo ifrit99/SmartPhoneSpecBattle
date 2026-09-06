@@ -1,3 +1,5 @@
+> **旧運用・現在は使わない（2026-09-06）**: 以下の Claude Code / Codex 実装ループは履歴として保持する。自動起動・送信・待機を再開しない。現行の担当・判断基準は [AGENTS.md](../../AGENTS.md)、引継ぎは [現行運用](../agent-operation.md) を参照。
+
 # Loop Engineering（短い実装ループ）
 
 目的: Claude Code に **observe → act → verify → 記録** を毎回同じ形で回させ、会話履歴依存を減らす。
