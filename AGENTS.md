@@ -7,6 +7,11 @@
 - 設計: Cursor Cloud Agent `claude-fable-5-1`（docs のみ）。Fable 枠切れ時だけ Mac Codex GPT 6 Astra が docs を代行する。
 - 実装・修正・テスト・PR作成: Cursor Cloud Agent `grok-4.6`。Codex に実装を寄せない。
 - レビュー: Codex。指摘は Grok に戻す。厳密見た目ゲートは頼まれたときだけ Mac Codex + Playwright MCP（headless、`--mute-audio`）。
+- Dual Review の役割分担:
+  - 設計・アーキ妥当性 → Fable 5.1（docsのみ）
+  - 完了報告・差分の事実監査（引用・矛盾・必要ならテスト）→ Mac Codex GPT 6 Astra
+- Dual Review は毎回しない。高リスクまたはユーザー依頼時のみ dual。
+- Dual Review でも実装は grok-4.6 のまま（既存どおり）。
 - 画像: Codex `gpt-image-2`。生成アセットは `assets/` へ。
 - 判断: ユーザー。要求 → 設計案 → ユーザーの方針判断 → Grok が実装・検証・PR → Codex レビュー → Grok 修正 → ユーザーがマージ可否を判断。
 - ChatGPT Plus + Codex（Mac）を継続し、既定モデルは GPT 6 Astra。Claude Pro は解約済み、Claude Code は使わない。Grok Bot の共有PCには Codex / Claude Code を入れない。
