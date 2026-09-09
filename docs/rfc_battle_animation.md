@@ -131,7 +131,7 @@ actor / target の判定は現行と同じ `entry.actorName == _currentPlayer.na
     SpriteState get state;
   }
   ```
-  `CharacterPortrait` 自体は変更しない（ティントは `ColorFiltered` で外側から包む）。
+  `CharacterPortrait` 自体は変更しない（ティントは `ColorFiltered` で外側から包む）。Avatar Studio のアクセサリー／影レイヤー（`docs/rfc_portrait_screen_sweep.md` §3-5）は `CharacterPortrait` の battle 描画の内側にあるため、ボブ・lunge・ティント・反転はそのまま一緒に掛かる。`BattleSprite` 側で別扱いしない。
 - `lib/presentation/widgets/battle/battle_vfx_layer.dart` — `BattleVfxLayer`。`Stack` に 1 枚だけ置く `CustomPaint`。`BattleVfxController.spawn(VfxKind kind, {Rect target, Color color, bool crit})` で §2-2 の VFX をキューに入れ、各 VFX は自分の `AnimationController` を持たず、**レイヤーの単一 `Ticker`** の経過時間で寿命を管理する（Web での Ticker 多重を避ける）。
 - `lib/presentation/widgets/battle/skill_name_banner.dart` — §2-3 の小さなスキル名バナー。`SkillEffectOverlay` は削除する（呼び出しは `battle_screen.dart:863-882` のみ）。
 - `lib/presentation/battle/battle_cue.dart` — **純関数** `BattleCue resolve(BattleLogEntry entry, {required bool isPlayerActor})` が §3-1 の表を返す（`actorState`, `targetState`, `vfxKinds`, `beatMs`）。Flutter 非依存にしてユニットテスト対象にする。
