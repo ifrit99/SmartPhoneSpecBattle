@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:spec_battle_game/domain/models/portrait_id.dart';
 import 'package:spec_battle_game/domain/services/enemy_generator.dart';
 
 void main() {
@@ -37,6 +38,23 @@ void main() {
       expect(profile.deviceSpec.id, 'hard_02');
       expect(profile.character.name, isNotEmpty);
       expect(profile.character.level, greaterThanOrEqualTo(1));
+    });
+
+    test('同じデバイスから2回生成した Character の PortraitId.key は一致する', () {
+      final device = EnemyGenerator.findById('hard_02')!;
+      final first = EnemyGenerator.generateFromDeviceSpec(
+        deviceSpec: device,
+        playerLevel: 1,
+      ).character;
+      final second = EnemyGenerator.generateFromDeviceSpec(
+        deviceSpec: device,
+        playerLevel: 1,
+      ).character;
+
+      expect(
+        PortraitId.fromCharacter(first).key,
+        PortraitId.fromCharacter(second).key,
+      );
     });
   });
 }

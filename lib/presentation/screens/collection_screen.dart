@@ -34,10 +34,18 @@ class _CollectionScreenState extends State<CollectionScreen> {
   late PlayerRankSnapshot _rankSnapshot;
   late LocalLeagueSnapshot _leagueSnapshot;
   late PlayerTitleSnapshot _titleSnapshot;
+  late final Map<String, Character> _portraitSources;
 
   @override
   void initState() {
     super.initState();
+    _portraitSources = {
+      for (final device in EnemyGenerator.allEnemyDevices)
+        device.deviceName: EnemyGenerator.generateFromDeviceSpec(
+          deviceSpec: device,
+          playerLevel: 1,
+        ).character,
+    };
     _loadData();
   }
 
@@ -151,7 +159,11 @@ class _CollectionScreenState extends State<CollectionScreen> {
             ),
           ),
           const Spacer(),
-          const Icon(Icons.smartphone, size: 48, color: Colors.white70),
+          CharacterPortrait(
+            character: _portraitSources[device.deviceName]!,
+            variant: PortraitVariant.bust,
+            height: 48,
+          ),
           const Spacer(),
           Text(
             device.deviceName,
@@ -192,7 +204,11 @@ class _CollectionScreenState extends State<CollectionScreen> {
           const Spacer(),
           ColorFiltered(
             colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
-            child: const Icon(Icons.smartphone, size: 48, color: Colors.white),
+            child: CharacterPortrait(
+              character: _portraitSources[device.deviceName]!,
+              variant: PortraitVariant.bust,
+              height: 48,
+            ),
           ),
           const Spacer(),
           const Text('???',
