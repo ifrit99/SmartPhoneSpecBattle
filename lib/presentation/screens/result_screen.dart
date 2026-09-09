@@ -12,7 +12,7 @@ import '../../domain/services/service_locator.dart';
 import '../../domain/services/battle_result_service.dart';
 import '../widgets/daily_reward_dialog.dart';
 import '../widgets/first_battle_complete_dialog.dart';
-import '../widgets/pixel_character.dart';
+import '../widgets/character_portrait.dart';
 
 /// バトルリザルト画面
 class ResultScreen extends StatefulWidget {
@@ -309,7 +309,11 @@ class _ResultScreenState extends State<ResultScreen>
                   children: [
                     Column(
                       children: [
-                        PixelCharacter(character: widget.player, size: 60),
+                        CharacterPortrait(
+                          character: widget.player,
+                          variant: PortraitVariant.bust,
+                          height: 72,
+                        ),
                         const SizedBox(height: 8),
                         SizedBox(
                           width: 80,
@@ -330,10 +334,11 @@ class _ResultScreenState extends State<ResultScreen>
                         )),
                     Column(
                       children: [
-                        PixelCharacter(
-                            character: widget.enemy,
-                            size: 60,
-                            flipHorizontal: true),
+                        CharacterPortrait(
+                          character: widget.enemy,
+                          variant: PortraitVariant.bust,
+                          height: 72,
+                        ),
                         const SizedBox(height: 8),
                         SizedBox(
                           width: 80,
