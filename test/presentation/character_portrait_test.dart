@@ -179,6 +179,67 @@ void main() {
     expect(find.byType(PixelCharacter), findsOneWidget);
   });
 
+  testWidgets('bust + square は正方形 SizedBox と BoxFit.cover で描く', (tester) async {
+    await _pumpPortrait(
+      tester,
+      CharacterPortrait(
+        character: _character(seed: 0),
+        variant: PortraitVariant.bust,
+        height: 28,
+        square: true,
+      ),
+    );
+
+    final sizedBox = tester.widget<SizedBox>(
+      find.descendant(
+        of: find.byType(CharacterPortrait),
+        matching: find.byType(SizedBox),
+      ),
+    );
+    expect(sizedBox.width, 28);
+    expect(sizedBox.height, 28);
+
+    final image = tester.widget<Image>(find.byType(Image));
+    expect(image.fit, BoxFit.cover);
+    expect(image.alignment, Alignment.topCenter);
+    expect(image.errorBuilder, isNotNull);
+  });
+
+  testWidgets('square は full / battle では無視される', (tester) async {
+    await _pumpPortrait(
+      tester,
+      CharacterPortrait(
+        character: _character(seed: 0),
+        variant: PortraitVariant.full,
+        height: 80,
+        square: true,
+      ),
+    );
+
+    expect(
+      find.descendant(
+        of: find.byType(CharacterPortrait),
+        matching: find.byType(SizedBox),
+      ),
+      findsNothing,
+    );
+    expect(tester.widget<Image>(find.byType(Image)).fit, BoxFit.contain);
+
+    await _pumpPortrait(
+      tester,
+      CharacterPortrait(
+        character: _character(seed: 0),
+        variant: PortraitVariant.battle,
+        height: 80,
+        square: true,
+      ),
+    );
+
+    final image = tester.widget<Image>(find.byType(Image));
+    expect(image.fit, BoxFit.fill);
+    expect(image.filterQuality, FilterQuality.none);
+  });
+
   testWidgets('battle は FilterQuality.none で整数倍サイズを指定する', (tester) async {
     await _pumpPortrait(
       tester,
