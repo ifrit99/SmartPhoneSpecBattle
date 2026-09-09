@@ -8,6 +8,7 @@ Scope: 設計・要件のみ。本RFCはプロダクトコード（Dart/Flutter�
 
 ## 0. 背景と決定事項
 
+- ミニアイコンの扱いは `docs/rfc_portrait_screen_sweep.md` §3-1 が優先。
 - master には静かなバトル背景（PR #32 `assets/images/battle_bg.png`）とタイトル背景/OGP（PR #31）が入っている。**背景は承認済みで維持する。**
 - キャラクターは現在も `PixelCharacter`（`lib/presentation/widgets/pixel_character.dart`）による 12×12 プロシージャルドット絵。見た目は `Character` の 7 インデックス（head/body/arm/leg/colorPalette/accessory/aura）＋ `element` で決まる。
 - **ユーザー決定（2026-09-03）**: キャラクターグラフィックを「端末スペックを擬人化した成人女性キャラクター」を中心に刷新する。戦場をうるさくしない。

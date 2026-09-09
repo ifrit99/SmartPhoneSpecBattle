@@ -1,12 +1,12 @@
 # SPEC BATTLE — TODO
 
 バージョン: 0.1.0
-最終更新: 2026-09-03
+最終更新: 2026-09-09
 
 ---
 
-## 🤖 現在の作業状態 (2026-09-03)
-- **現在地**: character-art-detail in progress. キャラ詳細のヒーロー立ち絵＋指揮官6体の紹介文。
+## 🤖 現在の作業状態 (2026-09-09)
+- **現在地**: portrait-sweep PR-A（Step 1 square + Step 2 S1–S12 画面置換）。Avatar Studio（PR-A2）とバトル演出（PR-B）は未着手。
 - **直近の実装**:
   - バトル画面背景（`assets/images/battle_bg.png`）を追加
   - タイトル画面背景（`assets/images/title_bg.png`）と OGP 画像（`assets/images/ogp.png` / `web/ogp.png`）を追加
