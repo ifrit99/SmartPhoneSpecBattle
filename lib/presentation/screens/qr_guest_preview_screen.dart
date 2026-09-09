@@ -11,7 +11,7 @@ import '../../domain/enums/element_type.dart';
 import '../decode_failure_copy.dart';
 import '../theme/app_colors.dart';
 import '../widgets/empty_state_card.dart';
-import '../widgets/pixel_character.dart';
+import '../widgets/character_portrait.dart';
 import '../widgets/stat_bar.dart';
 import 'battle_screen.dart';
 import 'collection_screen.dart';
@@ -365,7 +365,6 @@ class _QrGuestPreviewScreenState extends State<QrGuestPreviewScreen> {
               character: enemy,
               color: elemColor,
               loading: false,
-              flip: true,
             ),
           ),
         ],
@@ -378,7 +377,6 @@ class _QrGuestPreviewScreenState extends State<QrGuestPreviewScreen> {
     required Character? character,
     required Color color,
     required bool loading,
-    bool flip = false,
   }) {
     return Column(
       children: [
@@ -403,10 +401,10 @@ class _QrGuestPreviewScreenState extends State<QrGuestPreviewScreen> {
               : character == null
                   ? const Icon(Icons.error_outline,
                       color: Colors.redAccent, size: 42)
-                  : PixelCharacter(
+                  : CharacterPortrait(
                       character: character,
-                      size: 96,
-                      flipHorizontal: flip,
+                      variant: PortraitVariant.bust,
+                      height: 96,
                     ),
         ),
         const SizedBox(height: 8),
