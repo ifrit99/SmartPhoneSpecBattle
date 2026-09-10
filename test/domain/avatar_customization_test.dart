@@ -102,6 +102,29 @@ void main() {
     });
   });
 
+  group('AvatarCustomization - visibleCustomizedCount', () {
+    test('head/body/arm/leg を数えない', () {
+      const onlyHidden = AvatarCustomization(
+        headIndex: 2,
+        bodyIndex: 1,
+        armIndex: 0,
+        legIndex: 3,
+      );
+      expect(onlyHidden.visibleCustomizedCount, 0);
+      expect(onlyHidden.customizedCount, 4);
+
+      const visible = AvatarCustomization(
+        headIndex: 7,
+        bodyIndex: 5,
+        colorPaletteIndex: 2,
+        accessoryIndex: 0,
+        auraIndex: 4,
+      );
+      expect(visible.visibleCustomizedCount, 3);
+      expect(visible.customizedCount, 5);
+    });
+  });
+
   group('AvatarCustomization - 永続化', () {
     test('toStorageString → fromStorageString で往復できる', () {
       const original = AvatarCustomization(
