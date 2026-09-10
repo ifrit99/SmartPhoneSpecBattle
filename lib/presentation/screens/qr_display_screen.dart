@@ -7,7 +7,7 @@ import '../../domain/models/character.dart';
 import '../../domain/services/character_generator.dart';
 import '../../domain/services/service_locator.dart';
 import '../theme/app_colors.dart';
-import '../widgets/pixel_character.dart';
+import '../widgets/character_portrait.dart';
 
 /// URL共有画面（自分のキャラクターの対戦URLを生成・コピー・シェアする）
 class ShareScreen extends StatefulWidget {
@@ -217,7 +217,11 @@ class _ShareScreenState extends State<ShareScreen> {
       ),
       child: Row(
         children: [
-          PixelCharacter(character: character, size: 70),
+          CharacterPortrait(
+            character: character,
+            variant: PortraitVariant.bust,
+            height: 70,
+          ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(

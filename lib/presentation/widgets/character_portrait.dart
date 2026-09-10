@@ -42,6 +42,10 @@ class CharacterPortrait extends StatelessWidget {
   final double height;
   final bool flipHorizontal;
 
+  /// true のとき height×height の正方形に切り、上寄せ cover で顔を残す（ミニアイコン用）。
+  /// bust 以外の variant では無視する。
+  final bool square;
+
   /// テストからマニフェストを差し替える。本番は [shippedPortraitKeys] を使う。
   @visibleForTesting
   final Set<String>? shippedKeysOverride;
@@ -52,6 +56,7 @@ class CharacterPortrait extends StatelessWidget {
     required this.variant,
     required this.height,
     this.flipHorizontal = false,
+    this.square = false,
     this.shippedKeysOverride,
   });
 
@@ -93,6 +98,19 @@ class CharacterPortrait extends StatelessWidget {
     final assetPath = _assetPathForKey(resolvedKey);
     if (variant == PortraitVariant.battle) {
       return _buildBattlePortrait(assetPath);
+    }
+    if (variant == PortraitVariant.bust && square) {
+      return SizedBox(
+        width: height,
+        height: height,
+        child: Image.asset(
+          assetPath,
+          fit: BoxFit.cover,
+          alignment: Alignment.topCenter,
+          errorBuilder: (context, error, stackTrace) =>
+              _fallbackPixel(size: height),
+        ),
+      );
     }
     return Image.asset(
       assetPath,

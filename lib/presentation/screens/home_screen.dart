@@ -24,7 +24,6 @@ import '../widgets/home/record_card.dart';
 import '../widgets/home/rival_road_card.dart';
 import '../widgets/home/season_pass_card.dart';
 import '../widgets/character_portrait.dart';
-import '../widgets/pixel_character.dart';
 import '../widgets/power_rating_card.dart';
 import '../widgets/stat_bar.dart';
 import 'avatar_studio_screen.dart';
@@ -2489,11 +2488,11 @@ class _EnemyPreviewSheetState extends State<_EnemyPreviewSheet> {
               ),
               child: Row(
                 children: [
-                  // ピクセルキャラクター（反転表示）
-                  PixelCharacter(
+                  // 敵の bust ポートレート（反転しない）
+                  CharacterPortrait(
                     character: enemy,
-                    size: charSize,
-                    flipHorizontal: true,
+                    variant: PortraitVariant.bust,
+                    height: charSize,
                   ),
                   const SizedBox(width: 16),
                   Expanded(

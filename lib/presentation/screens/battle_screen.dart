@@ -303,7 +303,7 @@ class _BattleScreenState extends State<BattleScreen>
       backgroundColor: const Color(0xFF0D1B2A),
       body: Stack(
         children: [
-          // 戦場背景。cover + 上寄せで下部2/3の暗部を残し、12x12キャラの可読性を確保する
+          // 戦場背景。cover + 上寄せで下部2/3の暗部を残し、battle スプライトの可読性を確保する
           const Positioned.fill(
             child: Image(
               image: AssetImage('assets/images/battle_bg.png'),

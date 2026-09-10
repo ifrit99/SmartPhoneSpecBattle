@@ -8,7 +8,7 @@ import '../../domain/services/player_rank_service.dart';
 import '../../domain/services/local_league_service.dart';
 import '../../domain/services/player_title_service.dart';
 import '../widgets/empty_state_card.dart';
-import '../widgets/pixel_character.dart';
+import '../widgets/character_portrait.dart';
 
 class CollectionScreen extends StatefulWidget {
   final Character? playerCharacter; // プレイヤーの現在情報を渡してもらう
@@ -34,10 +34,18 @@ class _CollectionScreenState extends State<CollectionScreen> {
   late PlayerRankSnapshot _rankSnapshot;
   late LocalLeagueSnapshot _leagueSnapshot;
   late PlayerTitleSnapshot _titleSnapshot;
+  late final Map<String, Character> _portraitSources;
 
   @override
   void initState() {
     super.initState();
+    _portraitSources = {
+      for (final device in EnemyGenerator.allEnemyDevices)
+        device.deviceName: EnemyGenerator.generateFromDeviceSpec(
+          deviceSpec: device,
+          playerLevel: 1,
+        ).character,
+    };
     _loadData();
   }
 
@@ -151,7 +159,11 @@ class _CollectionScreenState extends State<CollectionScreen> {
             ),
           ),
           const Spacer(),
-          const Icon(Icons.smartphone, size: 48, color: Colors.white70),
+          CharacterPortrait(
+            character: _portraitSources[device.deviceName]!,
+            variant: PortraitVariant.bust,
+            height: 48,
+          ),
           const Spacer(),
           Text(
             device.deviceName,
@@ -192,7 +204,11 @@ class _CollectionScreenState extends State<CollectionScreen> {
           const Spacer(),
           ColorFiltered(
             colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
-            child: const Icon(Icons.smartphone, size: 48, color: Colors.white),
+            child: CharacterPortrait(
+              character: _portraitSources[device.deviceName]!,
+              variant: PortraitVariant.bust,
+              height: 48,
+            ),
           ),
           const Spacer(),
           const Text('???',
@@ -805,7 +821,12 @@ class _CollectionScreenState extends State<CollectionScreen> {
           ),
           // 自分の行にはカスタマイズ済みアバターを表示
           if (entry.isPlayer && playerAvatar != null) ...[
-            PixelCharacter(character: playerAvatar, size: 24),
+            CharacterPortrait(
+              character: playerAvatar,
+              variant: PortraitVariant.bust,
+              height: 24,
+              square: true,
+            ),
             const SizedBox(width: 6),
           ],
           Expanded(

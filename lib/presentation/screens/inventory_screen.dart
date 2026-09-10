@@ -6,7 +6,7 @@ import '../../domain/services/service_locator.dart';
 import '../../domain/services/roster_bonus_service.dart';
 import '../theme/app_colors.dart';
 import '../../data/sound_service.dart';
-import '../widgets/pixel_character.dart';
+import '../widgets/character_portrait.dart';
 import 'gacha_screen.dart';
 
 class InventoryScreen extends StatefulWidget {
@@ -132,7 +132,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  PixelCharacter(character: char.character, size: 100),
+                  CharacterPortrait(
+                    character: char.character,
+                    variant: PortraitVariant.full,
+                    height: 160,
+                  ),
                   const SizedBox(height: 16),
                   Text(
                     char.deviceName,
@@ -773,7 +777,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     ],
                   ),
                   const Spacer(),
-                  PixelCharacter(character: char.character, size: 52),
+                  CharacterPortrait(
+                    character: char.character,
+                    variant: PortraitVariant.bust,
+                    height: 52,
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     char.deviceName,

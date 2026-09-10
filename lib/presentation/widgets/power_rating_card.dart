@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../domain/models/character.dart';
 import '../../domain/services/power_rating_service.dart';
-import 'pixel_character.dart';
+import 'character_portrait.dart';
 import 'stat_bar.dart';
 
 /// ティアごとのテーマカラー
@@ -276,7 +276,12 @@ class PowerRankingSheet extends StatelessWidget {
           const SizedBox(width: 8),
           // 自分の行にはカスタマイズ済みアバターを表示
           if (highlight && playerAvatar != null) ...[
-            PixelCharacter(character: playerAvatar!, size: 28),
+            CharacterPortrait(
+              character: playerAvatar!,
+              variant: PortraitVariant.bust,
+              height: 28,
+              square: true,
+            ),
             const SizedBox(width: 6),
           ],
           Expanded(
