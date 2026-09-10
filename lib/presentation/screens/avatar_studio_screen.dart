@@ -5,12 +5,12 @@ import 'package:flutter/material.dart';
 import '../../data/local_storage_service.dart';
 import '../../domain/models/avatar_customization.dart';
 import '../../domain/models/character.dart';
-import '../widgets/pixel_character.dart';
+import '../widgets/character_portrait.dart';
 
-/// 見た目カスタマイズ画面（アバタースタジオ）
+/// バトルスプライトのカスタマイズ画面（アバタースタジオ）
 ///
-/// 形状・カラー・装飾・演出の4軸でプレイヤーの見た目を編集する。
-/// 変更は即座に保存され、ホーム/バトル/リザルト/ランキングに反映される。
+/// アクセサリー・色・足元の影の3スロットで、バトル中の見た目を編集する。
+/// 変更は即座に保存される。
 class AvatarStudioScreen extends StatefulWidget {
   /// カスタマイズ適用前のベースキャラクター
   final Character baseCharacter;
@@ -40,10 +40,6 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen> {
 
   Future<void> _shuffle() async {
     await _update(AvatarCustomization(
-      headIndex: _random.nextInt(AvatarCustomization.headVariations),
-      bodyIndex: _random.nextInt(AvatarCustomization.bodyVariations),
-      armIndex: _random.nextInt(AvatarCustomization.armVariations),
-      legIndex: _random.nextInt(AvatarCustomization.legVariations),
       colorPaletteIndex:
           _random.nextInt(AvatarCustomization.paletteVariations),
       accessoryIndex: _random.nextInt(AvatarCustomization.accessoryVariations),
@@ -62,7 +58,7 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0D1B2A),
       appBar: AppBar(
-        title: const Text('アバタースタジオ'),
+        title: const Text('バトルスプライトのカスタマイズ'),
         backgroundColor: const Color(0xFF1B2838),
         elevation: 0,
         actions: [
@@ -79,37 +75,26 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen> {
           _buildPreviewCard(),
           const SizedBox(height: 16),
           _buildAxisCard(
-            title: '形状',
-            icon: Icons.accessibility_new,
-            color: const Color(0xFF4ECDC4),
+            title: 'アクセサリー',
+            icon: Icons.star,
+            color: const Color(0xFFFD79A8),
             children: [
               _buildSlotRow(
-                label: 'あたま',
-                names: const ['丸', '角', 'とがり', '大きめ', 'ヘルメット', 'ツイン', 'フード', 'モヒカン'],
-                selected: _customization.headIndex,
-                previewBuilder: (i) => widget.baseCharacter.copyWith(headIndex: i),
-                onSelect: (i) => _update(_customization.copyWith(headIndex: i)),
-              ),
-              _buildSlotRow(
-                label: 'からだ',
-                names: const ['標準', 'ワイド', 'がっちり', '逆三角', '丸型', 'スリム'],
-                selected: _customization.bodyIndex,
-                previewBuilder: (i) => widget.baseCharacter.copyWith(bodyIndex: i),
-                onSelect: (i) => _update(_customization.copyWith(bodyIndex: i)),
-              ),
-              _buildSlotRow(
-                label: 'うで',
-                names: const ['ショート', 'ミドル', 'ロング', 'パワー', 'バンザイ'],
-                selected: _customization.armIndex,
-                previewBuilder: (i) => widget.baseCharacter.copyWith(armIndex: i),
-                onSelect: (i) => _update(_customization.copyWith(armIndex: i)),
-              ),
-              _buildSlotRow(
-                label: 'あし',
-                names: const ['標準', 'しっかり', 'ロング', 'ワイド', 'ホイール'],
-                selected: _customization.legIndex,
-                previewBuilder: (i) => widget.baseCharacter.copyWith(legIndex: i),
-                onSelect: (i) => _update(_customization.copyWith(legIndex: i)),
+                label: 'アクセサリー',
+                names: const [
+                  'なし',
+                  'リボン',
+                  'バイザー',
+                  'イヤーピース',
+                  '胸バッジ',
+                  '肩掛けストラップ',
+                  '浮遊スラブ',
+                  'ヘアピン',
+                ],
+                selected: _customization.accessoryIndex,
+                previewBuilder: (i) => _preview.copyWith(accessoryIndex: i),
+                onSelect: (i) =>
+                    _update(_customization.copyWith(accessoryIndex: i)),
               ),
             ],
           ),
@@ -119,49 +104,22 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen> {
             icon: Icons.palette,
             color: const Color(0xFFFFD93D),
             children: [
-              _buildSlotRow(
-                label: 'カラーリング',
-                names: const [
-                  'クリムゾン', 'ターコイズ', 'サン', 'バイオレット', 'エメラルド', 'サクラ',
-                  'サンセット', 'スカイ', 'シルバー', 'ナイト', 'ライム', 'ゴールド',
-                ],
-                selected: _customization.colorPaletteIndex,
-                previewBuilder: (i) =>
-                    widget.baseCharacter.copyWith(colorPaletteIndex: i),
-                onSelect: (i) =>
-                    _update(_customization.copyWith(colorPaletteIndex: i)),
-              ),
+              _buildColorSwatchRow(),
             ],
           ),
           const SizedBox(height: 16),
           _buildAxisCard(
-            title: '装飾',
-            icon: Icons.star,
-            color: const Color(0xFFFD79A8),
-            children: [
-              _buildSlotRow(
-                label: 'アクセサリー',
-                names: const ['なし', 'アンテナ', 'とんがり帽', 'ツノ', '王冠', 'リボン', 'サングラス', 'マフラー'],
-                selected: _customization.accessoryIndex,
-                previewBuilder: (i) =>
-                    widget.baseCharacter.copyWith(accessoryIndex: i),
-                onSelect: (i) =>
-                    _update(_customization.copyWith(accessoryIndex: i)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildAxisCard(
-            title: '演出',
+            title: '影',
             icon: Icons.auto_awesome,
             color: const Color(0xFF6C5CE7),
             children: [
               _buildSlotRow(
-                label: 'オーラ',
-                names: const ['なし', '光輪', '星屑', '炎', '電撃', '雪'],
+                label: '影',
+                names: const ['なし', '楕円', '細い楕円', 'リング', 'ひし形', '二重楕円'],
                 selected: _customization.auraIndex,
-                previewBuilder: (i) => widget.baseCharacter.copyWith(auraIndex: i),
-                onSelect: (i) => _update(_customization.copyWith(auraIndex: i)),
+                previewBuilder: (i) => _preview.copyWith(auraIndex: i),
+                onSelect: (i) =>
+                    _update(_customization.copyWith(auraIndex: i)),
               ),
             ],
           ),
@@ -172,7 +130,7 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen> {
   }
 
   Widget _buildPreviewCard() {
-    final customized = _customization.customizedCount;
+    final customized = _customization.visibleCustomizedCount;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -192,7 +150,11 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen> {
       ),
       child: Column(
         children: [
-          PixelCharacter(character: _preview, size: 140),
+          CharacterPortrait(
+            character: _preview,
+            variant: PortraitVariant.battle,
+            height: 96,
+          ),
           const SizedBox(height: 10),
           Text(
             widget.baseCharacter.name,
@@ -205,10 +167,13 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen> {
             overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 4),
+          const Text(
+            'バトル中の見た目',
+            style: TextStyle(color: Colors.white54, fontSize: 12),
+          ),
+          const SizedBox(height: 4),
           Text(
-            customized == 0
-                ? 'すべておまかせ（元の見た目）'
-                : '$customized/7 スロットをカスタマイズ中',
+            customized == 0 ? 'すべておまかせ（元の見た目）' : '$customized/3 設定済み',
             style: const TextStyle(color: Colors.white54, fontSize: 12),
           ),
           const SizedBox(height: 12),
@@ -217,7 +182,7 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen> {
             child: OutlinedButton.icon(
               onPressed: _shuffle,
               icon: const Icon(Icons.casino, size: 18),
-              label: const Text('シャッフル'),
+              label: const Text('ランダム'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFFFFD93D),
                 side: const BorderSide(color: Color(0xFFFFD93D)),
@@ -314,6 +279,77 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen> {
     );
   }
 
+  Widget _buildColorSwatchRow() {
+    const names = [
+      '炎',
+      '水',
+      '地',
+      '風',
+      '光',
+      '闇',
+      '白',
+      '黒',
+      '金',
+      '銀',
+      '桃',
+      '青緑',
+    ];
+    final disabled = _preview.accessoryIndex == 0;
+    final selected = _customization.colorPaletteIndex;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 10, bottom: 6),
+          child: Text(
+            'カラーリング',
+            style: TextStyle(
+              color: disabled ? Colors.white38 : Colors.white70,
+              fontSize: 13,
+            ),
+          ),
+        ),
+        Opacity(
+          opacity: disabled ? 0.38 : 1,
+          child: IgnorePointer(
+            ignoring: disabled,
+            child: SizedBox(
+              height: 72,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: names.length + 1,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, i) {
+                  if (i == 0) {
+                    return _buildSwatchTile(
+                      name: 'おまかせ',
+                      color: null,
+                      isSelected: selected == AvatarCustomization.unset,
+                      onTap: () => _update(
+                        _customization.copyWith(
+                          colorPaletteIndex: AvatarCustomization.unset,
+                        ),
+                      ),
+                    );
+                  }
+                  final index = i - 1;
+                  return _buildSwatchTile(
+                    name: names[index],
+                    color: battleAccessoryColors[index],
+                    isSelected: selected == index,
+                    onTap: () => _update(
+                      _customization.copyWith(colorPaletteIndex: index),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildOptionTile({
     required String name,
     required bool isSelected,
@@ -339,12 +375,73 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen> {
         child: Column(
           children: [
             if (character != null)
-              PixelCharacter(character: character, size: 56)
+              CharacterPortrait(
+                character: character,
+                variant: PortraitVariant.battle,
+                height: 48,
+              )
             else
               const SizedBox(
-                width: 56,
-                height: 56,
+                width: 48,
+                height: 48,
                 child: Icon(Icons.shuffle, color: Colors.white38, size: 28),
+              ),
+            const SizedBox(height: 4),
+            Text(
+              name,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.white60,
+                fontSize: 10,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSwatchTile({
+    required String name,
+    required Color? color,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    const selectedColor = Color(0xFF6C5CE7);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 56,
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? selectedColor.withValues(alpha: 0.2)
+              : Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? selectedColor : Colors.white12,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            if (color != null)
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.white24),
+                ),
+              )
+            else
+              const SizedBox(
+                width: 28,
+                height: 28,
+                child: Icon(Icons.shuffle, color: Colors.white38, size: 20),
               ),
             const SizedBox(height: 4),
             Text(
