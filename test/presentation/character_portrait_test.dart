@@ -84,6 +84,13 @@ Future<void> _pumpPortrait(
   );
 }
 
+Finder _battleOverlayPaint() {
+  return find.descendant(
+    of: find.byType(CharacterPortrait),
+    matching: find.byType(CustomPaint),
+  );
+}
+
 void main() {
   test('shippedPortraitKeys は三揃い PNG があるキーと一致する', () {
     expect(CharacterPortrait.shippedPortraitKeys, _keysWithFullTriad());
@@ -255,5 +262,58 @@ void main() {
     expect(image.width, 48);
     expect(image.height, 48);
     expect(image.errorBuilder, isNotNull);
+  });
+
+  testWidgets('battle + accessoryIndex:3 は CustomPaint を1つ重ねる', (tester) async {
+    await _pumpPortrait(
+      tester,
+      CharacterPortrait(
+        character: _character(seed: 0).copyWith(accessoryIndex: 3),
+        variant: PortraitVariant.battle,
+        height: 48,
+      ),
+    );
+
+    expect(_battleOverlayPaint(), findsOneWidget);
+  });
+
+  testWidgets('battle + accessoryIndex:0 auraIndex:0 は CustomPaint がない',
+      (tester) async {
+    await _pumpPortrait(
+      tester,
+      CharacterPortrait(
+        character: _character(seed: 0).copyWith(
+          accessoryIndex: 0,
+          auraIndex: 0,
+        ),
+        variant: PortraitVariant.battle,
+        height: 48,
+      ),
+    );
+
+    expect(_battleOverlayPaint(), findsNothing);
+  });
+
+  testWidgets('bust / full は accessoryIndex を渡しても CustomPaint を重ねない',
+      (tester) async {
+    await _pumpPortrait(
+      tester,
+      CharacterPortrait(
+        character: _character(seed: 0).copyWith(accessoryIndex: 3),
+        variant: PortraitVariant.bust,
+        height: 80,
+      ),
+    );
+    expect(_battleOverlayPaint(), findsNothing);
+
+    await _pumpPortrait(
+      tester,
+      CharacterPortrait(
+        character: _character(seed: 0).copyWith(accessoryIndex: 3),
+        variant: PortraitVariant.full,
+        height: 80,
+      ),
+    );
+    expect(_battleOverlayPaint(), findsNothing);
   });
 }
