@@ -1,12 +1,12 @@
 # SPEC BATTLE — TODO
 
 バージョン: 0.1.0
-最終更新: 2026-09-09
+最終更新: 2026-09-10
 
 ---
 
-## 🤖 現在の作業状態 (2026-09-09)
-- **現在地**: portrait-sweep PR-A（Step 1 square + Step 2 S1–S12 画面置換）。Avatar Studio（PR-A2）とバトル演出（PR-B）は未着手。
+## 🤖 現在の作業状態 (2026-09-10)
+- **現在地**: portrait-sweep PR-A2（Avatar Studio → バトルスプライトのカスタマイズ）。バトル演出（PR-B）は未着手。
 - **直近の実装**:
   - バトル画面背景（`assets/images/battle_bg.png`）を追加
   - タイトル画面背景（`assets/images/title_bg.png`）と OGP 画像（`assets/images/ogp.png` / `web/ogp.png`）を追加
