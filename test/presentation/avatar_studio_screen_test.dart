@@ -57,9 +57,14 @@ void main() {
     expect(find.text('脚'), findsNothing);
     expect(find.text('バトルスプライトのカスタマイズ'), findsOneWidget);
     expect(find.text('バトル中の見た目'), findsOneWidget);
-    expect(battleAccessoryLabels, contains('イヤーピース'));
-    expect(find.text('リボン'), findsOneWidget);
-    expect(find.text('バイザー'), findsOneWidget);
+  });
+
+  testWidgets('アクセサリータイルに日本語ラベルがある', (tester) async {
+    await _pumpStudio(tester);
+
+    for (final label in battleAccessoryLabels) {
+      expect(find.text(label), findsWidgets);
+    }
   });
 
   testWidgets('アクセサリータイルをタップすると先頭4値が -1 の7値で保存される', (tester) async {

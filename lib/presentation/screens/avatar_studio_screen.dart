@@ -243,27 +243,29 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen> {
         ),
         SizedBox(
           height: 110,
-          child: ListView.separated(
+          child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            itemCount: names.length + 1,
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemBuilder: (context, i) {
-              if (i == 0) {
-                return _buildOptionTile(
-                  name: 'おまかせ',
-                  isSelected: selected == AvatarCustomization.unset,
-                  character: null,
-                  onTap: () => onSelect(AvatarCustomization.unset),
-                );
-              }
-              final index = i - 1;
-              return _buildOptionTile(
-                name: names[index],
-                isSelected: selected == index,
-                character: previewBuilder(index),
-                onTap: () => onSelect(index),
-              );
-            },
+            child: Row(
+              children: [
+                for (var i = 0; i < names.length + 1; i++) ...[
+                  if (i > 0) const SizedBox(width: 8),
+                  if (i == 0)
+                    _buildOptionTile(
+                      name: 'おまかせ',
+                      isSelected: selected == AvatarCustomization.unset,
+                      character: null,
+                      onTap: () => onSelect(AvatarCustomization.unset),
+                    )
+                  else
+                    _buildOptionTile(
+                      name: names[i - 1],
+                      isSelected: selected == i - 1,
+                      character: previewBuilder(i - 1),
+                      onTap: () => onSelect(i - 1),
+                    ),
+                ],
+              ],
+            ),
           ),
         ),
       ],
