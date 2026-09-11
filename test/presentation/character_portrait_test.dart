@@ -91,7 +91,34 @@ Finder _battleOverlayPaint() {
   );
 }
 
+Finder _accessoryOverlayImage() {
+  return find.descendant(
+    of: find.descendant(
+      of: find.byType(CharacterPortrait),
+      matching: find.byType(ColorFiltered),
+    ),
+    matching: find.byType(Image),
+  );
+}
+
 void main() {
+  test('battleAccessoryAssetPath は 1–7 を PNG に、0 を null にする', () {
+    expect(battleAccessoryAssetPath(0), isNull);
+    expect(
+      battleAccessoryAssetPath(1),
+      'assets/images/accessories/accessory_01_ribbon.png',
+    );
+    expect(
+      battleAccessoryAssetPath(3),
+      'assets/images/accessories/accessory_03_earpiece.png',
+    );
+    expect(
+      battleAccessoryAssetPath(7),
+      'assets/images/accessories/accessory_07_hairpins.png',
+    );
+    expect(battleAccessoryAssetPath(8), isNull);
+  });
+
   test('shippedPortraitKeys は三揃い PNG があるキーと一致する', () {
     expect(CharacterPortrait.shippedPortraitKeys, _keysWithFullTriad());
   });
@@ -264,7 +291,7 @@ void main() {
     expect(image.errorBuilder, isNotNull);
   });
 
-  testWidgets('battle + accessoryIndex:3 は CustomPaint を1つ重ねる', (tester) async {
+  testWidgets('battle + accessoryIndex:3 は overlay Image を重ねる', (tester) async {
     await _pumpPortrait(
       tester,
       CharacterPortrait(
@@ -274,10 +301,19 @@ void main() {
       ),
     );
 
-    expect(_battleOverlayPaint(), findsOneWidget);
+    expect(_accessoryOverlayImage(), findsOneWidget);
+    final overlay = tester.widget<Image>(_accessoryOverlayImage());
+    expect(
+      (overlay.image as AssetImage).assetName,
+      'assets/images/accessories/accessory_03_earpiece.png',
+    );
+    expect(overlay.filterQuality, FilterQuality.none);
+    expect(overlay.width, 48);
+    expect(overlay.height, 48);
+    expect(_battleOverlayPaint(), findsNothing);
   });
 
-  testWidgets('battle + accessoryIndex:0 auraIndex:0 は CustomPaint がない',
+  testWidgets('battle + accessoryIndex:0 auraIndex:0 は overlay も CustomPaint もない',
       (tester) async {
     await _pumpPortrait(
       tester,
@@ -291,10 +327,11 @@ void main() {
       ),
     );
 
+    expect(_accessoryOverlayImage(), findsNothing);
     expect(_battleOverlayPaint(), findsNothing);
   });
 
-  testWidgets('bust / full は accessoryIndex を渡しても CustomPaint を重ねない',
+  testWidgets('bust / full は accessoryIndex を渡しても overlay Image を重ねない',
       (tester) async {
     await _pumpPortrait(
       tester,
@@ -304,6 +341,7 @@ void main() {
         height: 80,
       ),
     );
+    expect(_accessoryOverlayImage(), findsNothing);
     expect(_battleOverlayPaint(), findsNothing);
 
     await _pumpPortrait(
@@ -314,6 +352,7 @@ void main() {
         height: 80,
       ),
     );
+    expect(_accessoryOverlayImage(), findsNothing);
     expect(_battleOverlayPaint(), findsNothing);
   });
 }

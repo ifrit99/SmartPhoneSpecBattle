@@ -21,6 +21,32 @@ const List<Color> battleAccessoryColors = [
   Color(0xFF4ECDC4),
 ];
 
+/// アクセサリー表示名（index 0 = なし）。
+const List<String> battleAccessoryLabels = [
+  'なし',
+  'リボン',
+  'バイザー',
+  'イヤーピース',
+  'バッジ',
+  'ストラップ',
+  'スラブ',
+  'ヘアピン',
+];
+
+/// accessoryIndex 1–7 の 48×48 オーバーレイ。0（なし）は null。
+String? battleAccessoryAssetPath(int accessoryIndex) {
+  return switch (accessoryIndex % 8) {
+    1 => 'assets/images/accessories/accessory_01_ribbon.png',
+    2 => 'assets/images/accessories/accessory_02_visor.png',
+    3 => 'assets/images/accessories/accessory_03_earpiece.png',
+    4 => 'assets/images/accessories/accessory_04_badge.png',
+    5 => 'assets/images/accessories/accessory_05_strap.png',
+    6 => 'assets/images/accessories/accessory_06_slab.png',
+    7 => 'assets/images/accessories/accessory_07_hairpins.png',
+    _ => null,
+  };
+}
+
 /// ポートレートの表示形態（RFC §4 / §8）
 enum PortraitVariant { bust, full, battle }
 
@@ -140,8 +166,10 @@ class CharacterPortrait extends StatelessWidget {
   /// 現行 `charSize` の正方形アンカーを維持し、48 または 96 論理 px に整数倍する。
   Widget _buildBattlePortrait(String assetPath, String portraitKey) {
     final spriteSize = height >= 96 ? 96.0 : 48.0;
-    final showOverlay =
-        character.accessoryIndex != 0 || character.auraIndex != 0;
+    final accessoryPath = battleAccessoryAssetPath(character.accessoryIndex);
+    final showAura = character.auraIndex != 0;
+    final tint = battleAccessoryColors[
+        character.colorPaletteIndex % battleAccessoryColors.length];
     return SizedBox(
       width: height,
       height: height,
@@ -162,7 +190,19 @@ class CharacterPortrait extends StatelessWidget {
                 errorBuilder: (context, error, stackTrace) =>
                     _fallbackPixel(size: spriteSize),
               ),
-              if (showOverlay)
+              if (accessoryPath != null)
+                ColorFiltered(
+                  colorFilter: ColorFilter.mode(tint, BlendMode.modulate),
+                  child: Image.asset(
+                    accessoryPath,
+                    width: spriteSize,
+                    height: spriteSize,
+                    fit: BoxFit.fill,
+                    filterQuality: FilterQuality.none,
+                    isAntiAlias: false,
+                  ),
+                ),
+              if (showAura)
                 CustomPaint(
                   painter: _BattleAccessoryPainter(
                     character: character,
@@ -197,7 +237,8 @@ class CharacterPortrait extends StatelessWidget {
   }
 }
 
-/// バトルスプライト（48 グリッド）にアクセサリーと足元の影を重ねる。
+/// バトルスプライト（48 グリッド）に足元の影を重ねる。
+/// アクセサリーは [_buildBattlePortrait] の PNG Image オーバーレイ。
 class _BattleAccessoryPainter extends CustomPainter {
   final Character character;
   final String portraitKey;
@@ -211,86 +252,13 @@ class _BattleAccessoryPainter extends CustomPainter {
 
   int get _scale => spriteSize ~/ 48;
 
-  Color get _fill =>
-      battleAccessoryColors[character.colorPaletteIndex % battleAccessoryColors.length];
-
-  static const _outline = Color(0xFF1A1A1A);
   static const _shadow = Color(0x66000000);
 
   @override
   void paint(Canvas canvas, Size size) {
-    final anchors = anchorsFor(portraitKey);
     if (character.auraIndex != 0) {
-      _drawAura(canvas, anchors);
+      _drawAura(canvas, anchorsFor(portraitKey));
     }
-    if (character.accessoryIndex != 0) {
-      _drawAccessory(canvas, anchors);
-    }
-  }
-
-  void _drawAccessory(Canvas canvas, BattleAnchors anchors) {
-    final cx = anchors.centerX;
-    final hy = anchors.headTopY;
-    final chest = anchors.chestY;
-    final sy = anchors.shoulderY;
-    final pixels = <(int, int)>{};
-
-    switch (character.accessoryIndex % 8) {
-      case 1: // リボン
-        pixels.addAll([
-          (cx - 2, hy),
-          (cx - 1, hy),
-          (cx + 1, hy),
-          (cx + 2, hy),
-          (cx - 1, hy + 1),
-          (cx, hy + 1),
-          (cx + 1, hy + 1),
-          (cx, hy + 2),
-        ]);
-      case 2: // バイザー
-        for (var x = cx - 3; x <= cx + 2; x++) {
-          pixels.add((x, hy + 4));
-          pixels.add((x, hy + 5));
-        }
-      case 3: // イヤーピース
-        pixels.addAll([
-          (cx + 6, hy + 3),
-          (cx + 7, hy + 3),
-          (cx + 6, hy + 4),
-          (cx + 7, hy + 4),
-          (cx + 8, hy + 4),
-        ]);
-      case 4: // 胸バッジ
-        pixels.addAll([
-          (cx + 2, chest),
-          (cx + 3, chest),
-          (cx + 2, chest + 1),
-          (cx + 3, chest + 1),
-        ]);
-      case 5: // 肩掛けストラップ
-        pixels.addAll([
-          (cx - 6, sy),
-          (cx - 5, sy + 1),
-          (cx - 4, sy + 2),
-          (cx - 3, sy + 3),
-          (cx - 2, sy + 4),
-        ]);
-      case 6: // 浮遊スラブ（横に小さく）
-        for (var y = chest - 1; y <= chest + 1; y++) {
-          for (var x = cx + 8; x <= cx + 11; x++) {
-            pixels.add((x, y));
-          }
-        }
-      case 7: // ヘアピン ×2
-        pixels.addAll([
-          (cx - 4, hy + 1),
-          (cx - 4, hy + 2),
-          (cx + 4, hy + 1),
-          (cx + 4, hy + 2),
-        ]);
-    }
-
-    _stamp(canvas, pixels, _fill);
   }
 
   void _drawAura(Canvas canvas, BattleAnchors anchors) {
@@ -339,23 +307,6 @@ class _BattleAccessoryPainter extends CustomPainter {
     }
   }
 
-  void _stamp(Canvas canvas, Set<(int, int)> pixels, Color fill) {
-    final outlined = <(int, int)>{};
-    for (final (x, y) in pixels) {
-      outlined.add((x - 1, y));
-      outlined.add((x + 1, y));
-      outlined.add((x, y - 1));
-      outlined.add((x, y + 1));
-    }
-    outlined.removeAll(pixels);
-    for (final (x, y) in outlined) {
-      _cell(canvas, x, y, _outline);
-    }
-    for (final (x, y) in pixels) {
-      _cell(canvas, x, y, fill);
-    }
-  }
-
   void _cell(Canvas canvas, int x, int y, Color color) {
     if (x < 0 || x > 47 || y < 0 || y > 47) {
       return;
@@ -375,10 +326,7 @@ class _BattleAccessoryPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _BattleAccessoryPainter oldDelegate) {
-    return oldDelegate.character.accessoryIndex != character.accessoryIndex ||
-        oldDelegate.character.auraIndex != character.auraIndex ||
-        oldDelegate.character.colorPaletteIndex !=
-            character.colorPaletteIndex ||
+    return oldDelegate.character.auraIndex != character.auraIndex ||
         oldDelegate.portraitKey != portraitKey ||
         oldDelegate.spriteSize != spriteSize;
   }

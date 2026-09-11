@@ -57,6 +57,9 @@ void main() {
     expect(find.text('脚'), findsNothing);
     expect(find.text('バトルスプライトのカスタマイズ'), findsOneWidget);
     expect(find.text('バトル中の見た目'), findsOneWidget);
+    for (final label in battleAccessoryLabels) {
+      expect(find.text(label), findsWidgets);
+    }
   });
 
   testWidgets('アクセサリータイルをタップすると先頭4値が -1 の7値で保存される', (tester) async {

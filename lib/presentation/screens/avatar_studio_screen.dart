@@ -81,16 +81,7 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen> {
             children: [
               _buildSlotRow(
                 label: 'アクセサリー',
-                names: const [
-                  'なし',
-                  'リボン',
-                  'バイザー',
-                  'イヤーピース',
-                  '胸バッジ',
-                  '肩掛けストラップ',
-                  '浮遊スラブ',
-                  'ヘアピン',
-                ],
+                names: battleAccessoryLabels,
                 selected: _customization.accessoryIndex,
                 previewBuilder: (i) => _preview.copyWith(accessoryIndex: i),
                 onSelect: (i) =>
@@ -251,7 +242,7 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen> {
           ),
         ),
         SizedBox(
-          height: 96,
+          height: 110,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: names.length + 1,
@@ -391,10 +382,11 @@ class _AvatarStudioScreenState extends State<AvatarStudioScreen> {
               name,
               style: TextStyle(
                 color: isSelected ? Colors.white : Colors.white60,
-                fontSize: 10,
+                fontSize: 11,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
-              maxLines: 1,
+              textAlign: TextAlign.center,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
           ],
