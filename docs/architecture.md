@@ -14,7 +14,9 @@
   - **Services**: `battle_engine.dart` (純粋なDartコードによる自動バトル計算ロジック。UI非依存), `character_generator.dart` (スペックからのキャラ生成), `enemy_generator.dart`
 - `lib/presentation/`: プレゼンテーション層（UI）
   - **Screens**: 画面単位のWidget（`home_screen.dart`, `battle_screen.dart`, `result_screen.dart`等）
-  - **Widgets**: 再利用可能なUIコンポーネント（`pixel_character.dart`, `stat_bar.dart`, `damage_popup.dart`, `skill_effect_overlay.dart`等）
+  - **Battle**: バトル演出の純関数（`lib/presentation/battle/battle_cue.dart`）
+  - **Widgets**: 再利用可能なUIコンポーネント（`pixel_character.dart`, `stat_bar.dart`, `damage_popup.dart`等）
+  - **Widgets/battle**: バトル演出（`lib/presentation/widgets/battle/` の `BattleSprite` / `BattleVfxLayer` / `SkillNameBanner`）
 
 ## 状態管理とイベント駆動
 サードパーティの大規模状態管理ライブラリ（RiverpodやProviderなど）は使用せず、Flutter標準の機能でシンプルに構成。
@@ -24,5 +26,5 @@
 
 ## Widgetの分割基準
 1. **再利用性**: 複数の画面で使われる要素（HPバー=`stat_bar.dart`、キャラ画像=`pixel_character.dart`）は独立したWidgetとして切り出す。
-2. **アニメーションの分離**: `damage_popup.dart`や`skill_effect_overlay.dart`など、自身で独立したアニメーションライフサイクル（フェードイン・アウト、移動）を持つ要素は、親の`setState`に巻き込まれないようStatefulWidgetとして分離。
+2. **アニメーションの分離**: `damage_popup.dart`や`widgets/battle/`の演出など、自身で独立したアニメーションライフサイクル（フェードイン・アウト、移動）を持つ要素は、親の`setState`に巻き込まれないようStatefulWidgetとして分離。
 3. **責務の単一化**: `BattleScreen`のような複雑な画面では、UIツリーの構築メソッド（`_buildBattleLog()`, `_buildActionButtons()`）とロジック（`_showNextLog()`, `_addDamagePopup()`）を適切にメソッド分割し、可読性を維持。

@@ -1,6 +1,6 @@
 # Plan: battle-animation — スプライトアニメーション＋スキル VFX
 Created: 2026-09-09
-Status: PLANNING（`docs/plans/portrait-sweep.md` の PR-A マージ後に着手）
+Status: IMPLEMENTING（master `8e048e83` / #42 から着手）
 Parent: `docs/rfc_battle_animation.md`（仕様の正本。本ファイルは順序と検証の手引き）
 実装: grok-4.6。
 
@@ -30,23 +30,23 @@ Parent: `docs/rfc_battle_animation.md`（仕様の正本。本ファイルは順
 - **actor 判定**は現行の名前一致（`battle_screen.dart:180-182`, `:198-199`）を変えない（RFC §9-2）。
 
 ## テスト基準
-- [ ] `battle_cue_test.dart`: RFC §3-1 の 8 行 + `isCritical` + `actionType == null && damage > 0`（継続ダメージ）を網羅。
-- [ ] `battle_sprite_test.dart`: attack で 120ms 時点の x 変位が自 > 0 / 敵 < 0、300ms で 0・idle。`stopAll()` 即時 idle。`disableAnimations: true` で変位 0。victory/defeat が最終状態で止まる（idle に戻らない）。
-- [ ] `battle_vfx_layer_test.dart`: `spawn` 後にペイントされ、寿命経過後に描画対象が空。`clear()` で即時空。
-- [ ] `battle_screen_test.dart` 既存 1 件が無変更で通る。
-- [ ] `rg "SkillEffectOverlay|_flashController|_shakeController|_skillEffectDelayMs" lib test` が 0 件。
+- [x] `battle_cue_test.dart`: RFC §3-1 の 8 行 + `isCritical` + `actionType == null && damage > 0`（継続ダメージ）を網羅。
+- [x] `battle_sprite_test.dart`: attack で 120ms 時点の x 変位が自 > 0 / 敵 < 0、300ms で 0・idle。`stopAll()` 即時 idle。`disableAnimations: true` で変位 0。victory/defeat が最終状態で止まる（idle に戻らない）。
+- [x] `battle_vfx_layer_test.dart`: `spawn` 後にペイントされ、寿命経過後に描画対象が空。`clear()` で即時空。
+- [x] `battle_screen_test.dart` 既存 1 件が無変更で通る。
+- [x] `rg "SkillEffectOverlay|_flashController|_shakeController|_skillEffectDelayMs" lib/presentation/screens/battle_screen.dart lib/presentation/widgets test` が 0 件（`gacha_screen.dart` の既存 `_shakeController` は対象外）。
 - [ ] ブラウザ確認（`flutter run -d chrome`、360×640 DPR2 と 430×932 DPR3）: RFC §6 の 1–12。速度 ×1 と ×3 の両方で 1 バトル通す。スキップも 1 回。Chrome Performance で 10 ターンを記録し、フレーム落ち 5% 未満。Playwright は使わない。
 
 ## 完了条件
-- [ ] `flutter analyze`: エラー 0、warning 0
-- [ ] `flutter test`: 全パス
-- [ ] `git diff --stat` に `lib/domain/**`・`lib/data/**`・`pubspec.yaml`・`assets/**` が含まれない（音・画像・依存を増やしていない証明）
+- [x] `flutter analyze`: エラー 0、warning 0
+- [x] `flutter test`: 全パス
+- [x] `git diff --stat` に `lib/domain/**`・`lib/data/**`・`pubspec.yaml`・`assets/**` が含まれない（音・画像・依存を増やしていない証明）
 - [ ] PR 説明に RFC §6 の 1–12 のチェック結果、確認した速度、Performance の要約（平均フレーム時間）を記載
-- [ ] `docs/TODO.md` 現在地更新
+- [x] `docs/TODO.md` 現在地更新
 
 ---
 ## Generator ログ
-（実装時に追記）
+- 2026-09-11 grok-4.6: commits 1–7（cue / BattleSprite / screen 配線 / VFX / バナー / disableAnimations / docs）。`flutter analyze` 0、`flutter test` 全パス。
 
 ---
 ## 評価

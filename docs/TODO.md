@@ -5,8 +5,8 @@
 
 ---
 
-## 🤖 現在の作業状態 (2026-09-10)
-- **現在地**: portrait-sweep PR-A2（Avatar Studio → バトルスプライトのカスタマイズ）。バトル演出（PR-B）は未着手。
+## 🤖 現在の作業状態 (2026-09-11)
+- **現在地**: バトル演出 PR-B（スプライトアニメーション＋スキル VFX）。Avatar Studio（#42）は master 済み。
 - **直近の実装**:
   - バトル画面背景（`assets/images/battle_bg.png`）を追加
   - タイトル画面背景（`assets/images/title_bg.png`）と OGP 画像（`assets/images/ogp.png` / `web/ogp.png`）を追加

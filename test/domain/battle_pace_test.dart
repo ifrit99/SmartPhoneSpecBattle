@@ -9,8 +9,8 @@ import 'package:spec_battle_game/domain/services/enemy_generator.dart';
 ///
 /// ゴール「1回の対戦が2〜4分程度で終わり、テンポが良い」を
 /// シミュレーションで検証する。x1 再生時の所要時間は
-/// ログ1件あたり 800ms + スキル演出 1000ms で換算する
-/// （battle_screen.dart の _logDelayMs / _skillEffectDelayMs と同じ基準）。
+/// ログ1件あたり 800ms + スキルビート 360ms で換算する
+/// （RFC バトル演出の _logDelayMs + skill B）。
 void main() {
   // 標準的なミドルレンジ端末（テンポの代表値計測用）
   const standardSpecs = DeviceSpecs(
@@ -59,8 +59,8 @@ void main() {
         final avgTurns = totalTurns / trials;
         final avgEntries = totalEntries / trials;
         final avgSkills = totalSkills / trials;
-        // x1 再生時の想定所要秒（ログ 0.8s/件 + スキル演出 1.0s/回）
-        final avgSeconds = avgEntries * 0.8 + avgSkills * 1.0;
+        // x1 再生時の想定所要秒（ログ 0.8s/件 + スキルビート 0.36s/回）
+        final avgSeconds = avgEntries * 0.8 + avgSkills * 0.36;
 
         // 計測値の可視化（テンポ調整の判断材料として出力する）
         // ignore: avoid_print
