@@ -1,6 +1,6 @@
 # Plan: ホスティング基盤の移行（Cloudflare Pages）
 Created: 2026-09-11
-Status: PLANNING（ユーザーの RFC 承認待ち。承認後の実装席は grok-4.6）
+Status: PLANNING（RFC は 2026-09-11 ユーザー承認済み。実装席は grok-4.6。PR-0 のユーザー作業完了後に PR-1 から着手）
 
 ## 要件
 `docs/rfc_hosting_foundation.md` を**唯一の正本**とする。本ファイルは PR の順序と完了条件の写しだけを持ち、要件の詳細・比較・判断理由は RFC 側を参照する。RFC §10 の受け入れ基準と §11 の未決事項（Q1〜Q3 は最低限）にユーザーが回答するまで着手しない。
