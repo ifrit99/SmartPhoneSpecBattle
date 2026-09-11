@@ -190,7 +190,9 @@ class _BattleScreenState extends State<BattleScreen> {
       if (!mounted || _playbackAborted) return;
 
       final cue = resolve(entry, isPlayerActor: isPlayerActor);
-      final beatMs = scaleDurationMs(cue.beatMs, _playbackSpeed);
+      final reduceMotion = MediaQuery.disableAnimationsOf(context);
+      final beatMs =
+          reduceMotion ? 0 : scaleDurationMs(cue.beatMs, _playbackSpeed);
       if (cue.actorState != null) {
         (isPlayerActor ? _playerSprite : _enemySprite).play(cue.actorState!);
       }
