@@ -76,7 +76,7 @@ github.io の URL が直書きされている箇所（移行時に必ず触る�
 | T7 | 共有 URL からの個人特定 | `deviceName` は架空ブランドカタログ、実機名は載らない（PR #13 で置換） | 低 | S-9（現状維持を要件として固定） |
 | T8 | Sentry / Firebase の公開キー乱用 | DSN・API Key はバンドルに含まれる | 中（クォータ消費） | S-2（Sentry: 許可オリジン設定、レート制限。Firebase: API Key の HTTP リファラ制限、App Check は F6 着手時） |
 | T9 | Referer 経由で `?battle=` が第三者へ漏れる | 外部リンク（X intent、Sentry）へ遷移時 | 低 | S-3（`Referrer-Policy: strict-origin-when-cross-origin` 以上）。Sentry 側は既に query を落としている |
-| T10 | 旧 URL（github.io）の放置 | 移行後に古い OGP/ツイートが github.io を指し続ける | 中（導線分断） | M-3（リダイレクト）、M-2（canonical） |
+| T10 | 旧 URL（github.io）の放置 | 移行後に古い OGP/ツイートが github.io を指し続ける | **無視できる**（2026-09-11 ユーザー判断: まだプレイヤー・既存ツイートが存在しないため保全対象がない） | M-3（GitHub Pages を停止。リダイレクト不要）、M-2（canonical） |
 | T11 | ホスティング側の障害・アカウント停止 | ベンダー依存 | 中 | M-5（ロールバック: GitHub Pages を一定期間残す） |
 
 ### 2-3. 将来エッジ（F8 Workers）を足したときの追加脅威
@@ -98,7 +98,7 @@ github.io の URL が直書きされている箇所（移行時に必ず触る�
 | # | 区分 | 要件 |
 |---|---|---|
 | S-1 | MUST | クライアントに埋め込む値（`SENTRY_DSN`、`FIREBASE_*`）は「公開値」と明記し、秘匿ではなく**プロバイダ側の乱用制限**（許可オリジン・リファラ制限・レート制限）で守る。ドキュメント上「秘密」と呼ばない。 |
-| S-2 | SHOULD | Sentry プロジェクトに Allowed Domains（新ドメイン＋移行期間中は github.io）を設定する。Firebase API Key は F1/F6 の実装時に HTTP リファラ制限を掛ける（本RFCでは要件として先置き）。 |
+| S-2 | SHOULD | Sentry プロジェクトに Allowed Domains（新ドメインのみ。github.io は M-3 で停止するため不要）を設定する。Firebase API Key は F1/F6 の実装時に HTTP リファラ制限を掛ける（本RFCでは要件として先置き）。 |
 | S-7 | MUST | デプロイ権限は最小化する。Cloudflare Pages を Actions から配置する場合、API トークンは **Pages: Edit のみ**、対象アカウント限定、GitHub Environment `production` に保存し `master` ブランチのみ参照可にする。`pull_request` トリガーでは配置を行わず、`ci.yml` の build 確認に留める（現行どおり）。 |
 | S-6 | SHOULD | `deploy.yml` / `ci.yml` で使う third-party action（`subosito/flutter-action`、Cloudflare の配置 action）は**メジャータグではなくコミット SHA 固定**にする。Dependabot の `github-actions` エコシステムを有効化する。 |
 
@@ -163,7 +163,7 @@ github.io の URL が直書きされている箇所（移行時に必ず触る�
 | エッジ関数 | Pages Functions（= Workers）。無料枠内で F8 動的 OGP・短縮リンクを**同一プロジェクト**で持てる | なし。F8 は別途 Workers を立て、github.io と別ドメインになる（OGP の `og:url` が分裂） | Cloud Functions（Blaze 必須）。Workers を別に立てるなら A の B 版と同じ分裂 |
 | Phase5 Firebase（F1/F6）との整合 | **整合する**。Firebase は「アプリのバックエンド」（分析・Firestore・匿名認証）、Cloudflare は「配信とエッジ」。SDK は SPA からどのドメインでも呼べる。CORS/認可ドメインに新ドメイン追加が必要（`authorized domains`） | 整合する（現状） | **最も密結合**。Hosting と Auth/Firestore が同一プロジェクト・同一ドメインで、認可ドメイン設定が自動 |
 | Phase5 F8 Workers との整合 | **最も自然**。SPA と Worker が同一オリジン | Worker が別オリジンになる | Workers を別オリジンで立てるか、Blaze で Functions に寄せる（F8 の設計メモと食い違う） |
-| 移行工数 | 中。`deploy.yml` の配置ステップ差し替え、`--base-href "/"`、`_headers`/`_redirects` 追加、URL 直書き 3 箇所、Sentry 許可ドメイン、github.io からのリダイレクト | 小。CSP は `<meta>` で部分対応、action の SHA 固定、Dependabot | 中。Firebase プロジェクト作成（F1 で必要になるものと共用可）、`firebase.json`、同じ URL 直書き 3 箇所 |
+| 移行工数 | 中。`deploy.yml` の配置ステップ差し替え、`--base-href "/"`、`_headers`/`_redirects` 追加、URL 直書き 3 箇所、Sentry 許可ドメイン、GitHub Pages の停止 | 小。CSP は `<meta>` で部分対応、action の SHA 固定、Dependabot | 中。Firebase プロジェクト作成（F1 で必要になるものと共用可）、`firebase.json`、同じ URL 直書き 3 箇所 |
 | ロールバック | Pages のデプロイ履歴から即時ロールバック可。GitHub Pages を残せば DNS/リンク戻しも可 | 該当なし | Hosting の release 履歴からロールバック可 |
 | リスク | アカウントが 1 つ増える。Cloudflare 独自仕様（`_headers`/`_redirects`）への依存。プレビュー URL（`*.pages.dev` のブランチ別）が公開されるため、未マージ機能が見える（プレビューは Access で保護可、無料枠 50 ユーザー） | **ヘッダ要件 S-3 を満たせない**。F8 で OGP ドメインが割れる | 10 GB/月 の帯域は OGP 画像（1200×630 PNG）と `main.dart.js`（数 MB）で意外と早く到達しうる。関数を Hosting 側でやりたくなると Blaze |
 | 公開性（バイラル） | 維持 | 維持 | 維持 |
@@ -213,9 +213,9 @@ github.io の URL が直書きされている箇所（移行時に必ず触る�
    ├─ _redirects: SPA fallback は不要（単一 index.html、?battle= は query なのでパスは "/" のまま）
    └─ (F8 で追加) Pages Functions /og?battle=... → 動的 OGP、 /s/<id> → 署名付き短縮リンク (KV)
 
-[GitHub Pages]  https://ifrit99.github.io/SmartPhoneSpecBattle/   ← 移行期間中は残す
-   └─ 最小 index.html で正規 URL へ <meta refresh> + JS リダイレクト（?battle= を引き継ぐ）
-      移行完了（§9 M-6）後に停止
+[GitHub Pages]  https://ifrit99.github.io/SmartPhoneSpecBattle/   ← Cloudflare Pages 稼働後に停止
+   └─ リダイレクトスタブは置かない（既存プレイヤー・ツイートなし。§9 M-3）
+      旧 deploy ワークフローはロールバック用に一定期間だけファイルとして残す（§9 M-5）
 
 [Firebase (Phase5 F1/F6/F7)]   ← アプリバックエンド。ホスティングとは無関係
    ├─ Analytics（同意後のみ）
@@ -239,12 +239,12 @@ github.io の URL が直書きされている箇所（移行時に必ず触る�
 |---|---|---|
 | M-1 | MUST | `--base-href` を `"/SmartPhoneSpecBattle/"` から `"/"` に変える（`deploy.yml:45`、`ci.yml:42` の両方）。**プロジェクトサイトのサブパスが消えるため、これ以外に `index.html` の相対パス修正は不要**。`web/index.html` の `$FLUTTER_BASE_HREF` はビルド時に置換される。 |
 | M-2 | MUST | **正規 URL を 1 箇所に決める**（`*.pages.dev` かカスタムドメイン。§10 Q1）。以下を正規 URL に揃える: `result_screen.dart:189` の `_gameUrl`、`web/index.html:17` の `og:url`、`deploy.yml:50` の `SITE_URL`。`_gameUrl` は `--dart-define=SITE_URL` から読む形にして直書きを解消するのが SHOULD（ただし `Uri.base` に頼ると X 投稿がプレビュー URL を指す事故が起きるので、**ツイート用 URL は定数/dart-define のまま**にする）。 |
-| M-3 | MUST | `https://ifrit99.github.io/SmartPhoneSpecBattle/` からのリダイレクト。GitHub Pages はサーバー側 301 を出せないので、`gh-pages` 相当の成果物を「リダイレクト専用 `index.html`」に置き換える: `<meta http-equiv="refresh">` ＋ `<link rel="canonical">` ＋ JS で `location.search`（`?battle=`）を引き継いで正規 URL へ遷移。過去のツイート・共有 URL・OGP キャッシュがしばらく github.io を指し続けるため、**最低 90 日は残す**（§10 Q3）。 |
+| M-3 | MUST（内容変更） | **github.io からのリダイレクトは不要（2026-09-11 ユーザー判断: まだプレイヤーも既存ツイートも存在せず、保全すべき導線がない）。** Cloudflare Pages が稼働し M-8 の確認が通ったら、GitHub Pages への配置を止める（リポジトリ設定で Pages を無効化するか、配置ワークフローを実行しないだけでも良い）。リダイレクト専用 `index.html` や 90 日の保持要件は置かない。将来プレイヤーが付いた後に再度ドメインを変える場合は、その時点で別途リダイレクト要件を起こす。 |
 | M-4 | MUST | Actions の secrets 構成: `CLOUDFLARE_API_TOKEN`（Pages Edit 限定）、`CLOUDFLARE_ACCOUNT_ID`。GitHub Environment `production` に置き、`deploy.yml` の deploy ジョブだけが参照する。`SENTRY_DSN` は現状どおり。`pull_request` からは配置しない。 |
 | M-5 | MUST | ロールバック手順を計画に記載: (1) Cloudflare Pages のデプロイ履歴から前回成果物へ即時ロールバック、(2) それでも駄目なら `deploy.yml` を GitHub Pages 配置に戻す（移行期間中は旧ワークフローをファイル名を変えて残す）。 |
-| M-6 | SHOULD | 移行完了の判定: Sentry の request URL と（F1 導入後の）Analytics で github.io 経由の流入が 30 日連続で無視できる水準になったら M-3 のリダイレクトページを停止。判定基準は運用開始時に数値を決める。 |
+| M-6 | SHOULD | 移行完了の判定: M-8 の手動確認が全項目通り、Cloudflare Pages 上で Sentry にイベントが到達することを確認した時点で完了とする。GitHub Pages を無効化し、ロールバック用に残した旧ワークフローは次の通常 PR で削除する（流入観測に基づく段階停止は不要になった）。 |
 | M-7 | SHOULD | Cloudflare Pages のブランチプレビューは `master` 以外を **Cloudflare Access で保護**するか、プレビュー配信自体を無効化する（未マージ機能の露出を防ぐ）。無料枠で可能。 |
-| M-8 | MUST | 移行 PR には以下の手動確認を含める: 正規 URL でタイトル → ホーム → フレンド共有 → 別タブで `?battle=` を開いてゲストプレビューまで遷移、X intent の本文が正規 URL を含む、OGP デバッガ（X Card Validator 相当）で画像と `og:url` が正規 URL、`curl -I` で S-3 のヘッダが返る、github.io から `?battle=` 付きでリダイレクトされる。 |
+| M-8 | MUST | 移行 PR には以下の手動確認を含める: 正規 URL でタイトル → ホーム → フレンド共有 → 別タブで `?battle=` を開いてゲストプレビューまで遷移、X intent の本文が正規 URL を含む、OGP デバッガ（X Card Validator 相当）で画像と `og:url` が正規 URL、`curl -I` で S-3 のヘッダが返る、GitHub Pages への配置が止まっている（旧 URL が更新されないこと）。 |
 
 ---
 
@@ -254,8 +254,8 @@ github.io の URL が直書きされている箇所（移行時に必ず触る�
 - [ ] A-2: §7 の決定（Cloudflare Pages 第一候補）に同意する。B または C を選ぶ場合はその理由を §7 に追記して Status を更新する。
 - [ ] A-3: §4 の MUST（S-1, S-3, S-4, S-7, S-8, S-9）を移行 PR の完了条件として採用する。
 - [ ] A-4: §5 の C-1/C-2（¥0、自動有料転換なし）を守れる構成であることを確認した。カード紐付けが必要な選択肢を含まない。
-- [ ] A-5: §9 の M-1〜M-5、M-8 を移行 PR の完了条件として採用する。
-- [ ] A-6: §11 の未決事項に回答した（少なくとも Q1〜Q3）。
+- [ ] A-5: §9 の M-1、M-2、M-4、M-5、M-8 を移行 PR の完了条件として採用する（M-3 は「GitHub Pages 停止のみ、リダイレクトなし」で確定済み）。
+- [ ] A-6: §11 の未決事項に回答した（少なくとも Q1〜Q2。Q3 は回答済み）。
 - [ ] A-7: 実装担当（grok-4.6）が着手する前に `docs/plans/hosting-foundation.md` の PR 順序をユーザーが承認した。
 
 ---
@@ -266,7 +266,7 @@ github.io の URL が直書きされている箇所（移行時に必ず触る�
 |---|---|---|---|
 | Q1 | 正規 URL は `*.pages.dev` のままにするか、カスタムドメインを取るか（取るなら候補ドメイン）。 | `*.pages.dev`（¥0 を優先） | M-2 の差し替え値、S-4 の HSTS 段階導入の有無、OGP `og:url` |
 | Q2 | Cloudflare アカウントは既存のものを使うか、本プロジェクト用に新規作成するか。 | 新規作成（権限分離） | M-4 のトークン発行元、将来 F8 の Workers/KV の所属 |
-| Q3 | github.io のリダイレクトページを残す期間。 | 90 日（M-6 の判定で延長可） | 旧ツイート・OGP キャッシュ経由の流入維持 |
+| Q3 | ~~github.io のリダイレクトページを残す期間。~~ **回答済み（2026-09-11）: リダイレクト不要。** 理由: まだプレイヤー・既存ツイートがなく保全対象がない。 | — | M-3 を「GitHub Pages 停止のみ」に確定。T10 は無視できるリスクへ格下げ |
 | Q4 | ブランチプレビュー配信を「Access 保護で残す」か「無効化」するか。 | 無効化（最小構成） | M-7。レビュー時に実機で触れる URL があるかどうか |
 | Q5 | 移行と同時に S-6（action の SHA 固定＋Dependabot）を入れるか、別 PR にするか。 | 別 PR（移行 PR を配置差し替えに限定） | PR 数と Codex レビューの粒度 |
 
