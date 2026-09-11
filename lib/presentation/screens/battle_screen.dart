@@ -11,9 +11,9 @@ import '../battle/battle_cue.dart';
 import '../theme/app_colors.dart';
 import '../widgets/battle/battle_sprite.dart';
 import '../widgets/battle/battle_vfx_layer.dart';
+import '../widgets/battle/skill_name_banner.dart';
 import '../widgets/stat_bar.dart';
 import '../widgets/damage_popup.dart';
-import '../widgets/skill_effect_overlay.dart';
 import '../../domain/services/enemy_generator.dart';
 import '../../domain/services/service_locator.dart';
 import 'result_screen.dart';
@@ -54,7 +54,7 @@ class _BattleScreenState extends State<BattleScreen> {
 
   // アニメーション・演出用
   final List<Widget> _popups = [];
-  Widget? _currentSkillOverlay;
+  Widget? _skillBanner;
   int _currentTurn = 1;
   final BattleSpriteController _playerSprite = BattleSpriteController();
   final BattleSpriteController _enemySprite = BattleSpriteController();
@@ -175,18 +175,16 @@ class _BattleScreenState extends State<BattleScreen> {
 
       final isPlayerActor = _isPlayerActor(entry);
 
-      // スキル発動時のエフェクト待機＋効果音（バナー置換は後続コミット）
-      if (entry.actionType == BattleActionType.skill &&
-          !entry.message.contains('防御力が上がった')) {
-        final actor = isPlayerActor ? _currentPlayer : _currentEnemy;
-
+      if (entry.actionType == BattleActionType.skill) {
         if (entry.healing > 0) {
           _sound.playHeal();
         } else {
           _sound.playSkill();
         }
-
-        await _showSkillEffect(entry.actionName, actor.element);
+        if (entry.actionName.isNotEmpty) {
+          final actor = isPlayerActor ? _currentPlayer : _currentEnemy;
+          _showSkillBanner(entry.actionName, actor.element);
+        }
       }
 
       if (!mounted || _playbackAborted) return;
@@ -365,7 +363,7 @@ class _BattleScreenState extends State<BattleScreen> {
       _displayedLog = List.from(_result.log);
       _currentLogIndex = _result.log.length;
       _battleComplete = true;
-      _currentSkillOverlay = null;
+      _skillBanner = null;
 
       // 実際の最終HPを反映
       _currentPlayer = _currentPlayer.withHp(_result.finalPlayerHp);
@@ -388,8 +386,6 @@ class _BattleScreenState extends State<BattleScreen> {
   }
 
   int get _logDelayMs => (800 / _playbackSpeed).round().clamp(220, 800);
-  int get _skillEffectDelayMs =>
-      (1000 / _playbackSpeed).round().clamp(320, 1000);
 
   void _cyclePlaybackSpeed() {
     final currentIndex = _playbackSpeeds.indexOf(_playbackSpeed);
@@ -462,8 +458,6 @@ class _BattleScreenState extends State<BattleScreen> {
                     },
                   ),
                 ),
-                // スキルエフェクトオーバーレイ（背景より前面）
-                if (_currentSkillOverlay != null) _currentSkillOverlay!,
               ],
             ),
           ),
@@ -509,6 +503,14 @@ class _BattleScreenState extends State<BattleScreen> {
               ),
             ),
           ),
+          if (_skillBanner != null)
+            Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 28),
+                child: _skillBanner,
+              ),
+            ),
           Column(
             children: [
               // 上部: 敵キャラクター
@@ -942,25 +944,24 @@ class _BattleScreenState extends State<BattleScreen> {
     });
   }
 
-  /// スキルエフェクトを表示
-  Future<void> _showSkillEffect(String skillName, ElementType element) async {
-    if (!mounted) return;
-
+  /// ターン表示直下のスキル名バナーを出す。
+  void _showSkillBanner(String skillName, ElementType element) {
+    if (!mounted) {
+      return;
+    }
     setState(() {
-      _currentSkillOverlay = SkillEffectOverlay(
+      _skillBanner = SkillNameBanner(
         skillName: skillName,
-        element: element,
+        color: elementColor(element),
+        playbackSpeed: _playbackSpeed,
         onComplete: () {
           if (mounted) {
             setState(() {
-              _currentSkillOverlay = null;
+              _skillBanner = null;
             });
           }
         },
       );
     });
-
-    // エフェクトのピークまで少し待つ
-    await Future.delayed(Duration(milliseconds: _skillEffectDelayMs));
   }
 }
