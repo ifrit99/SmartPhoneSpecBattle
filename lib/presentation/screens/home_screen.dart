@@ -832,7 +832,7 @@ class _HomeScreenState extends State<HomeScreen>
                       Icon(Icons.brush, size: 12, color: Color(0xFFA29BFE)),
                       SizedBox(width: 4),
                       Text(
-                        '見た目',
+                        'スプライト',
                         style: TextStyle(
                           color: Color(0xFFA29BFE),
                           fontSize: 11,

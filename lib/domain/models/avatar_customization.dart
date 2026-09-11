@@ -56,6 +56,14 @@ class AvatarCustomization {
         auraIndex,
       ].where((v) => v != unset).length;
 
+  /// Studio に出す 3 スロット（palette / accessory / aura）の設定済み数。
+  /// head / body / arm / leg は数えない。
+  int get visibleCustomizedCount => [
+        colorPaletteIndex,
+        accessoryIndex,
+        auraIndex,
+      ].where((v) => v != unset).length;
+
   /// キャラクターに適用する（おまかせスロットは元の値を維持）
   Character applyTo(Character character) {
     if (isEmpty) return character;
