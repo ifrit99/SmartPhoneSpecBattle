@@ -8,7 +8,9 @@ import '../../domain/enums/battle_tactic.dart';
 import '../../domain/services/battle_engine.dart';
 import '../../data/sound_service.dart';
 import '../battle/battle_cue.dart';
+import '../theme/app_colors.dart';
 import '../widgets/battle/battle_sprite.dart';
+import '../widgets/battle/battle_vfx_layer.dart';
 import '../widgets/stat_bar.dart';
 import '../widgets/damage_popup.dart';
 import '../widgets/skill_effect_overlay.dart';
@@ -56,6 +58,10 @@ class _BattleScreenState extends State<BattleScreen> {
   int _currentTurn = 1;
   final BattleSpriteController _playerSprite = BattleSpriteController();
   final BattleSpriteController _enemySprite = BattleSpriteController();
+  final BattleVfxController _vfx = BattleVfxController();
+  final GlobalKey _fieldKey = GlobalKey();
+  final GlobalKey _playerSpriteKey = GlobalKey();
+  final GlobalKey _enemySpriteKey = GlobalKey();
 
   // サウンドサービス
   final SoundService _sound = SoundService();
@@ -96,6 +102,7 @@ class _BattleScreenState extends State<BattleScreen> {
   void dispose() {
     _playerSprite.dispose();
     _enemySprite.dispose();
+    _vfx.dispose();
     _logScrollController.dispose();
     _sound.stopBgmImmediate(); // 画面離脱時にBGMを確実に停止
     super.dispose();
@@ -203,6 +210,7 @@ class _BattleScreenState extends State<BattleScreen> {
       if (cue.targetState != null) {
         _playTarget(entry, isPlayerActor, cue.targetState!);
       }
+      _spawnVfx(cue, entry, isPlayerActor);
       _scrollLogToBottom();
 
       _currentLogIndex++;
@@ -271,6 +279,64 @@ class _BattleScreenState extends State<BattleScreen> {
     (targetIsPlayer ? _playerSprite : _enemySprite).play(targetState);
   }
 
+  void _spawnVfx(BattleCue cue, BattleLogEntry entry, bool isPlayerActor) {
+    if (cue.vfxKinds.isEmpty) {
+      return;
+    }
+    final fieldSize = _fieldSize();
+    final actorRect = _spriteRect(
+      isPlayerActor ? _playerSpriteKey : _enemySpriteKey,
+      fieldSize,
+    );
+    final targetIsPlayer = entry.damage > 0 ? !isPlayerActor : isPlayerActor;
+    final targetRect = _spriteRect(
+      targetIsPlayer ? _playerSpriteKey : _enemySpriteKey,
+      fieldSize,
+    );
+    final actor = isPlayerActor ? _currentPlayer : _currentEnemy;
+    final color = elementColor(actor.element);
+    final crit = cue.vfxKinds.contains(VfxKind.crit);
+
+    for (final kind in cue.vfxKinds) {
+      if (kind == VfxKind.crit) {
+        _vfx.spawn(
+          VfxKind.flash,
+          target: targetRect,
+          color: Colors.white,
+          crit: true,
+        );
+        continue;
+      }
+      final rect = kind == VfxKind.ring ? actorRect : targetRect;
+      _vfx.spawn(kind, target: rect, color: color, crit: crit);
+    }
+  }
+
+  Size _fieldSize() {
+    final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) {
+      return Size.zero;
+    }
+    return box.size;
+  }
+
+  Rect _spriteRect(GlobalKey key, Size fieldSize) {
+    final spriteBox = key.currentContext?.findRenderObject() as RenderBox?;
+    final fieldBox = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+    if (spriteBox == null ||
+        fieldBox == null ||
+        !spriteBox.hasSize ||
+        !fieldBox.hasSize) {
+      return Rect.fromCenter(
+        center: Offset(fieldSize.width / 2, fieldSize.height / 2),
+        width: 48,
+        height: 48,
+      );
+    }
+    final topLeft = fieldBox.globalToLocal(spriteBox.localToGlobal(Offset.zero));
+    return topLeft & spriteBox.size;
+  }
+
   void _applyOutcomeStates() {
     if (_result.playerWon) {
       _playerSprite.play(SpriteState.victory);
@@ -285,6 +351,7 @@ class _BattleScreenState extends State<BattleScreen> {
     _playbackAborted = true;
     _playerSprite.stopAll();
     _enemySprite.stopAll();
+    _vfx.clear();
 
     // バトルBGMを停止し、結果SEを再生
     _sound.stopBgmImmediate();
@@ -418,6 +485,7 @@ class _BattleScreenState extends State<BattleScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       child: Stack(
+        key: _fieldKey,
         children: [
           // ターン表示
           Align(
@@ -455,6 +523,7 @@ class _BattleScreenState extends State<BattleScreen> {
                         right: 4,
                       ),
                       child: BattleSprite(
+                        key: _enemySpriteKey,
                         character: _currentEnemy,
                         height: charSize,
                         flipHorizontal: true,
@@ -472,6 +541,7 @@ class _BattleScreenState extends State<BattleScreen> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     BattleSprite(
+                      key: _playerSpriteKey,
                       character: _currentPlayer,
                       height: charSize,
                       controller: _playerSprite,
@@ -482,6 +552,10 @@ class _BattleScreenState extends State<BattleScreen> {
                 ),
               ),
             ],
+          ),
+          BattleVfxLayer(
+            controller: _vfx,
+            playbackSpeed: _playbackSpeed,
           ),
           // ダメージポップアップレイヤー
           ..._popups,
