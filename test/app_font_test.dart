@@ -20,9 +20,12 @@ void main() {
     await tester.pumpWidget(const SpecBattleApp());
     await tester.pump();
 
-    final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
-    expect(app.theme!.fontFamily, appFontFamily);
-    expect(app.theme!.fontFamilyFallback, const ['Roboto']);
+    final theme = tester.widget<MaterialApp>(find.byType(MaterialApp)).theme!;
+    expect(theme.textTheme.bodyMedium?.fontFamily, appFontFamily);
+    expect(theme.textTheme.bodyMedium?.fontFamilyFallback, const ['Roboto']);
+
+    // TitleScreen の演出ディレイ（0.8s + 0.6s）を消化して pending timer を残さない
+    await tester.pump(const Duration(milliseconds: 1500));
   });
 
   test('preloadAppFont が登録済みサブセットを読み込める', () async {
