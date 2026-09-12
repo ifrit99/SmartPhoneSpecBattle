@@ -1,6 +1,6 @@
 # Plan: ホスティング基盤の移行（Cloudflare Pages）
 Created: 2026-09-11
-Status: IMPLEMENTING PR-2（RFC は 2026-09-11 ユーザー承認済み。実装席は grok-4.6。PR-1 は #45。PR-2 は #45 ブランチから分岐）
+Status: PR-3 done（RFC は 2026-09-11 ユーザー承認済み。実装席は grok-4.6。PR-1 は #45。PR-2 は #46。次は PR-4: action SHA 固定 / Dependabot）
 
 ## 要件
 `docs/rfc_hosting_foundation.md` を**唯一の正本**とする。本ファイルは PR の順序と完了条件の写しだけを持ち、要件の詳細・比較・判断理由は RFC 側を参照する。RFC §10 の受け入れ基準と §11 の未決事項（Q1〜Q3 は最低限）にユーザーが回答するまで着手しない。
@@ -19,7 +19,7 @@ Status: IMPLEMENTING PR-2（RFC は 2026-09-11 ユーザー承認済み。実装
 | PR-1 | `feature/hosting-headers` | `web/_headers` を追加（CSP は Report-Only で開始）。GitHub Pages では無効なファイルなので**現行配信に影響なし**。先に成果物へ同梱しておき、PR-2 で切り替えた瞬間に効かせる | S-3, S-5 | 小 |
 | PR-2 | `feature/hosting-cloudflare-deploy` | `deploy.yml` の配置ステップを Cloudflare Pages（Direct Upload）へ差し替え、`--base-href "/"`（`ci.yml` も同時）。`SITE_URL` の `sed` と `og:url`、`result_screen.dart` の `_gameUrl` を正規 URL に更新（`--dart-define=SITE_URL` 化は同 PR で判断）。旧 GitHub Pages 用ワークフローはリネームして残す（ロールバック用）。RFC M-8 の手動確認を PR 本文に添える。確認が通ったらユーザーがリポジトリ設定で GitHub Pages を無効化（リダイレクトスタブなし） | M-1, M-2, M-3, M-4, M-5, M-8 | 中 |
 | ~~PR-3~~ | ~~`feature/hosting-githubio-redirect`~~ | **取消（2026-09-11）**: github.io リダイレクト専用ページは作らない。プレイヤー・既存ツイートが無く保全対象がないため（RFC M-3 / Q3） | — | — |
-| PR-3 | `feature/hosting-csp-enforce` | Report-Only の観測結果を見て CSP を enforce に切り替え。HSTS はカスタムドメイン確定時のみ短い max-age で。ロールバック用に残した旧 GitHub Pages ワークフローもここで削除（RFC M-6） | S-3, S-4, S-5, M-6 | 小 |
+| PR-3 | `feature/hosting-csp-enforce` | **done**: Report-Only を `Content-Security-Policy` に切替。ディレクティブ本文は据え置き。HSTS は未追加（カスタムドメインなし、S-4）。`deploy-github-pages.yml` は緊急ロールバック用に残置（M-6 の削除は後続。Pages は unpublished 済み） | S-3, S-4, S-5 | 小 |
 | PR-4（任意） | `feature/ci-action-pinning` | third-party action の SHA 固定、Dependabot（`github-actions`）有効化。RFC Q5 の回答が「同時」なら PR-2 に含める | S-6 | 小 |
 
 ## 完了条件（RFC §9/§10 の写し）
@@ -36,12 +36,14 @@ Status: IMPLEMENTING PR-2（RFC は 2026-09-11 ユーザー承認済み。実装
 - 正規 URL 予定: `https://smartphonespecbattle.pages.dev`（初回デプロイでプロジェクト作成。名前が取られていれば URL が変わる）
 - シークレット: リポジトリ secrets `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`（Environment `production` は使わない）
 - ブランチプレビュー（M-7）: Git 連携なし。`deploy.yml` は master のみ `--branch=master`。`wrangler.toml` に preview 無効化キーは無い
-- GitHub Pages 停止: M-8 確認が Cloudflare 上で通ったあと。リダイレクトスタブは作らない（M-3）
+- GitHub Pages 停止: リポジトリ設定で unpublished 済み。リダイレクトスタブは作らない（M-3）。`deploy-github-pages.yml` は緊急ロールバック用に残す（M-5）。M-6 のファイル削除は後続
 - ロールバック: (1) Pages のデプロイ履歴、(2) `deploy-github-pages.yml` を `workflow_dispatch` で実行
 ---
 ## Generator ログ
 - 2026-09-12 grok-4.6: PR-2 実装。起点は #45 `cursor/hosting-headers-21ba`（`web/_headers` 同梱）。旧 `deploy.yml` を `deploy-github-pages.yml` にリネームし push トリガーを外した。新 `deploy.yml` は wrangler Direct Upload。`--base-href "/"`、`SITE_URL` dart-define、`og:url` / `_gameUrl` を pages.dev に揃えた。
+- 2026-09-12 grok-4.6: PR-3 実装。`web/_headers` の CSP を Report-Only から enforce に切替。ディレクティブ本文は変更なし。HSTS なし。`deploy-github-pages.yml` は残置。起点は master `e6cc47a1`（#47）。
 
 ---
 ## 評価
 - 2026-09-12 grok-4.6: `flutter analyze` No issues found。`flutter test` All tests passed（476）。`flutter build web --release --base-href "/"` 成功（`base href="/"`、`og:url` は pages.dev、`build/web/_headers` あり）。実装は `cursor/hosting-cloudflare-deploy-161f`。マージしない。
+- 2026-09-12 grok-4.6: PR-3。`flutter analyze` No issues found。`flutter build web --release --base-href "/"` 成功（`build/web/_headers` が `web/_headers` と同一。ヘッダ名は `Content-Security-Policy`）。Dart 未変更のため `flutter test` は未実施。実装は `cursor/hosting-csp-enforce-da50`。マージしない。

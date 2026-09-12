@@ -1,7 +1,7 @@
 # RFC: ホスティング基盤の移行（Cloudflare Pages を第一候補とする）
 
 Created: 2026-09-11
-Status: APPROVED（2026-09-11 ユーザー承認。Q3 回答済み。Q1/Q2/Q4/Q5 は §11 の既定値で進める。実装は `docs/plans/hosting-foundation.md` の順序で grok-4.6）
+Status: APPROVED（2026-09-11 ユーザー承認。Q3 回答済み。Q1/Q2/Q4/Q5 は §11 の既定値で進める。実装は `docs/plans/hosting-foundation.md` の順序で grok-4.6。PR-3: CSP を Report-Only から enforce に切替、HSTS なし）
 Scope: 要件とアーキテクチャの設計のみ。本RFCはプロダクトコード（Dart/Flutter/ワークフロー）を変更しない。
 Related: `docs/phase5_brushup_spec.md`（F1/F2 済、F6 Firebase、F8 Workers 設計メモ）、`docs/feature-notes/share-url.md`、`docs/plans/error-monitoring.md`
 Implementation plan: `docs/plans/hosting-foundation.md`（本RFCが正本。計画は薄い順序表のみ）
