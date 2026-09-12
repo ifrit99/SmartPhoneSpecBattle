@@ -1,0 +1,11 @@
+# Cloudflare Pages Direct Upload（RFC PR-2 / M-7）
+# プロジェクト名: smartphonespecbattle
+# 正規 URL 予定: https://smartphonespecbattle.pages.dev
+# 初回デプロイでプロジェクトが作られ、URL はそこで確定する。
+#
+# ブランチプレビュー: wrangler.toml に preview_deployment_setting 相当のキーは無い
+# （Pages のプレビュー制御は Git 連携時のダッシュボード / API）。
+# Git 連携は使わない。deploy.yml は master のみ --branch=master で本番配置する。
+# プレビュー URL は作らない（RFC Q4 既定 = 無効化）。
+name = "smartphonespecbattle"
+pages_build_output_dir = "build/web"
