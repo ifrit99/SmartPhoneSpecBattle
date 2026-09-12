@@ -46,3 +46,4 @@ Status: PR-3 done（RFC は 2026-09-11 ユーザー承認済み。実装席は g
 ---
 ## 評価
 - 2026-09-12 grok-4.6: `flutter analyze` No issues found。`flutter test` All tests passed（476）。`flutter build web --release --base-href "/"` 成功（`base href="/"`、`og:url` は pages.dev、`build/web/_headers` あり）。実装は `cursor/hosting-cloudflare-deploy-161f`。マージしない。
+- 2026-09-12 grok-4.6: PR-3。`flutter analyze` No issues found。`flutter build web --release --base-href "/"` 成功（`build/web/_headers` が `web/_headers` と同一。ヘッダ名は `Content-Security-Policy`）。Dart 未変更のため `flutter test` は未実施。実装は `cursor/hosting-csp-enforce-da50`。マージしない。
