@@ -1,13 +1,13 @@
 # SPEC BATTLE — TODO
 
 バージョン: 0.1.0
-最終更新: 2026-09-10
+最終更新: 2026-09-12
 
 ---
 
-## 🤖 現在の作業状態 (2026-09-11)
-- **現在地**: バトル演出 PR-B（スプライトアニメーション＋スキル VFX）。Avatar Studio（#42）は master 済み。
-- **次の実装候補（ユーザー承認済み）**: ホスティング移行 RFC（`docs/rfc_hosting_foundation.md`、Cloudflare Pages 第一候補。2026-09-11 承認、Q3=github.io リダイレクト不要）。実装順は `docs/plans/hosting-foundation.md`。docs のみ、プロダクトコード未着手。
+## 🤖 現在の作業状態 (2026-09-12)
+- **現在地**: ホスティング移行 PR-1（`web/_headers`、CSP Report-Only）。RFC は master `a607b291`。PR-2（`deploy.yml` / SITE_URL / Cloudflare 配置）は未着手。
+- **次の実装候補（ユーザー承認済み）**: ホスティング移行 RFC（`docs/rfc_hosting_foundation.md`、Cloudflare Pages 第一候補。2026-09-11 承認、Q3=github.io リダイレクト不要）。実装順は `docs/plans/hosting-foundation.md`。
 - **直近の実装**:
   - バトル画面背景（`assets/images/battle_bg.png`）を追加
   - タイトル画面背景（`assets/images/title_bg.png`）と OGP 画像（`assets/images/ogp.png` / `web/ogp.png`）を追加
