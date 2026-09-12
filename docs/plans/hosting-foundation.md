@@ -1,6 +1,6 @@
 # Plan: ホスティング基盤の移行（Cloudflare Pages）
 Created: 2026-09-11
-Status: PLANNING（RFC は 2026-09-11 ユーザー承認済み。実装席は grok-4.6。PR-0 のユーザー作業完了後に PR-1 から着手）
+Status: IMPLEMENTING PR-2（RFC は 2026-09-11 ユーザー承認済み。実装席は grok-4.6。PR-1 は #45。PR-2 は #45 ブランチから分岐）
 
 ## 要件
 `docs/rfc_hosting_foundation.md` を**唯一の正本**とする。本ファイルは PR の順序と完了条件の写しだけを持ち、要件の詳細・比較・判断理由は RFC 側を参照する。RFC §10 の受け入れ基準と §11 の未決事項（Q1〜Q3 は最低限）にユーザーが回答するまで着手しない。
@@ -33,10 +33,15 @@ Status: PLANNING（RFC は 2026-09-11 ユーザー承認済み。実装席は gr
 
 ## 運用メモ（PR-2 マージ後に追記）
 - 月次確認: Cloudflare Pages の帯域/リクエスト数、Pages Functions の実行回数（F8 着手後）
+- 正規 URL 予定: `https://smartphonespecbattle.pages.dev`（初回デプロイでプロジェクト作成。名前が取られていれば URL が変わる）
+- シークレット: リポジトリ secrets `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`（Environment `production` は使わない）
+- ブランチプレビュー（M-7）: Git 連携なし。`deploy.yml` は master のみ `--branch=master`。`wrangler.toml` に preview 無効化キーは無い
+- GitHub Pages 停止: M-8 確認が Cloudflare 上で通ったあと。リダイレクトスタブは作らない（M-3）
+- ロールバック: (1) Pages のデプロイ履歴、(2) `deploy-github-pages.yml` を `workflow_dispatch` で実行
 ---
 ## Generator ログ
-（実装時に追記）
+- 2026-09-12 grok-4.6: PR-2 実装。起点は #45 `cursor/hosting-headers-21ba`（`web/_headers` 同梱）。旧 `deploy.yml` を `deploy-github-pages.yml` にリネームし push トリガーを外した。新 `deploy.yml` は wrangler Direct Upload。`--base-href "/"`、`SITE_URL` dart-define、`og:url` / `_gameUrl` を pages.dev に揃えた。
 
 ---
 ## 評価
-（検証結果を追記）
+（`flutter analyze` / `flutter test` 後に追記）

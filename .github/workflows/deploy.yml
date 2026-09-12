@@ -1,21 +1,27 @@
-# GitHub Pages へ Flutter Web アプリを自動デプロイするワークフロー
+# Cloudflare Pages へ Flutter Web を Direct Upload するワークフロー
 # トリガー: master ブランチへの push / 手動実行
-name: Deploy to GitHub Pages
+# RFC: docs/rfc_hosting_foundation.md PR-2（M-1, M-2, M-4, M-5, M-7）
+#
+# シークレットはリポジトリ secrets を参照する。
+# Environment `production` は使わない（Environments UI が使えないため）。
+name: Deploy to Cloudflare Pages
 
 on:
   push:
     branches: [master]
   workflow_dispatch:
 
-# GitHub Pages デプロイに必要な権限
+# 正規 URL（RFC M-2）。初回デプロイでプロジェクトが作られ、URL はそこで確定する。
+env:
+  SITE_URL: https://smartphonespecbattle.pages.dev
+  CF_PAGES_PROJECT: smartphonespecbattle
+
+# 配置は Cloudflare API トークンのみ。GitHub Pages 権限は不要。
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
-# 同時実行を防止（最新の実行のみ有効）
 concurrency:
-  group: pages
+  group: cloudflare-pages
   cancel-in-progress: true
 
 jobs:
@@ -42,26 +48,44 @@ jobs:
         run: flutter test
 
       - name: Web ビルド
-        run: flutter build web --release --base-href "/SmartPhoneSpecBattle/" --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} --dart-define=SENTRY_RELEASE=${{ github.sha }}
+        run: flutter build web --release --base-href "/" --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} --dart-define=SENTRY_RELEASE=${{ github.sha }} --dart-define=SITE_URL=${{ env.SITE_URL }}/
 
       - name: OGP 画像の絶対パスを設定
         run: |
-          # GitHub Pages の URL に合わせて OGP 画像パスを絶対 URL に書き換え
-          SITE_URL="https://ifrit99.github.io/SmartPhoneSpecBattle"
           sed -i "s|content=\"ogp.png\"|content=\"${SITE_URL}/ogp.png\"|g" build/web/index.html
 
-      - name: GitHub Pages 用アーティファクトをアップロード
-        uses: actions/upload-pages-artifact@v3
+      - name: ビルド成果物をアップロード
+        uses: actions/upload-artifact@v4
         with:
+          name: web-release
           path: build/web
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: GitHub Pages にデプロイ
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4
+
+      - name: ビルド成果物をダウンロード
+        uses: actions/download-artifact@v4
+        with:
+          name: web-release
+          path: build/web
+
+      - name: Cloudflare Pages に Direct Upload
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          # 初回はプロジェクトを作成する。既存なら create をスキップ。
+          if ! npx --yes wrangler@4 pages project list | grep -F "${CF_PAGES_PROJECT}"; then
+            npx --yes wrangler@4 pages project create "${CF_PAGES_PROJECT}" --production-branch=master
+          fi
+          # RFC M-7: Git 連携しない。master のみ本番配置し、プレビュー枝は作らない。
+          npx --yes wrangler@4 pages deploy build/web \
+            --project-name="${CF_PAGES_PROJECT}" \
+            --branch=master \
+            --commit-hash="${GITHUB_SHA}" \
+            --commit-dirty=true

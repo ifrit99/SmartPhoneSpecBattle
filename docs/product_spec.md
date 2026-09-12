@@ -357,11 +357,11 @@
 
 | 項目 | 内容 |
 |------|------|
-| ホスティング | GitHub Pages（静的HTML/JS/WASM） |
+| ホスティング | Cloudflare Pages（静的HTML/JS/WASM、Actions から Direct Upload） |
 | CI/CD | GitHub Actions（masterプッシュ時に自動ビルド＆デプロイ） |
-| ビルド | `flutter build web --release --base-href "/SmartPhoneSpecBattle/"` |
+| ビルド | `flutter build web --release --base-href "/"` |
 | 開発環境 | Docker（`ghcr.io/cirruslabs/flutter:stable` ベース） |
-| URL | `https://ifrit99.github.io/SmartPhoneSpecBattle/` |
+| URL | `https://smartphonespecbattle.pages.dev/`（初回デプロイ後に確定） |
 
 ### 6-4. 主要依存ライブラリ
 

@@ -6,7 +6,7 @@
 ---
 
 ## 🤖 現在の作業状態 (2026-09-12)
-- **現在地**: ホスティング移行 PR-1（`web/_headers`、CSP Report-Only）。RFC は master `a607b291`。PR-2（`deploy.yml` / SITE_URL / Cloudflare 配置）は未着手。
+- **現在地**: ホスティング移行 PR-2（Cloudflare Pages Direct Upload + SITE_URL）。PR-1 は #45（`cursor/hosting-headers-21ba`）。本 PR はそのブランチから分岐。
 - **次の実装候補（ユーザー承認済み）**: ホスティング移行 RFC（`docs/rfc_hosting_foundation.md`、Cloudflare Pages 第一候補。2026-09-11 承認、Q3=github.io リダイレクト不要）。実装順は `docs/plans/hosting-foundation.md`。
 - **直近の実装**:
   - バトル画面背景（`assets/images/battle_bg.png`）を追加

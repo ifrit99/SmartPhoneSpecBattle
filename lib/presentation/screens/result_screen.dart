@@ -184,9 +184,12 @@ class _ResultScreenState extends State<ResultScreen>
     Navigator.of(context).pop(nextAction);
   }
 
-  /// ゲームの公開URL（ツイートに添付）
-  static const String _gameUrl =
-      'https://ifrit99.github.io/SmartPhoneSpecBattle/';
+  /// ゲームの公開URL（ツイートに添付）。
+  /// RFC M-2: `--dart-define=SITE_URL`。Uri.base は使わない（プレビュー URL 事故防止）。
+  static const String _gameUrl = String.fromEnvironment(
+    'SITE_URL',
+    defaultValue: 'https://smartphonespecbattle.pages.dev/',
+  );
 
   Future<void> _shareToX() async {
     // Web版 url_launcher は新規ウィンドウを開くため、ポップアップブロックを

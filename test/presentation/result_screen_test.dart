@@ -167,7 +167,7 @@ void main() {
       expect(tweetText, contains('SPEC BATTLE'));
       expect(tweetText, contains('勝利！ Player vs Enemy'));
       expect(tweetText, contains('#SPECBATTLE'));
-      expect(tweetText, contains('ifrit99.github.io/SmartPhoneSpecBattle'));
+      expect(tweetText, contains('smartphonespecbattle.pages.dev'));
     });
 
     testWidgets('長いキャラ名でもツイート本文は280字以内に丸められる', (tester) async {
