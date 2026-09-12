@@ -110,8 +110,11 @@ class LocalLeagueService {
     );
   }
 
-  String get currentWeekId {
-    final today = _dateOnly(_now());
+  String get currentWeekId => weekIdAt(_now());
+
+  /// 端末ローカル日付の月曜 `yyyy-MM-dd`（オンラインランキングと同一）。
+  static String weekIdAt(DateTime now) {
+    final today = _dateOnly(now);
     final monday = today.subtract(Duration(days: today.weekday - 1));
     return _formatDate(monday);
   }
@@ -130,11 +133,11 @@ class LocalLeagueService {
     );
   }
 
-  DateTime _dateOnly(DateTime value) {
+  static DateTime _dateOnly(DateTime value) {
     return DateTime(value.year, value.month, value.day);
   }
 
-  String _formatDate(DateTime value) {
+  static String _formatDate(DateTime value) {
     final month = value.month.toString().padLeft(2, '0');
     final day = value.day.toString().padLeft(2, '0');
     return '${value.year}-$month-$day';

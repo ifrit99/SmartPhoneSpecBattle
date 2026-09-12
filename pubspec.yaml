@@ -20,6 +20,10 @@ dependencies:
   # Androidネイティブビルドは compileSdk 34 / AGP 8.1+ への更新が別途必要。
   url_launcher: ^6.3.0
   sentry_flutter: ^8.14.2
+  # F6 PR-A: ランキング参加 ON 時のみ初期化する。firebase_analytics は追加しない。
+  firebase_core: ^4.14.0
+  firebase_auth: ^6.6.0
+  cloud_firestore: ^6.9.0
 
 dev_dependencies:
   flutter_test:

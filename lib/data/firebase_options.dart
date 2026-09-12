@@ -1,3 +1,5 @@
+import 'package:firebase_core/firebase_core.dart';
+
 class FirebaseOptionsConfig {
   static const apiKey = String.fromEnvironment('FIREBASE_API_KEY');
   static const appId = String.fromEnvironment('FIREBASE_APP_ID');
@@ -10,5 +12,16 @@ class FirebaseOptionsConfig {
         appId.isNotEmpty &&
         messagingSenderId.isNotEmpty &&
         projectId.isNotEmpty;
+  }
+
+  /// dart-define の 4 キーから [FirebaseOptions] を組み立てる。
+  /// 匿名認証のみのため [FirebaseOptions.authDomain] は不要。
+  static FirebaseOptions get options {
+    return const FirebaseOptions(
+      apiKey: apiKey,
+      appId: appId,
+      messagingSenderId: messagingSenderId,
+      projectId: projectId,
+    );
   }
 }
