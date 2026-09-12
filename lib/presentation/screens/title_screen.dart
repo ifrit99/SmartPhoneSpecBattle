@@ -43,6 +43,23 @@ class _TitleScreenState extends State<TitleScreen>
   /// Web: 初回タップでAudioContextアンロック+BGM開始済みか
   bool _webAudioReady = !kIsWeb;
 
+  /// タイトル背景の precache を1回だけ行う
+  bool _titleBgPrecached = false;
+
+  static const AssetImage _titleBgImage =
+      AssetImage('assets/images/title_bg.png');
+
+  /// スキャフォールドと同じ暗色。画像未着時の白/空フレームを防ぐ
+  static const Color _titlePlaceholderColor = Color(0xFF0D1B2A);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_titleBgPrecached) return;
+    _titleBgPrecached = true;
+    precacheImage(_titleBgImage, context);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -176,11 +193,17 @@ class _TitleScreenState extends State<TitleScreen>
         child: Stack(
           children: [
             // 夜景背景。cover + 上寄せで暗部上空を残し、ロゴ可読性を確保する
-            const Positioned.fill(
+            Positioned.fill(
               child: Image(
-                image: AssetImage('assets/images/title_bg.png'),
+                image: _titleBgImage,
                 fit: BoxFit.cover,
                 alignment: Alignment.topCenter,
+                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                  if (wasSynchronouslyLoaded || frame != null) {
+                    return child;
+                  }
+                  return const ColoredBox(color: _titlePlaceholderColor);
+                },
               ),
             ),
 

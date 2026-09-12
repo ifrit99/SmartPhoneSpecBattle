@@ -22,7 +22,8 @@ void main() {
         return image is AssetImage &&
             image.assetName == 'assets/images/title_bg.png' &&
             widget.fit == BoxFit.cover &&
-            widget.alignment == Alignment.topCenter;
+            widget.alignment == Alignment.topCenter &&
+            widget.frameBuilder != null;
       }),
       findsOneWidget,
     );

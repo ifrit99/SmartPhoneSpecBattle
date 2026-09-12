@@ -19,6 +19,19 @@ final RouteObserver<ModalRoute<void>> routeObserver =
 /// 起動時のURL対戦パラメータ（Webのみ）
 String? _initialBattleParam;
 
+/// アプリ本文フォント（サブセット済み Noto Sans JP）
+const String appFontFamily = 'NotoSansJP';
+
+/// 登録済み NotoSansJP のアセットパス
+const String appFontAsset = 'assets/fonts/NotoSansJP-Regular.ttf';
+
+/// 日本語UIの1フレーム文字化けを避けるため、起動前にフォントを読み込む。
+Future<void> preloadAppFont() async {
+  final loader = FontLoader(appFontFamily);
+  loader.addFont(rootBundle.load(appFontAsset));
+  await loader.load();
+}
+
 void main() {
   // Sentry のエラー監視下でアプリを起動する（DSN未設定時はno-opで素通し）。
   runWithErrorMonitoring(() async {
@@ -30,8 +43,11 @@ void main() {
       statusBarIconBrightness: Brightness.light,
     ));
 
-    // サービスロケータの初期化
-    await ServiceLocator().init();
+    // フォント先行読み込みとサービス初期化を並行する
+    await Future.wait<void>([
+      preloadAppFont(),
+      ServiceLocator().init(),
+    ]);
 
     // Web: URLパラメータから対戦データを検出
     if (kIsWeb) {
@@ -105,7 +121,8 @@ class _SpecBattleAppState extends State<SpecBattleApp>
           secondary: Color(0xFF00B894),
         ),
         scaffoldBackgroundColor: const Color(0xFF0D1B2A),
-        fontFamily: 'Roboto',
+        fontFamily: appFontFamily,
+        fontFamilyFallback: const ['Roboto'],
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFF1B2838),
           elevation: 0,

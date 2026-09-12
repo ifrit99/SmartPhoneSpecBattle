@@ -36,3 +36,9 @@ flutter:
     - assets/images/characters/
     - assets/images/accessories/
 
+  fonts:
+    - family: NotoSansJP
+      fonts:
+        - asset: assets/fonts/NotoSansJP-Regular.ttf
+          weight: 400
+
