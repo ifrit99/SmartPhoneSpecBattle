@@ -1,0 +1,7 @@
+# RFC S-6: GitHub Actions の SHA ピンを週次で追従する
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
