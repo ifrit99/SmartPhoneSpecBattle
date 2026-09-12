@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 
 import '../../data/firebase_analytics_client.dart';
+import '../../data/firebase_bootstrap.dart';
+import '../../data/firebase_options.dart';
 import '../../data/local_storage_service.dart';
 import '../../data/sound_service.dart';
 import 'analytics_service.dart';
@@ -24,6 +26,7 @@ import 'daily_shop_service.dart';
 import 'rival_road_service.dart';
 import 'player_title_service.dart';
 import 'power_rating_service.dart';
+import 'ranking_service.dart';
 
 /// 旧デバイス名（実在名・架空名）→ 固定IDの対応表（マイグレーション用）
 const _oldDeviceNameToIdMap = <String, String>{
@@ -114,6 +117,7 @@ class ServiceLocator {
   late RivalRoadService rivalRoadService;
   late PlayerTitleService playerTitleService;
   late PowerRatingService powerRatingService;
+  late RankingService rankingService;
   AnalyticsService _analyticsService = NoopAnalyticsService();
   AnalyticsService get analyticsService => _analyticsService;
 
@@ -151,6 +155,12 @@ class ServiceLocator {
     rivalRoadService = RivalRoadService(storage, currencyService);
     playerTitleService = PlayerTitleService(storage, playerRankService);
     powerRatingService = PowerRatingService();
+    // PR-A: Firestore 実装は未導入。未設定時は推定 No-op。
+    // 設定済みでも骨格は Estimated。PR-B で差し替える。
+    rankingService = EstimatedRankingService(
+      ensureInitialized:
+          FirebaseOptionsConfig.hasConfig ? ensureFirebaseInitialized : null,
+    );
     battleResultService = BattleResultService(
       storage,
       experienceService,

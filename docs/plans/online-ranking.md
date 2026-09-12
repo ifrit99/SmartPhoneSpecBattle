@@ -1,6 +1,6 @@
 # Plan: F6 オンラインランキング MVP（Firebase 基盤＋週次世界ランキング）
 Created: 2026-09-12
-Status: PLANNING（設計のみ。ユーザーの方針判断と PR-0 完了後に grok-4.6 が実装）
+Status: IN_PROGRESS（PR-A 実装中。PR-A' / PR-B / PR-C は未着手）
 
 ## 要件
 `docs/phase5_brushup_spec.md` §1-4 F6 / §1-5 / §2-4 / §3-3 / §4 / §5 順6 を**唯一の正本**とする。本ファイルは PR の切り方・ユーザー作業・完了条件・検証手順だけを持ち、要件の詳細は仕様書側を参照する。
@@ -142,7 +142,17 @@ Status: PLANNING（設計のみ。ユーザーの方針判断と PR-0 完了後�
 
 ---
 ## Generator ログ
-（grok-4.6 が実装時に追記）
+PR-A（`cursor/ranking-firebase-bootstrap-00c4`）実装時の記録（grok-4.6、2026-09-12）:
+
+- パッケージ: `firebase_core ^4.14.0` / `firebase_auth ^6.6.0`（解決 6.6.1）/ `cloud_firestore ^6.9.0`。`firebase_analytics` は未追加。
+- `firebase_core_web` 3.11.0 の `initializeApp` は先に `_initializeCore()` を呼び、そこで `https://www.gstatic.com/firebasejs/$version/firebase-*.js` を `injectSrcScript` する。`registerWith` は `FirebasePlatform.instance` の差し替えのみ。`registerService('auth'|'firestore')` はサービス名を Map に載せるだけで、JS は注入しない。
+- ただし `pubspec.yaml` に 3 パッケージを置いた時点で Web の `generated_plugin_registrant` が `FirebaseCoreWeb` / `FirebaseAuthWeb` / `FirebaseFirestoreWeb` を起動時に `registerWith` する。Dart 側のプラグイン登録はスタートアップに乗る。gstatic の JS SDK 本体は `Firebase.initializeApp` までネットワーク取得されない。
+- `main` / `ServiceLocator.init` からは `ensureFirebaseInitialized()` を呼んでいない。参加 ON（`setOptIn(true)` と、メモリ上の参加中フラグでの `load*` / `submitIfNeeded`）だけが初期化に進む。`ranking_opt_in` の永続化は PR-B。
+- `flutter build web --release --base-href "/"` の `main.dart.js`:
+  - 導入前（`origin/master` @ 4c6c309）: 3,255,980 bytes（3.11 MB）
+  - 導入後（空の `--dart-define=FIREBASE_*`）: 3,265,741 bytes（3.11 MB）
+  - 差分: +9,761 bytes（**+0.30%**）。+15% 目安の内側。
+- 起動時に JS SDK は載らない。Dart プラグイン登録はスタートアップに残るが、実測の bundle 増分は小さい。Q2 の再判断は不要。
 
 ---
 ## 評価

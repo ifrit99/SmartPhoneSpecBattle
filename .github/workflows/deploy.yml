@@ -48,7 +48,7 @@ jobs:
         run: flutter test
 
       - name: Web ビルド
-        run: flutter build web --release --base-href "/" --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} --dart-define=SENTRY_RELEASE=${{ github.sha }} --dart-define=SITE_URL=${{ env.SITE_URL }}/
+        run: flutter build web --release --base-href "/" --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} --dart-define=SENTRY_RELEASE=${{ github.sha }} --dart-define=SITE_URL=${{ env.SITE_URL }}/ --dart-define=FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }} --dart-define=FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID }} --dart-define=FIREBASE_MESSAGING_SENDER_ID=${{ secrets.FIREBASE_MESSAGING_SENDER_ID }} --dart-define=FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}
 
       - name: OGP 画像の絶対パスを設定
         run: |
