@@ -1,0 +1,50 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // MAX_PWR = 278
+    // CharacterGenerator Lv1 基礎値上限（HP 202 / ATK·DEF·SPD 27）の
+    // PowerRatingService.powerScore = 252 に +10%（Q4）。ceil(252 * 1.1) = 278
+    // characterCode 256 = CharacterCodec v3 実長（~130）＋余裕
+    // title 32 = 既存称号の最長＋余裕
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidRankingEntry(uid) {
+      let d = request.resource.data;
+      return isSignedIn()
+        && request.auth.uid == uid
+        && d.uid == uid
+        && d.keys().hasOnly([
+          'uid',
+          'powerRating',
+          'characterCode',
+          'title',
+          'updatedAt',
+          'expiresAt'
+        ])
+        && d.uid is string
+        && d.powerRating is int
+        && d.powerRating >= 0
+        && d.powerRating <= 278
+        && d.characterCode is string
+        && d.characterCode.size() <= 256
+        && d.title is string
+        && d.title.size() <= 32
+        && d.updatedAt == request.time
+        && d.expiresAt is timestamp;
+    }
+
+    match /rankings/{weekId}/entries/{uid} {
+      allow read: if isSignedIn();
+      allow create, update: if isValidRankingEntry(uid);
+      allow delete: if isSignedIn() && request.auth.uid == resource.data.uid;
+    }
+
+    // collectionGroup('entries') 用。クエリは必ず where('uid' == 自分) を付ける。
+    match /{path=**}/entries/{entryId} {
+      allow read, delete: if isSignedIn()
+        && resource.data.uid == request.auth.uid;
+    }
+  }
+}

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../domain/models/character.dart';
+import '../../domain/services/character_codec.dart';
 import '../../domain/services/power_rating_service.dart';
+import '../../domain/services/ranking_service.dart';
+import '../../domain/services/service_locator.dart';
 import 'character_portrait.dart';
 import 'stat_bar.dart';
 
@@ -165,12 +168,21 @@ class PowerRankingSheet extends StatelessWidget {
   /// 自分の行に表示するアバター（カスタマイズ反映済み）
   final Character? playerAvatar;
 
-  const PowerRankingSheet({super.key, required this.rating, this.playerAvatar});
+  /// テスト注入用。未指定なら [ServiceLocator]（未初期化時は推定サービス）。
+  final RankingService? rankingService;
+
+  const PowerRankingSheet({
+    super.key,
+    required this.rating,
+    this.playerAvatar,
+    this.rankingService,
+  });
 
   static Future<void> show(
     BuildContext context,
     PowerRating rating, {
     Character? playerAvatar,
+    RankingService? rankingService,
   }) {
     return showModalBottomSheet<void>(
       context: context,
@@ -179,8 +191,11 @@ class PowerRankingSheet extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) =>
-          PowerRankingSheet(rating: rating, playerAvatar: playerAvatar),
+      builder: (context) => PowerRankingSheet(
+        rating: rating,
+        playerAvatar: playerAvatar,
+        rankingService: rankingService,
+      ),
     );
   }
 
@@ -229,6 +244,12 @@ class PowerRankingSheet extends StatelessWidget {
                 '※ ゲーム内登場端末とのローカル推定比較です。'
                 '世界ランキングは今後のアップデートで対応予定。',
                 style: TextStyle(fontSize: 10, color: Colors.white38),
+              ),
+              const SizedBox(height: 12),
+              _WorldRankingOptInSection(
+                rating: rating,
+                playerAvatar: playerAvatar,
+                rankingService: rankingService,
               ),
               const SizedBox(height: 12),
               Expanded(
@@ -304,6 +325,160 @@ class PowerRankingSheet extends StatelessWidget {
               color: highlight ? tierColor : Colors.white54,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// PR-B 最小 UI: 世界ランキング見出しと参加トグルのみ。一覧・ラベル切替は PR-C。
+class _WorldRankingOptInSection extends StatefulWidget {
+  final PowerRating rating;
+  final Character? playerAvatar;
+  final RankingService? rankingService;
+
+  const _WorldRankingOptInSection({
+    required this.rating,
+    this.playerAvatar,
+    this.rankingService,
+  });
+
+  @override
+  State<_WorldRankingOptInSection> createState() =>
+      _WorldRankingOptInSectionState();
+}
+
+class _WorldRankingOptInSectionState extends State<_WorldRankingOptInSection> {
+  late RankingService _service;
+  late bool _optedIn;
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _service = widget.rankingService ?? _resolveService();
+    _optedIn = _service.isOptedIn;
+  }
+
+  RankingService _resolveService() {
+    if (ServiceLocator().isInitialized) {
+      return ServiceLocator().rankingService;
+    }
+    return EstimatedRankingService();
+  }
+
+  String get _characterCode {
+    final avatar = widget.playerAvatar;
+    if (avatar == null) {
+      return '';
+    }
+    try {
+      return CharacterCodec.encode(avatar);
+    } catch (_) {
+      return '';
+    }
+  }
+
+  String get _title {
+    if (ServiceLocator().isInitialized) {
+      return ServiceLocator().playerTitleService.loadTitles().current.label;
+    }
+    return '';
+  }
+
+  Future<void> _setOptIn(bool enabled) async {
+    if (_busy) {
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await _service.setOptIn(
+        enabled,
+        local: widget.rating,
+        characterCode: _characterCode,
+        title: _title,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() => _optedIn = _service.isOptedIn);
+    } catch (_) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _optedIn = _service.isOptedIn;
+        if (enabled) {
+          _error = '参加に失敗しました。再試行してください';
+        } else {
+          _error = '削除に失敗しました。再試行してください';
+        }
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _busy = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '🌏 世界ランキング（今週）',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (_optedIn)
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    '参加中',
+                    style: TextStyle(fontSize: 12, color: Colors.white70),
+                  ),
+                ),
+                Switch(
+                  key: const Key('ranking_opt_in_switch'),
+                  value: true,
+                  onChanged: _busy ? null : _setOptIn,
+                ),
+              ],
+            )
+          else
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                key: const Key('ranking_opt_in_button'),
+                onPressed: _busy ? null : () => _setOptIn(true),
+                child: const Text('参加して実際の順位を見る'),
+              ),
+            ),
+          if (_error != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              _error!,
+              style: const TextStyle(fontSize: 11, color: Color(0xFFFF8A80)),
+            ),
+          ],
         ],
       ),
     );
