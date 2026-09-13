@@ -153,6 +153,7 @@ PR-A（`cursor/ranking-firebase-bootstrap-00c4`）実装時の記録（grok-4.6�
   - 導入後（空の `--dart-define=FIREBASE_*`）: 3,265,741 bytes（3.11 MB）
   - 差分: +9,761 bytes（**+0.30%**）。+15% 目安の内側。
 - 起動時に JS SDK は載らない。Dart プラグイン登録はスタートアップに残るが、実測の bundle 増分は小さい。Q2 の再判断は不要。
+- PR-A'（`cursor/hosting-csp-firebase-40e9`）: enforce CSP に `script-src https://www.gstatic.com/firebasejs/` と `connect-src` の Firestore / Identity Toolkit / Secure Token を追加。`frame-src` は追加しない。起点は master `e1e2628`（#56）。
 
 ---
 ## 評価
