@@ -1,7 +1,7 @@
 # SPEC BATTLE — TODO
 
 バージョン: 0.1.0
-最終更新: 2026-09-12
+最終更新: 2026-09-13
 
 ---
 
@@ -161,7 +161,7 @@
   - Phase 5 F4 ホーム画面分割 第1PR（RecordCard / DailyRewardCard / NextActionCard。PR #29）
 - **進行中**:
   - character-art-detail（キャラ詳細のヒーロー立ち絵＋指揮官6体の紹介文。PR #36 依存）
-- **現在の位置づけ**: character-art-detail in progress. F6 オンラインランキングは計画済み。PR-A（Firebase bootstrap + RankingService 骨格）を実装中（`docs/plans/online-ranking.md`。PR-0 のユーザー作業と未決事項の判断待ち）。
+- **現在の位置づけ**: F6 オンラインランキング PR-B（Firestore ルール＋クライアント読み書き＋参加トグル）を実装中。PR-A #56 / PR-A' #57 は master 済み。計画は `docs/plans/online-ranking.md`。
 
 ---
 

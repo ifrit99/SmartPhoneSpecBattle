@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../data/firebase_analytics_client.dart';
 import '../../data/firebase_bootstrap.dart';
 import '../../data/firebase_options.dart';
+import '../../data/firestore_ranking_backend.dart';
 import '../../data/local_storage_service.dart';
 import '../../data/sound_service.dart';
 import 'analytics_service.dart';
@@ -155,12 +156,16 @@ class ServiceLocator {
     rivalRoadService = RivalRoadService(storage, currencyService);
     playerTitleService = PlayerTitleService(storage, playerRankService);
     powerRatingService = PowerRatingService();
-    // PR-A: Firestore 実装は未導入。未設定時は推定 No-op。
-    // 設定済みでも骨格は Estimated。PR-B で差し替える。
-    rankingService = EstimatedRankingService(
-      ensureInitialized:
-          FirebaseOptionsConfig.hasConfig ? ensureFirebaseInitialized : null,
-    );
+    if (FirebaseOptionsConfig.hasConfig) {
+      rankingService = FirestoreRankingService(
+        backend: FirestoreRankingBackend(),
+        storage: storage,
+        analytics: _analyticsService,
+        ensureInitialized: ensureFirebaseInitialized,
+      );
+    } else {
+      rankingService = EstimatedRankingService();
+    }
     battleResultService = BattleResultService(
       storage,
       experienceService,

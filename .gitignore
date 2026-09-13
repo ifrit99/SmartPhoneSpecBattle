@@ -49,6 +49,9 @@ docs/reports/
 # 一時メモ・スクラッチ領域（Git追跡しない）
 .local/
 
+# Firestore ルールテスト（ローカル Emulator。CI 対象外）
+test/firestore/node_modules/
+
 # AIエージェント設定ファイル
 # .claude/ はサブエージェント定義（agents/）のみ追跡し、それ以外は無視する
 .claude/*
