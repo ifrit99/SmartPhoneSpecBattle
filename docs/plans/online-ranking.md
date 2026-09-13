@@ -1,6 +1,6 @@
 # Plan: F6 オンラインランキング MVP（Firebase 基盤＋週次世界ランキング）
 Created: 2026-09-12
-Status: IN_PROGRESS（PR-A / PR-A' マージ済み。PR-B 実装中。PR-C は未着手）
+Status: IN_PROGRESS（PR-A / PR-A' マージ済み。PR-B 実装済み・PR #58。PR-C は未着手）
 
 ## 要件
 `docs/phase5_brushup_spec.md` §1-4 F6 / §1-5 / §2-4 / §3-3 / §4 / §5 順6 を**唯一の正本**とする。本ファイルは PR の切り方・ユーザー作業・完了条件・検証手順だけを持ち、要件の詳細は仕様書側を参照する。
@@ -164,6 +164,13 @@ PR-B（`cursor/ranking-firestore-cf92`）実装時の記録（grok-4.6、2026-09
 - 参加キー `ranking_opt_in` / `ranking_last_sent_week_id` / `ranking_last_sent_payload_hash` は `analytics_consent` と同じくバックアップ対象外。
 - シートはヘッダ「🌏 世界ランキング（今週）」と参加トグルのみ。ラベル切替・上位一覧 UI は PR-C。
 - Spark プロジェクトに TTL ポリシーは無いが、クライアントは `expiresAt`（+30日）を必須で書く。
+- `flutter analyze`: No issues found。`flutter test`: 498 passed（`hasConfig == false` の No-op 経路を含む）。
+- Emulator ルールテスト（ローカル、CI 外）5+1 観点パス:
+  - 他人 uid への書き込み拒否
+  - 他人 entry の削除拒否 / 自分の entry 削除許可
+  - 値域外 powerRating 拒否
+  - expiresAt 欠落拒否
+  - 未認証の read 拒否
 
 ---
 ## 評価

@@ -161,7 +161,7 @@
   - Phase 5 F4 ホーム画面分割 第1PR（RecordCard / DailyRewardCard / NextActionCard。PR #29）
 - **進行中**:
   - character-art-detail（キャラ詳細のヒーロー立ち絵＋指揮官6体の紹介文。PR #36 依存）
-- **現在の位置づけ**: F6 オンラインランキング PR-B（Firestore ルール＋クライアント読み書き＋参加トグル）を実装中。PR-A #56 / PR-A' #57 は master 済み。計画は `docs/plans/online-ranking.md`。
+- **現在の位置づけ**: F6 オンラインランキング PR-B は PR #58（`cursor/ranking-firestore-cf92`）。PR-A #56 / PR-A' #57 は master 済み。次は PR-C（ラベル切替・上位一覧 UI）。計画は `docs/plans/online-ranking.md`。
 
 ---
 

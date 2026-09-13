@@ -49,11 +49,21 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('戦闘力ランキング'), findsOneWidget);
-      expect(find.text('あなたのスマホ'), findsOneWidget);
       expect(find.text('Forge Phone 9 Pro'), findsOneWidget);
       expect(find.textContaining('世界ランキングは今後のアップデート'), findsOneWidget);
       expect(find.text('🌏 世界ランキング（今週）'), findsOneWidget);
       expect(find.text('参加して実際の順位を見る'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        find.text('あなたのスマホ'),
+        80,
+        scrollable: find
+            .descendant(
+              of: find.byType(PowerRankingSheet),
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      expect(find.text('あなたのスマホ'), findsOneWidget);
     });
 
     testWidgets('参加ボタンで setOptIn(true) が呼ばれる', (tester) async {

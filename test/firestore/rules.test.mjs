@@ -9,6 +9,7 @@ import {
   deleteDoc,
   doc,
   getDoc,
+  serverTimestamp,
   setDoc,
   Timestamp,
 } from 'firebase/firestore';
@@ -22,7 +23,7 @@ const validEntry = (uid) => ({
   powerRating: 150,
   characterCode: 'abc',
   title: 'ルーキー',
-  updatedAt: Timestamp.now(),
+  updatedAt: serverTimestamp(),
   expiresAt: Timestamp.fromDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
 });
 
