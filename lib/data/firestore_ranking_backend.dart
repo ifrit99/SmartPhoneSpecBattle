@@ -4,15 +4,23 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../domain/services/ranking_service.dart';
 
 /// Firestore / 匿名認証へのランキング読み書き。Firebase 依存はこのファイルに閉じる。
+///
+/// コンストラクタでは `FirebaseAuth.instance` / `FirebaseFirestore.instance` に
+/// 触らない。`hasConfig` 時の ServiceLocator.init で構築されるため、
+/// `.instance` は `ensureFirebaseInitialized` 成功後の遅延 getter で取る。
 class FirestoreRankingBackend implements RankingBackend {
   FirestoreRankingBackend({
     FirebaseAuth? auth,
     FirebaseFirestore? firestore,
-  })  : _auth = auth ?? FirebaseAuth.instance,
-        _db = firestore ?? FirebaseFirestore.instance;
+  })  : _authOverride = auth,
+        _dbOverride = firestore;
 
-  final FirebaseAuth _auth;
-  final FirebaseFirestore _db;
+  final FirebaseAuth? _authOverride;
+  final FirebaseFirestore? _dbOverride;
+
+  FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
+
+  FirebaseFirestore get _db => _dbOverride ?? FirebaseFirestore.instance;
 
   @override
   String? get currentUid => _auth.currentUser?.uid;
