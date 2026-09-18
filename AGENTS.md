@@ -16,6 +16,14 @@
 - 判断: ユーザー。要求 → 設計案 → ユーザーの方針判断 → Grok が実装・検証・PR → Codex レビュー → Grok 修正 → ユーザーがマージ可否を判断。
 - ChatGPT Plus + Codex（Mac）を継続し、既定モデルは GPT 6 Astra。Claude Pro は解約済み、Claude Code は使わない。Grok Bot の共有PCには Codex / Claude Code を入れない。
 
+## Cursor Projects（重要）
+Cursor Projects / Project Agent でも本書の席を崩さない。
+- **製品コード**（Dart / Flutter / アセット配線 / PR）は **実装席 → Cloud Agent `grok-4.6` のみ**。
+- **Fable（`claude-fable-5-1`）は docs のみ**。設計〜実装〜PR〜レビューを一人で名乗らない・やらない。
+- **マージは人**。エージェントはマージしない。
+- Other Models 枠が尽きているときは Fable を起動せず、設計 docs は Mac Codex GPT 6 Astra に逃がす。オンデマンドは触らない。
+- 迷ったら Grok Bot の参謀ルート（外環→内環）に寄せる。Projects で席をバイパスしない。
+
 ## 進捗・参照先
 - 開始時に `/Users/kanaihideaki/orca/workspaces/life/ストレージ整理/AI-Shared-Memory/STATUS.md` を読み、区切りで担当・成果物/PR・検証結果・次の一手・判断待ちだけを更新する。既存の他案件は保持する。
 - Cloud Agent からこのローカルパスを読めない場合、Mac 側で当該タスクの最小限の引継ぎを用意する。共有メモ全体を Cloud に複製しない。
