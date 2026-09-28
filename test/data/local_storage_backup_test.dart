@@ -202,6 +202,32 @@ void main() {
     expect(storage.getAnalyticsConsent(), AnalyticsConsent.denied);
   });
 
+  test('ranking_opt_in 系キーはバックアップ対象外で復元時も現在値を維持する', () async {
+    await storage.setRankingOptedIn(true);
+    await storage.setRankingLastSentWeekId('2026-05-04');
+    await storage.setRankingLastSentPayloadHash('150|code|title');
+    await storage.saveCoins(80);
+
+    final code = await storage.exportBackupCode();
+    final payloadBytes = _v2PayloadBytes(code);
+    final payload =
+        jsonDecode(utf8.decode(payloadBytes)) as Map<String, dynamic>;
+    final data = payload['data'] as Map<String, dynamic>;
+
+    expect(data.containsKey('ranking_opt_in'), isFalse);
+    expect(data.containsKey('ranking_last_sent_week_id'), isFalse);
+    expect(data.containsKey('ranking_last_sent_payload_hash'), isFalse);
+
+    await storage.setRankingOptedIn(false);
+    await storage.clearRankingSendCache();
+    await storage.importBackupCode(code);
+
+    expect(storage.getCoins(), 80);
+    expect(storage.isRankingOptedIn(), isFalse);
+    expect(storage.getRankingLastSentWeekId(), isNull);
+    expect(storage.getRankingLastSentPayloadHash(), isNull);
+  });
+
   test('対戦履歴は直近20件だけ保持する', () async {
     for (var i = 0; i < 25; i++) {
       await storage.saveBattleHistoryEntry(

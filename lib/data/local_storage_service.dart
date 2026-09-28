@@ -138,6 +138,10 @@ class LocalStorageService {
   static const String _keyLastBossBountyDate = 'bossBounty.lastClaimDate';
   static const String _keyBossBestTurns = 'boss.bestTurns';
   static const String _keyAnalyticsConsent = 'analytics_consent';
+  static const String _keyRankingOptIn = 'ranking_opt_in';
+  static const String _keyRankingLastSentWeekId = 'ranking_last_sent_week_id';
+  static const String _keyRankingLastSentPayloadHash =
+      'ranking_last_sent_payload_hash';
   static const String _backupPrefixV1 = 'SPEC-BATTLE-BACKUP:';
   static const String _backupPrefixV2 = 'SPEC-BATTLE-BACKUP2:';
   static const int maxBattleHistoryEntries = 20;
@@ -392,6 +396,33 @@ class LocalStorageService {
 
   Future<void> setAnalyticsConsent(AnalyticsConsent consent) async {
     await _store.setString(_keyAnalyticsConsent, consent.storageValue);
+  }
+
+  // --- ランキング参加（バックアップ対象外。匿名 UID はブラウザ単位） ---
+
+  bool isRankingOptedIn() => _store.getBool(_keyRankingOptIn) ?? false;
+
+  Future<void> setRankingOptedIn(bool enabled) async {
+    await _store.setBool(_keyRankingOptIn, enabled);
+  }
+
+  String? getRankingLastSentWeekId() =>
+      _store.getString(_keyRankingLastSentWeekId);
+
+  Future<void> setRankingLastSentWeekId(String weekId) async {
+    await _store.setString(_keyRankingLastSentWeekId, weekId);
+  }
+
+  String? getRankingLastSentPayloadHash() =>
+      _store.getString(_keyRankingLastSentPayloadHash);
+
+  Future<void> setRankingLastSentPayloadHash(String hash) async {
+    await _store.setString(_keyRankingLastSentPayloadHash, hash);
+  }
+
+  Future<void> clearRankingSendCache() async {
+    await _store.remove(_keyRankingLastSentWeekId);
+    await _store.remove(_keyRankingLastSentPayloadHash);
   }
 
   // --- デイリー報酬 ---
@@ -765,6 +796,9 @@ class LocalStorageService {
   /// バックアップデータを全消去のうえ書き込む（importBackupCode専用）
   Future<void> _importBackupData(Map<String, dynamic> data) async {
     final currentAnalyticsConsent = getAnalyticsConsent();
+    final currentRankingOptIn = isRankingOptedIn();
+    final currentRankingWeekId = getRankingLastSentWeekId();
+    final currentRankingHash = getRankingLastSentPayloadHash();
     await _store.clear();
     await _store.setInt(_keyLevel, _asInt(data[_keyLevel], 1));
     await _store.setInt(_keyCurrentExp, _asInt(data[_keyCurrentExp], 0));
@@ -913,6 +947,15 @@ class LocalStorageService {
     }
     if (currentAnalyticsConsent != AnalyticsConsent.unanswered) {
       await setAnalyticsConsent(currentAnalyticsConsent);
+    }
+    if (currentRankingOptIn) {
+      await setRankingOptedIn(true);
+    }
+    if (currentRankingWeekId != null && currentRankingWeekId.isNotEmpty) {
+      await setRankingLastSentWeekId(currentRankingWeekId);
+    }
+    if (currentRankingHash != null && currentRankingHash.isNotEmpty) {
+      await setRankingLastSentPayloadHash(currentRankingHash);
     }
   }
 
