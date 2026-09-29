@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../data/ux_timing.dart';
 import '../../domain/models/character.dart';
 import '../../domain/services/character_codec.dart';
 import '../../domain/services/power_rating_service.dart';
@@ -36,8 +37,10 @@ class PowerRatingCard extends StatelessWidget {
     final strength = (1 - rating.topPercent / 100).clamp(0.0, 1.0);
 
     return GestureDetector(
-      onTap: () =>
-          PowerRankingSheet.show(context, rating, playerAvatar: playerAvatar),
+      onTap: () {
+        UxTiming.markStart(UxTiming.homeToPwrSheet);
+        PowerRankingSheet.show(context, rating, playerAvatar: playerAvatar);
+      },
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
@@ -201,6 +204,8 @@ class PowerRankingSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // このフレームに _WorldRankingOptInSection（🌏 世界ランキング）が載る。
+    UxTiming.markEndAfterFrame(UxTiming.homeToPwrSheet);
     final tierColor = powerTierColor(rating.tier);
 
     return DraggableScrollableSheet(
@@ -391,6 +396,7 @@ class _WorldRankingOptInSectionState extends State<_WorldRankingOptInSection> {
     if (_busy) {
       return;
     }
+    UxTiming.markStart(UxTiming.rankingOptinDone);
     setState(() {
       _busy = true;
       _error = null;
@@ -422,6 +428,7 @@ class _WorldRankingOptInSectionState extends State<_WorldRankingOptInSection> {
       if (mounted) {
         setState(() => _busy = false);
       }
+      UxTiming.markEndAfterFrame(UxTiming.rankingOptinDone);
     }
   }
 
