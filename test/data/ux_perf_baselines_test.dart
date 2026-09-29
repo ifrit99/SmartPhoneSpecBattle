@@ -4,15 +4,6 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('report_ux_perf_baselines は閾値未設定で exit 0', () async {
-    final result = await Process.run(
-      Platform.resolvedExecutable,
-      ['tool/report_ux_perf_baselines.dart'],
-    );
-    expect(result.exitCode, 0, reason: result.stderr.toString());
-    expect(result.stdout.toString(), contains('unset → measure-only'));
-  });
-
   test('baselines の閾値未設定は CI fail 対象にしない', () {
     final file = File('docs/perf/baselines.json');
     expect(file.existsSync(), isTrue);

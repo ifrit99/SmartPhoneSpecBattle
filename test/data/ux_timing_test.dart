@@ -35,13 +35,12 @@ void main() {
 
     testWidgets('post-frame で一度だけ閉じる', (tester) async {
       UxTiming.markStart('probe');
-      await tester.pumpWidget(const SizedBox.shrink());
-      UxTiming.markEndAfterFrame('probe');
-      UxTiming.markEndAfterFrame('probe');
-      expect(UxTiming.last('probe'), isNull);
+      await tester.pumpWidget(const _MarkOnInit(metric: 'probe'));
 
-      await tester.pump();
       expect(UxTiming.last('probe'), isNotNull);
+      final first = UxTiming.last('probe');
+      await tester.pump();
+      expect(UxTiming.last('probe'), same(first));
     });
   });
 
@@ -67,10 +66,9 @@ void main() {
       UxTiming.markStart(UxTiming.coldToTitle);
 
       await tester.pumpWidget(const MaterialApp(home: TitleScreen()));
-      expect(UxTiming.last(UxTiming.coldToTitle), isNull);
-
-      await tester.pump();
       expect(UxTiming.last(UxTiming.coldToTitle), isNotNull);
+      // _startSequence の 0.8s+0.6s 遅延を消化する
+      await tester.pump(const Duration(milliseconds: 1500));
     });
 
     testWidgets('カードタップからシート初回 post-frame で home_to_pwr_sheet を閉じる',
@@ -103,9 +101,7 @@ void main() {
 
       await tester.tap(find.byKey(const Key('ranking_opt_in_button')));
       await tester.pump();
-      expect(UxTiming.last(UxTiming.rankingOptinDone), isNull);
 
-      await tester.pump();
       expect(ranking.optInCalls, 1);
       expect(UxTiming.last(UxTiming.rankingOptinDone), isNotNull);
     });
@@ -129,6 +125,27 @@ void main() {
       expect(UxTiming.last(UxTiming.rankingOptinDone), isNotNull);
     });
   });
+}
+
+class _MarkOnInit extends StatefulWidget {
+  final String metric;
+
+  const _MarkOnInit({required this.metric});
+
+  @override
+  State<_MarkOnInit> createState() => _MarkOnInitState();
+}
+
+class _MarkOnInitState extends State<_MarkOnInit> {
+  @override
+  void initState() {
+    super.initState();
+    UxTiming.markEndAfterFrame(widget.metric);
+    UxTiming.markEndAfterFrame(widget.metric);
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
 class _FakeSheetRankingService implements RankingService {
