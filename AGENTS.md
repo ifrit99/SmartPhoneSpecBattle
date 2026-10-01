@@ -4,17 +4,25 @@
 正リポは `/Users/kanaihideaki/Documents/SmartPhoneSpecBattle`（trusted）。`CodexProject/SmartPhoneSpecBattle_codex` は変更しない。
 
 ## 現在の担当と流れ
-- 設計: Cursor Cloud Agent `claude-fable-5-1`（docs のみ）。Fable 枠切れ時だけ Mac Codex GPT 6 Astra が docs を代行する。
+- 設計: Cursor Cloud Agent `claude-fable-5-1`（docs のみ）。Fable が使えないとき、かつ Other Models に残枠がある場合だけ、Cloud Agent `claude-opus-5-5`（docs のみ）が代行する。Other Models が枯渇したら Fable / Opus とも起動せず報告のみ。設計フォールバックに Mac Codex GPT 6 Astra は使わない。
 - 実装・修正・テスト・PR作成: Cursor Cloud Agent `grok-4.6`。Codex に実装を寄せない。
-- レビュー: Codex。指摘は Grok に戻す。厳密見た目ゲートは頼まれたときだけ Mac Codex + Playwright MCP（headless、`--mute-audio`）。
+- レビュー: ChatGPT Plus が使えるときは Codex。指摘は Grok に戻す。Plus が無いときは thermos + grok-4.6 high。厳密見た目ゲートは頼まれたときだけ（Plus 復帰時は Mac Codex + Playwright MCP、headless、`--mute-audio`）。
 - Dual Review の役割分担:
-  - 設計・アーキ妥当性 → Fable 5.1（docsのみ）
-  - 完了報告・差分の事実監査（引用・矛盾・必要ならテスト）→ Mac Codex GPT 6 Astra
+  - 設計・アーキ妥当性 → Fable 5.1（docsのみ）。Fable 不可かつ Other Models 残枠ありなら Opus 5.5（docsのみ）
+  - 完了報告・差分の事実監査（引用・矛盾・必要ならテスト）→ Plus 復帰時は Mac Codex GPT 6 Astra。それ以外は thermos + grok-4.6 high
 - Dual Review は毎回しない。高リスクまたはユーザー依頼時のみ dual。
 - Dual Review でも実装は grok-4.6 のまま（既存どおり）。
-- 画像: Codex `gpt-image-2`。生成アセットは `assets/` へ。
-- 判断: ユーザー。要求 → 設計案 → ユーザーの方針判断 → Grok が実装・検証・PR → Codex レビュー → Grok 修正 → ユーザーがマージ可否を判断。
-- ChatGPT Plus + Codex（Mac）を継続し、既定モデルは GPT 6 Astra。Claude Pro は解約済み、Claude Code は使わない。Grok Bot の共有PCには Codex / Claude Code を入れない。
+- 画像: Plus 復帰時は Codex `gpt-image-2` を候補にする。生成アセットは `assets/` へ。Plus 無しのときは Codex 画像生成を前提にしない。
+- 判断: ユーザー。要求 → 設計案 → ユーザーの方針判断 → Grok が実装・検証・PR → レビュー（Plus 時 Codex / それ以外は thermos + grok-4.6 high）→ Grok 修正 → ユーザーがマージ可否を判断。
+- 課金: Claude Pro + Cursor Pro + Open Code Go（Hermes）を継続。ChatGPT Plus は解約済み。Claude Pro は Cursor Other Models を補充しない。Claude Code は使わない。Grok Bot の共有PCには Codex / Claude Code を入れない。
+
+## Cursor Projects（重要）
+Cursor Projects / Project Agent でも本書の席を崩さない。
+- **製品コード**（Dart / Flutter / アセット配線 / PR）は **実装席 → Cloud Agent `grok-4.6` のみ**。
+- **Fable（`claude-fable-5-1`）は docs のみ**。設計〜実装〜PR〜レビューを一人で名乗らない・やらない。
+- **マージは人**。エージェントはマージしない。
+- Other Models 枠が尽きているときは Fable / Opus とも起動せず、報告のみ。オンデマンドは触らない。Astra は設計フォールバックに使わない。
+- 迷ったら Grok Bot の参謀ルート（外環→内環）に寄せる。Projects で席をバイパスしない。
 
 ## 進捗・参照先
 - 開始時に `/Users/kanaihideaki/orca/workspaces/life/ストレージ整理/AI-Shared-Memory/STATUS.md` を読み、区切りで担当・成果物/PR・検証結果・次の一手・判断待ちだけを更新する。既存の他案件は保持する。
@@ -34,7 +42,7 @@
 - 仕様・公開範囲・課金・破壊的操作など新しい判断が必要なら、具体的な案と影響をユーザーへ示す。承認済みの範囲は進める。
 - コードの同時編集者は1人。`master` から `feature/` ブランチを作り、直接 `master` にコミットしない。コミット要約は日本語。
 - コード変更は `flutter analyze` / `flutter test` を通し、変更に応じた検証結果を添える。未検証は理由を明記する。文書のみなら差分・参照整合性を確認する。
-- Grok が検証後にコミット・push・PRを作成し、Codex のレビュー指摘を修正する。マージはユーザー判断に従う。
+- Grok が検証後にコミット・push・PRを作成し、レビュー指摘（Plus 時 Codex / それ以外は thermos + grok-4.6 high）を修正する。マージはユーザー判断に従う。
 
 ## Language
 - Pull request review comments must be written in Japanese.
