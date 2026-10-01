@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../../data/device_info_service.dart';
 import '../../data/sound_service.dart';
@@ -6,6 +8,7 @@ import '../../domain/models/character.dart';
 import '../../domain/enums/element_type.dart';
 import '../../domain/enums/battle_tactic.dart';
 import '../theme/app_colors.dart';
+import '../../domain/services/character_codec.dart';
 import '../../domain/services/character_generator.dart';
 import '../../domain/services/currency_service.dart';
 import '../../domain/services/daily_mission_service.dart';
@@ -168,6 +171,16 @@ class _HomeScreenState extends State<HomeScreen>
       _canClaimBattleReward = battleRewardAvailable;
       _loading = false;
     });
+
+    if (_sl.rankingService.isOptedIn) {
+      unawaited(
+        _sl.rankingService.submitIfNeeded(
+          local: rating,
+          characterCode: CharacterCodec.encode(character),
+          title: _sl.playerTitleService.loadTitles().current.label,
+        ),
+      );
+    }
 
     // ログイン報酬ポップアップを表示
     if (loginResult != null && mounted) {
