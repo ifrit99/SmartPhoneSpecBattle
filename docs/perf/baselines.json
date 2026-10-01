@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "note": "threshold_ms が null / 未設定なら CI は fail しない（measure-only）",
+  "metrics": {
+    "cold_to_title": {
+      "threshold_ms": null
+    },
+    "home_to_pwr_sheet": {
+      "threshold_ms": null
+    },
+    "ranking_optin_done": {
+      "threshold_ms": null
+    }
+  }
+}

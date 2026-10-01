@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'data/sound_service.dart';
 import 'data/error_monitoring.dart';
 import 'data/firebase_analytics_client.dart';
+import 'data/ux_timing.dart';
 import 'domain/services/service_locator.dart';
 import 'domain/services/qr_battle_service.dart';
 import 'presentation/screens/title_screen.dart';
@@ -33,6 +34,7 @@ Future<void> preloadAppFont() async {
 }
 
 void main() {
+  UxTiming.markStart(UxTiming.coldToTitle);
   // Sentry のエラー監視下でアプリを起動する（DSN未設定時はno-opで素通し）。
   runWithErrorMonitoring(() async {
     WidgetsFlutterBinding.ensureInitialized();

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../data/local_storage_service.dart';
 import '../../data/sound_service.dart';
+import '../../data/ux_timing.dart';
 import '../widgets/analytics_consent_dialog.dart';
 import 'home_screen.dart';
 import 'onboarding_screen.dart';
@@ -63,6 +64,8 @@ class _TitleScreenState extends State<TitleScreen>
   @override
   void initState() {
     super.initState();
+    // ロゴ/TAP演出は待たない。タイトルの初回フレームで cold_to_title を閉じる。
+    UxTiming.markEndAfterFrame(UxTiming.coldToTitle);
 
     // パーティクル生成
     for (int i = 0; i < 30; i++) {
