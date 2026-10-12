@@ -258,6 +258,20 @@ extension on BattleVfxEvent {
   }
 }
 
+/// スラッシュ線の長さ係数（0..1）。最大長は charSize * 1.2。
+/// 最初の 2 フレーム（t < 0.2）で最大まで伸ばし、以後は最大のまま。
+double slashLength(double t) {
+  return (t / 0.2).clamp(0.0, 1.0);
+}
+
+/// スラッシュの不透明度。t ≒ 0.45（約 5 フレーム）まで 1、残りで 0 まで落とす。
+double slashAlpha(double t) {
+  if (t <= 0.45) {
+    return 1.0;
+  }
+  return ((1.0 - t) / 0.55).clamp(0.0, 1.0);
+}
+
 class _BattleVfxPainter extends CustomPainter {
   final List<BattleVfxEvent> events;
   final int nowMs;
@@ -310,7 +324,8 @@ class _BattleVfxPainter extends CustomPainter {
   void _paintSlash(Canvas canvas, BattleVfxEvent event, double t) {
     final center = event.target.center;
     final charSize = math.min(event.target.width, event.target.height);
-    final length = charSize * 1.2 * t;
+    final length = charSize * 1.2 * slashLength(t);
+    final alpha = slashAlpha(t);
     final count = event.crit ? 3 : 2;
     const angles = <double>[-0.7, 0.7, 0.0];
     for (var i = 0; i < count; i++) {
@@ -320,11 +335,11 @@ class _BattleVfxPainter extends CustomPainter {
       final a = center.translate(-dx, -dy);
       final b = center.translate(dx, dy);
       linePaint
-        ..color = event.color.withValues(alpha: 1 - t)
+        ..color = event.color.withValues(alpha: alpha)
         ..strokeWidth = 5;
       canvas.drawLine(a, b, linePaint);
       linePaint
-        ..color = Colors.white.withValues(alpha: 1 - t)
+        ..color = Colors.white.withValues(alpha: alpha)
         ..strokeWidth = 3;
       canvas.drawLine(a, b, linePaint);
     }

@@ -4,6 +4,17 @@ import 'package:spec_battle_game/presentation/battle/battle_cue.dart';
 import 'package:spec_battle_game/presentation/widgets/battle/battle_vfx_layer.dart';
 
 void main() {
+  group('slashLength / slashAlpha', () {
+    test('t=0.3 で長さは最大・alpha は 1', () {
+      expect(slashLength(0.3), 1.0);
+      expect(slashAlpha(0.3), 1.0);
+    });
+
+    test('t=1 で alpha は 0', () {
+      expect(slashAlpha(1.0), 0.0);
+    });
+  });
+
   testWidgets('spawn 後に描画対象があり、寿命経過で空になる', (tester) async {
     final controller = BattleVfxController();
     await tester.pumpWidget(
