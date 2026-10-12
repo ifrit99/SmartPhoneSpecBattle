@@ -162,6 +162,7 @@
 - **進行中**:
   - character-art-detail（キャラ詳細のヒーロー立ち絵＋指揮官6体の紹介文。PR #36 依存）
 - **現在の位置づけ**: F6 オンラインランキング PR-B は PR #58（`cursor/ranking-firestore-cf92`）。PR-A #56 / PR-A' #57 は master 済み。次は PR-C（ラベル切替・上位一覧 UI）。計画は `docs/plans/online-ranking.md`。
+- **判断待ち（設計のみ）**: セキュリティ強化 RFC `docs/rfc_security_hardening.md`（`firestore.rules` の `weekId` / `expiresAt` 制限、App Check 段階導入、`deploy.yml` の wrangler 固定とトークン最小化。HSTS は範囲外）。§10 の回答後に `docs/plans/security-hardening.md` の順で grok-4.6 が実装。
 
 ---
 
