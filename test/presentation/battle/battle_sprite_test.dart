@@ -35,6 +35,28 @@ void main() {
     expect(controller.state, SpriteState.idle);
   });
 
+  testWidgets('play(attack) は頂点 140ms・165ms で止まり 200ms で戻る', (tester) async {
+    final controller = BattleSpriteController();
+    await _pumpSprite(tester, controller: controller);
+    await tester.pump();
+
+    controller.play(SpriteState.attack);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 120));
+    final peakDx = _offset(tester).dx;
+    expect(peakDx, greaterThan(0));
+
+    await tester.pump(const Duration(milliseconds: 20));
+    expect(_offset(tester).dx, peakDx);
+
+    await tester.pump(const Duration(milliseconds: 25));
+    expect(_offset(tester).dx, peakDx);
+
+    await tester.pump(const Duration(milliseconds: 35));
+    expect(_offset(tester).dx, lessThan(peakDx));
+    expect(_offset(tester).dx, greaterThan(0));
+  });
+
   testWidgets('play(attack) は 120ms で敵が −x', (tester) async {
     final controller = BattleSpriteController();
     await _pumpSprite(
