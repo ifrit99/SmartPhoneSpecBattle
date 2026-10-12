@@ -115,6 +115,29 @@ class BattleVfxEvent {
   }
 }
 
+/// 粒の正規化距離 0→1。`Curves.easeOutCubic`（速く出てゆっくり止まる）。
+double particleDistance(double t) {
+  return Curves.easeOutCubic.transform(t.clamp(0.0, 1.0));
+}
+
+/// burst の最大落下（charSize 比）。ガイド §4 候補 2 の 0.1〜0.15。
+const double burstFallFactor = 0.12;
+
+/// burst の下方向落下（論理 px）。`t²` に比例して 0 → [burstFallFactor] × charSize。
+double burstFall(double t, double charSize) {
+  final x = t.clamp(0.0, 1.0);
+  return burstFallFactor * charSize * x * x;
+}
+
+/// 粒の不透明度。t=0.6 まで 1、その後線形で t=1 に 0。
+double particleAlpha(double t) {
+  final x = t.clamp(0.0, 1.0);
+  if (x <= 0.6) {
+    return 1.0;
+  }
+  return (1.0 - x) / 0.4;
+}
+
 /// フィールド全面に 1 枚置く VFX。VFX ごとの AnimationController は持たない。
 class BattleVfxLayer extends StatefulWidget {
   final BattleVfxController controller;
@@ -335,15 +358,18 @@ class _BattleVfxPainter extends CustomPainter {
     final charSize = math.min(event.target.width, event.target.height);
     final rng = math.Random(event.seed);
     final count = 8 + rng.nextInt(5);
-    final dist = 0.6 * charSize * t;
+    final dist = 0.6 * charSize * particleDistance(t);
+    final fall = burstFall(t, charSize);
+    final alpha = particleAlpha(t);
     for (var i = 0; i < count; i++) {
       final angle = (2 * math.pi * i / count) + rng.nextDouble() * 0.2;
+      // 粒は 2 / 3 / 4px の正方形のみ。burst は 3 か 4。
       final particleSize = 3.0 + rng.nextInt(2);
-      final pos = center.translate(
-        math.cos(angle) * dist,
-        math.sin(angle) * dist,
+      final pos = Offset(
+        (center.dx + math.cos(angle) * dist).roundToDouble(),
+        (center.dy + math.sin(angle) * dist + fall).roundToDouble(),
       );
-      fillPaint.color = event.color.withValues(alpha: 1 - t);
+      fillPaint.color = event.color.withValues(alpha: alpha);
       canvas.drawRect(
         Rect.fromCenter(center: pos, width: particleSize, height: particleSize),
         fillPaint,
@@ -365,10 +391,15 @@ class _BattleVfxPainter extends CustomPainter {
     final feet = Offset(event.target.center.dx, event.target.bottom);
     final charSize = math.min(event.target.width, event.target.height);
     final rng = math.Random(event.seed);
+    final rise = 0.5 * charSize * particleDistance(t);
+    final alpha = particleAlpha(t);
     for (var i = 0; i < 6; i++) {
       final drift = (rng.nextDouble() - 0.5) * charSize * 0.4;
-      final pos = feet.translate(drift, -0.5 * charSize * t);
-      fillPaint.color = event.color.withValues(alpha: 1 - t);
+      final pos = Offset(
+        (feet.dx + drift).roundToDouble(),
+        (feet.dy - rise).roundToDouble(),
+      );
+      fillPaint.color = event.color.withValues(alpha: alpha);
       canvas.drawRect(
         Rect.fromCenter(center: pos, width: 2, height: 2),
         fillPaint,
