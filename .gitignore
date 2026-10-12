@@ -51,7 +51,6 @@ docs/reports/
 
 # Firestore ルールテスト（ローカル Emulator。CI 対象外）
 test/firestore/node_modules/
-test/firestore/package-lock.json
 firebase-debug.log
 firestore-debug.log
 ui-debug.log

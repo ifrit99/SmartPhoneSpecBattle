@@ -6,14 +6,45 @@ service cloud.firestore {
     // PowerRatingService.powerScore = 252 に +10%（Q4）。ceil(252 * 1.1) = 278
     // characterCode 256 = CharacterCodec v3 実長（~130）＋余裕
     // title 32 = 既存称号の最長＋余裕
+    // TTL_MAX_DAYS = 31: クライアントの rankingEntryTtlDays(30) ＋ 端末時計ずれ 1 日分
+    // weekId 窓は −8 日 / ＋1 日。端末ローカル日付の月曜なので UTC より最大 1 日先行し、
+    // 週替わり直後の端末差で前週へ書くことも許す（今から 8 日前まで）。
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function isValidRankingEntry(uid) {
+    // int('08') が拒否される環境向け。先頭 0 を落としてから int する。
+    function parseTwoDigits(value) {
+      return value[0:1] == '0' ? int(value[1:2]) : int(value);
+    }
+
+    // weekId は「月曜の日付」yyyy-MM-dd。形式→実在日→月曜→今週の順に確かめる。
+    function weekStart(weekId) {
+      return timestamp.date(
+        int(weekId[0:4]),
+        parseTwoDigits(weekId[5:7]),
+        parseTwoDigits(weekId[8:10])
+      );
+    }
+
+    function isValidWeekId(weekId) {
+      return weekId.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && weekStart(weekId).dayOfWeek() == 1
+        && weekStart(weekId) <= request.time + duration.value(1, 'd')
+        && weekStart(weekId) >= request.time - duration.value(8, 'd');
+    }
+
+    function isValidExpiresAt(expiresAt) {
+      return expiresAt is timestamp
+        && expiresAt > request.time
+        && expiresAt <= request.time + duration.value(31, 'd');
+    }
+
+    function isValidRankingEntry(uid, weekId) {
       let d = request.resource.data;
       return isSignedIn()
         && request.auth.uid == uid
+        && isValidWeekId(weekId)
         && d.uid == uid
         && d.keys().hasOnly([
           'uid',
@@ -32,12 +63,14 @@ service cloud.firestore {
         && d.title is string
         && d.title.size() <= 32
         && d.updatedAt == request.time
-        && d.expiresAt is timestamp;
+        && isValidExpiresAt(d.expiresAt);
     }
 
     match /rankings/{weekId}/entries/{uid} {
       allow read: if isSignedIn();
-      allow create, update: if isValidRankingEntry(uid);
+      allow create: if isValidRankingEntry(uid, weekId);
+      allow update: if isValidRankingEntry(uid, weekId);
+      // R-2（更新間隔 30 秒）は Q2 既定どおり今回は入れない。
       allow delete: if isSignedIn() && request.auth.uid == resource.data.uid;
     }
 
