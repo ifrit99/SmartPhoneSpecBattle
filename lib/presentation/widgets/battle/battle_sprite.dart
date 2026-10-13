@@ -257,12 +257,15 @@ class _BattleSpriteState extends State<BattleSprite>
     }
   }
 
-  /// 行き 40%（120ms / 300ms）easeOut、戻り 60% easeIn。
+  /// 行き 0〜0.4 easeOut、頂点で 0.4〜0.57 止め（約 3f）、戻り 0.57〜1.0 easeIn。
   double _lungeProgress(double t) {
     if (t <= 0.4) {
       return Curves.easeOut.transform(t / 0.4);
     }
-    return 1 - Curves.easeIn.transform((t - 0.4) / 0.6);
+    if (t <= 0.57) {
+      return 1;
+    }
+    return 1 - Curves.easeIn.transform((t - 0.57) / 0.43);
   }
 
   _SpritePose _castPose(double t, double size, double sign) {
