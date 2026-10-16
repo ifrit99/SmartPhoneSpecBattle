@@ -1,10 +1,9 @@
-import 'dart:async';
-
 import '../../data/local_storage_service.dart';
 import '../models/gacha_character.dart';
 import '../models/player_currency.dart';
 import 'currency_service.dart';
 import 'gacha_service.dart';
+import 'serial_executor.dart';
 
 enum DailyShopRewardKind {
   trainingExp,
@@ -118,7 +117,7 @@ class DailyShopService {
   final CurrencyService _currencyService;
   final GachaService _gachaService;
   final DateTime Function() _now;
-  Future<void>? _purchaseChain;
+  final SerialExecutor _serial = SerialExecutor();
 
   DailyShopService(
     this._storage,
@@ -126,20 +125,6 @@ class DailyShopService {
     this._gachaService, {
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now;
-
-  Future<T> _runExclusive<T>(Future<T> Function() action) async {
-    final previous = _purchaseChain;
-    final completer = Completer<void>();
-    _purchaseChain = completer.future;
-    try {
-      if (previous != null) {
-        await previous;
-      }
-      return await action();
-    } finally {
-      completer.complete();
-    }
-  }
 
   String get todayString => _formatDate(_now());
 
@@ -165,7 +150,7 @@ class DailyShopService {
   }
 
   Future<DailyShopPurchaseResult?> purchase(String id) {
-    return _runExclusive(() async {
+    return _serial.run(() async {
       await _ensureToday();
 
       final definition = _definitionById(id);

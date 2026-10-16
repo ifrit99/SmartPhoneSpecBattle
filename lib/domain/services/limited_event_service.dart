@@ -1,6 +1,7 @@
 import '../../data/local_storage_service.dart';
 import 'currency_service.dart';
 import 'enemy_generator.dart';
+import 'serial_executor.dart';
 
 class LimitedEventDefinition {
   final String id;
@@ -149,6 +150,7 @@ class LimitedEventService {
   final LocalStorageService _storage;
   final CurrencyService _currencyService;
   final DateTime Function() _now;
+  final SerialExecutor _serial = SerialExecutor();
 
   LimitedEventService(
     this._storage,
@@ -209,51 +211,55 @@ class LimitedEventService {
     );
   }
 
-  Future<LimitedEventClaimResult?> claim() async {
-    await _ensureCurrentWeek();
-    final snapshot = loadEvent();
-    if (!snapshot.claimable) return null;
+  Future<LimitedEventClaimResult?> claim() {
+    return _serial.run(() async {
+      await _ensureCurrentWeek();
+      final snapshot = loadEvent();
+      if (!snapshot.claimable) return null;
 
-    await _currencyService.addCoins(snapshot.definition.rewardCoins);
-    await _currencyService.addGems(snapshot.definition.rewardGems);
-    await _storage.setLimitedEventClaimed(true);
+      await _storage.setLimitedEventClaimed(true);
+      await _currencyService.addCoins(snapshot.definition.rewardCoins);
+      await _currencyService.addGems(snapshot.definition.rewardGems);
 
-    return LimitedEventClaimResult(
-      coinsAwarded: snapshot.definition.rewardCoins,
-      gemsAwarded: snapshot.definition.rewardGems,
-    );
+      return LimitedEventClaimResult(
+        coinsAwarded: snapshot.definition.rewardCoins,
+        gemsAwarded: snapshot.definition.rewardGems,
+      );
+    });
   }
 
-  Future<LimitedEventClaimResult?> claimAvailableMilestones() async {
-    await _ensureCurrentWeek();
-    final snapshot = loadEvent();
-    final claimable = snapshot.milestones
-        .where((milestone) => milestone.claimable)
-        .map((milestone) => milestone.definition)
-        .toList();
-    if (claimable.isEmpty) return null;
+  Future<LimitedEventClaimResult?> claimAvailableMilestones() {
+    return _serial.run(() async {
+      await _ensureCurrentWeek();
+      final snapshot = loadEvent();
+      final claimable = snapshot.milestones
+          .where((milestone) => milestone.claimable)
+          .map((milestone) => milestone.definition)
+          .toList();
+      if (claimable.isEmpty) return null;
 
-    final coins = claimable.fold<int>(
-      0,
-      (total, milestone) => total + milestone.rewardCoins,
-    );
-    final gems = claimable.fold<int>(
-      0,
-      (total, milestone) => total + milestone.rewardGems,
-    );
+      final coins = claimable.fold<int>(
+        0,
+        (total, milestone) => total + milestone.rewardCoins,
+      );
+      final gems = claimable.fold<int>(
+        0,
+        (total, milestone) => total + milestone.rewardGems,
+      );
 
-    if (coins > 0) await _currencyService.addCoins(coins);
-    if (gems > 0) await _currencyService.addGems(gems);
+      final claimed = _storage.getClaimedLimitedEventMilestones().toSet()
+        ..addAll(claimable.map((milestone) => milestone.id));
+      await _storage.saveClaimedLimitedEventMilestones(claimed.toList());
 
-    final claimed = _storage.getClaimedLimitedEventMilestones().toSet()
-      ..addAll(claimable.map((milestone) => milestone.id));
-    await _storage.saveClaimedLimitedEventMilestones(claimed.toList());
+      if (coins > 0) await _currencyService.addCoins(coins);
+      if (gems > 0) await _currencyService.addGems(gems);
 
-    return LimitedEventClaimResult(
-      claimedCount: claimable.length,
-      coinsAwarded: coins,
-      gemsAwarded: gems,
-    );
+      return LimitedEventClaimResult(
+        claimedCount: claimable.length,
+        coinsAwarded: coins,
+        gemsAwarded: gems,
+      );
+    });
   }
 
   Future<void> _ensureCurrentWeek() async {
