@@ -1,7 +1,6 @@
-import 'dart:async';
-
 import '../../data/local_storage_service.dart';
 import 'currency_service.dart';
+import 'serial_executor.dart';
 
 class DailyMissionDefinition {
   final String id;
@@ -66,27 +65,13 @@ class DailyMissionService {
   final LocalStorageService _storage;
   final CurrencyService _currencyService;
   final DateTime Function() _now;
-  Future<void>? _claimChain;
+  final SerialExecutor _serial = SerialExecutor();
 
   DailyMissionService(
     this._storage,
     this._currencyService, {
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now;
-
-  Future<T> _runExclusive<T>(Future<T> Function() action) async {
-    final previous = _claimChain;
-    final completer = Completer<void>();
-    _claimChain = completer.future;
-    try {
-      if (previous != null) {
-        await previous;
-      }
-      return await action();
-    } finally {
-      completer.complete();
-    }
-  }
 
   static final List<DailyMissionDefinition> definitions = [
     DailyMissionDefinition(
@@ -157,7 +142,7 @@ class DailyMissionService {
   }
 
   Future<DailyMissionClaimResult?> claim(String id) {
-    return _runExclusive(() async {
+    return _serial.run(() async {
       await _ensureToday();
 
       DailyMissionSnapshot? snapshot;
@@ -188,7 +173,7 @@ class DailyMissionService {
   }
 
   Future<DailyMissionClaimAllResult?> claimAllAvailable() {
-    return _runExclusive(() async {
+    return _serial.run(() async {
       await _ensureToday();
 
       final claimable = loadMissions()

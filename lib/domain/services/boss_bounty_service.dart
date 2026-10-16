@@ -1,5 +1,6 @@
 import '../../data/local_storage_service.dart';
 import 'currency_service.dart';
+import 'serial_executor.dart';
 
 class BossBountyResult {
   final int coinsAwarded;
@@ -18,6 +19,7 @@ class BossBountyService {
   final LocalStorageService _storage;
   final CurrencyService _currencyService;
   final DateTime Function() _now;
+  final SerialExecutor _serial = SerialExecutor();
 
   BossBountyService(
     this._storage,
@@ -29,17 +31,19 @@ class BossBountyService {
 
   bool get canReceiveToday => _storage.getLastBossBountyDate() != todayString;
 
-  Future<BossBountyResult?> claimForBossWin() async {
-    if (!canReceiveToday) return null;
+  Future<BossBountyResult?> claimForBossWin() {
+    return _serial.run(() async {
+      if (!canReceiveToday) return null;
 
-    await _currencyService.addCoins(dailyBossCoins);
-    await _currencyService.addGems(dailyBossGems);
-    await _storage.setLastBossBountyDate(todayString);
+      await _storage.setLastBossBountyDate(todayString);
+      await _currencyService.addCoins(dailyBossCoins);
+      await _currencyService.addGems(dailyBossGems);
 
-    return const BossBountyResult(
-      coinsAwarded: dailyBossCoins,
-      gemsAwarded: dailyBossGems,
-    );
+      return const BossBountyResult(
+        coinsAwarded: dailyBossCoins,
+        gemsAwarded: dailyBossGems,
+      );
+    });
   }
 
   static String _formatDate(DateTime date) {

@@ -4,6 +4,7 @@ import '../../data/local_storage_service.dart';
 import '../data/gacha_device_catalog.dart';
 import '../models/gacha_character.dart';
 import 'currency_service.dart';
+import 'serial_executor.dart';
 
 class PlayerRankDefinition {
   final String id;
@@ -108,6 +109,7 @@ class PlayerRankClaimResult {
 class PlayerRankService {
   final LocalStorageService _storage;
   final CurrencyService _currencyService;
+  final SerialExecutor _serial = SerialExecutor();
 
   PlayerRankService(this._storage, this._currencyService);
 
@@ -210,35 +212,37 @@ class PlayerRankService {
     );
   }
 
-  Future<PlayerRankClaimResult?> claimAvailableRewards() async {
-    final snapshot = loadRank();
-    final claimable = snapshot.rewards
-        .where((reward) => reward.claimable)
-        .map((reward) => reward.definition)
-        .toList();
-    if (claimable.isEmpty) return null;
+  Future<PlayerRankClaimResult?> claimAvailableRewards() {
+    return _serial.run(() async {
+      final snapshot = loadRank();
+      final claimable = snapshot.rewards
+          .where((reward) => reward.claimable)
+          .map((reward) => reward.definition)
+          .toList();
+      if (claimable.isEmpty) return null;
 
-    final coins = claimable.fold<int>(
-      0,
-      (total, reward) => total + reward.coinsReward,
-    );
-    final gems = claimable.fold<int>(
-      0,
-      (total, reward) => total + reward.gemsReward,
-    );
+      final coins = claimable.fold<int>(
+        0,
+        (total, reward) => total + reward.coinsReward,
+      );
+      final gems = claimable.fold<int>(
+        0,
+        (total, reward) => total + reward.gemsReward,
+      );
 
-    if (coins > 0) await _currencyService.addCoins(coins);
-    if (gems > 0) await _currencyService.addGems(gems);
+      final claimed = _storage.getClaimedRankRewards().toSet()
+        ..addAll(claimable.map((reward) => reward.rankId));
+      await _storage.saveClaimedRankRewards(claimed.toList());
 
-    final claimed = _storage.getClaimedRankRewards().toSet()
-      ..addAll(claimable.map((reward) => reward.rankId));
-    await _storage.saveClaimedRankRewards(claimed.toList());
+      if (coins > 0) await _currencyService.addCoins(coins);
+      if (gems > 0) await _currencyService.addGems(gems);
 
-    return PlayerRankClaimResult(
-      claimedCount: claimable.length,
-      coinsAwarded: coins,
-      gemsAwarded: gems,
-    );
+      return PlayerRankClaimResult(
+        claimedCount: claimable.length,
+        coinsAwarded: coins,
+        gemsAwarded: gems,
+      );
+    });
   }
 
   static int calcScore({

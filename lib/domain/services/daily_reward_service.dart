@@ -1,5 +1,6 @@
 import '../../data/local_storage_service.dart';
 import 'currency_service.dart';
+import 'serial_executor.dart';
 
 /// デイリー報酬の種別
 enum DailyRewardType { login, battle }
@@ -28,6 +29,7 @@ class DailyRewardService {
   final LocalStorageService _storage;
   final CurrencyService _currencyService;
   final DateTime Function() _now;
+  final SerialExecutor _serial = SerialExecutor();
 
   /// ログイン報酬のジェム数
   static const int loginRewardGems = 10;
@@ -97,36 +99,40 @@ class DailyRewardService {
   }
 
   /// ログイン報酬を付与する（既に受取済みならnull）
-  Future<DailyRewardResult?> claimLoginReward() async {
-    if (!canClaimLoginReward()) return null;
-    final streakDays = _nextLoginStreakDays(_storage.getLastLoginRewardDate());
-    final bonusGems = loginStreakBonusFor(streakDays);
-    final totalGems = loginRewardGems + bonusGems;
+  Future<DailyRewardResult?> claimLoginReward() {
+    return _serial.run(() async {
+      if (!canClaimLoginReward()) return null;
+      final streakDays = _nextLoginStreakDays(_storage.getLastLoginRewardDate());
+      final bonusGems = loginStreakBonusFor(streakDays);
+      final totalGems = loginRewardGems + bonusGems;
 
-    await _storage.setLastLoginRewardDate(_todayString());
-    await _storage.setLoginStreakDays(streakDays);
-    await _currencyService.addGems(totalGems);
+      await _storage.setLastLoginRewardDate(_todayString());
+      await _storage.setLoginStreakDays(streakDays);
+      await _currencyService.addGems(totalGems);
 
-    return DailyRewardResult(
-      type: DailyRewardType.login,
-      gemsAwarded: totalGems,
-      baseGems: loginRewardGems,
-      bonusGems: bonusGems,
-      loginStreakDays: streakDays,
-      loginCycleDay: loginCycleDay(streakDays),
-    );
+      return DailyRewardResult(
+        type: DailyRewardType.login,
+        gemsAwarded: totalGems,
+        baseGems: loginRewardGems,
+        bonusGems: bonusGems,
+        loginStreakDays: streakDays,
+        loginCycleDay: loginCycleDay(streakDays),
+      );
+    });
   }
 
   /// バトル報酬を付与する（既に受取済みならnull）
-  Future<DailyRewardResult?> claimBattleReward() async {
-    if (!canClaimBattleReward()) return null;
-    await _storage.setLastBattleRewardDate(_todayString());
-    await _currencyService.addGems(battleRewardGems);
-    return const DailyRewardResult(
-      type: DailyRewardType.battle,
-      gemsAwarded: battleRewardGems,
-      baseGems: battleRewardGems,
-    );
+  Future<DailyRewardResult?> claimBattleReward() {
+    return _serial.run(() async {
+      if (!canClaimBattleReward()) return null;
+      await _storage.setLastBattleRewardDate(_todayString());
+      await _currencyService.addGems(battleRewardGems);
+      return const DailyRewardResult(
+        type: DailyRewardType.battle,
+        gemsAwarded: battleRewardGems,
+        baseGems: battleRewardGems,
+      );
+    });
   }
 
   int _nextLoginStreakDays(String? lastClaimDate) {

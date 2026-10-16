@@ -1,6 +1,7 @@
 import '../../data/local_storage_service.dart';
 import 'currency_service.dart';
 import 'enemy_generator.dart';
+import 'serial_executor.dart';
 
 class WeeklyChallengeSnapshot {
   final String weekId;
@@ -38,6 +39,7 @@ class WeeklyChallengeService {
   final LocalStorageService _storage;
   final CurrencyService _currencyService;
   final DateTime Function() _now;
+  final SerialExecutor _serial = SerialExecutor();
 
   WeeklyChallengeService(
     this._storage,
@@ -75,19 +77,21 @@ class WeeklyChallengeService {
     );
   }
 
-  Future<WeeklyChallengeClaimResult?> claim() async {
-    await _ensureCurrentWeek();
-    final snapshot = loadChallenge();
-    if (!snapshot.claimable) return null;
+  Future<WeeklyChallengeClaimResult?> claim() {
+    return _serial.run(() async {
+      await _ensureCurrentWeek();
+      final snapshot = loadChallenge();
+      if (!snapshot.claimable) return null;
 
-    await _currencyService.addCoins(rewardCoins);
-    await _currencyService.addGems(rewardGems);
-    await _storage.setWeeklyChallengeClaimed(true);
+      await _storage.setWeeklyChallengeClaimed(true);
+      await _currencyService.addCoins(rewardCoins);
+      await _currencyService.addGems(rewardGems);
 
-    return const WeeklyChallengeClaimResult(
-      coinsAwarded: rewardCoins,
-      gemsAwarded: rewardGems,
-    );
+      return const WeeklyChallengeClaimResult(
+        coinsAwarded: rewardCoins,
+        gemsAwarded: rewardGems,
+      );
+    });
   }
 
   bool _isHighDifficulty(EnemyDifficulty difficulty) {
