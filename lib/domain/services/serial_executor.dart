@@ -15,6 +15,10 @@ class SerialExecutor {
       return await action();
     } finally {
       completer.complete();
+      // 完了済み Future を次のテストゾーンから await すると widget test が止まる。
+      if (identical(_chain, completer.future)) {
+        _chain = null;
+      }
     }
   }
 }
