@@ -43,4 +43,19 @@ void main() {
     expect(result, isNotNull);
     expect(storage.getLastBossBountyDate(), '2026-05-05');
   });
+
+  test('claimForBossWinを並列実行しても報酬は二重加算されない', () async {
+    final results = await Future.wait([
+      service.claimForBossWin(),
+      service.claimForBossWin(),
+    ]);
+
+    final successful = results.whereType<BossBountyResult>().toList();
+    expect(successful.length, 1);
+    expect(successful.first.coinsAwarded, BossBountyService.dailyBossCoins);
+    expect(successful.first.gemsAwarded, BossBountyService.dailyBossGems);
+    expect(storage.getCoins(), BossBountyService.dailyBossCoins);
+    expect(storage.getPremiumGems(), BossBountyService.dailyBossGems);
+    expect(storage.getLastBossBountyDate(), '2026-05-05');
+  });
 }

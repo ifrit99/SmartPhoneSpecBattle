@@ -85,6 +85,32 @@ void main() {
     expect(second, isNull);
   });
 
+  test('claimAvailableRewardsを並列実行しても報酬は二重加算されない', () async {
+    for (var i = 0; i < 8; i++) {
+      await storage.incrementBattleCount();
+    }
+    for (var i = 0; i < 5; i++) {
+      await storage.incrementWinCount();
+    }
+    await storage.saveDefeatedEnemy('easy_01');
+    await storage.saveDefeatedEnemy('normal_01');
+    await storage.setBossBestTurns(18);
+
+    final results = await Future.wait([
+      service.claimAvailableRewards(),
+      service.claimAvailableRewards(),
+    ]);
+
+    final successful = results.whereType<PlayerRankClaimResult>().toList();
+    expect(successful.length, 1);
+    expect(successful.first.claimedCount, 1);
+    expect(successful.first.coinsAwarded, 300);
+    expect(successful.first.gemsAwarded, 10);
+    expect(storage.getCoins(), 300);
+    expect(storage.getPremiumGems(), 10);
+    expect(storage.getClaimedRankRewards(), ['hunter']);
+  });
+
   test('イベント限定端末の所持数を重複なしでスコアに反映する', () async {
     final limited = GachaCharacter.fromDevice(eventLimitedDeviceCatalog.first);
     await storage.saveGachaCharacters([

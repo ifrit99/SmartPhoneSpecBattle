@@ -1,10 +1,12 @@
 import '../models/player_currency.dart';
 import '../../data/local_storage_service.dart';
 import '../services/enemy_generator.dart';
+import 'serial_executor.dart';
 
 /// ゲーム内通貨の管理サービス
 class CurrencyService {
   final LocalStorageService _storage;
+  final SerialExecutor _serial = SerialExecutor();
 
   CurrencyService(this._storage);
 
@@ -48,36 +50,44 @@ class CurrencyService {
   }
 
   /// コインを加算して保存する
-  Future<PlayerCurrency> addCoins(int amount) async {
-    final current = load();
-    final updated = current.addCoins(amount);
-    await save(updated);
-    return updated;
+  Future<PlayerCurrency> addCoins(int amount) {
+    return _serial.run(() async {
+      final current = load();
+      final updated = current.addCoins(amount);
+      await save(updated);
+      return updated;
+    });
   }
 
   /// コインを消費して保存する（不足時はnullを返す）
-  Future<PlayerCurrency?> spendCoins(int amount) async {
-    final current = load();
-    if (current.coins < amount) return null;
-    final updated = current.spendCoins(amount);
-    await save(updated);
-    return updated;
+  Future<PlayerCurrency?> spendCoins(int amount) {
+    return _serial.run(() async {
+      final current = load();
+      if (current.coins < amount) return null;
+      final updated = current.spendCoins(amount);
+      await save(updated);
+      return updated;
+    });
   }
 
   /// ジェムを消費して保存する（不足時はnullを返す）
-  Future<PlayerCurrency?> spendGems(int amount) async {
-    final current = load();
-    if (current.premiumGems < amount) return null;
-    final updated = current.spendGems(amount);
-    await save(updated);
-    return updated;
+  Future<PlayerCurrency?> spendGems(int amount) {
+    return _serial.run(() async {
+      final current = load();
+      if (current.premiumGems < amount) return null;
+      final updated = current.spendGems(amount);
+      await save(updated);
+      return updated;
+    });
   }
 
   /// ジェムを加算して保存する
-  Future<PlayerCurrency> addGems(int amount) async {
-    final current = load();
-    final updated = current.addGems(amount);
-    await save(updated);
-    return updated;
+  Future<PlayerCurrency> addGems(int amount) {
+    return _serial.run(() async {
+      final current = load();
+      final updated = current.addGems(amount);
+      await save(updated);
+      return updated;
+    });
   }
 }
