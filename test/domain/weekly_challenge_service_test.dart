@@ -101,4 +101,27 @@ void main() {
     expect(storage.getWeeklyChallengeHighDifficultyWins(), 1);
     expect(storage.isWeeklyChallengeClaimed(), isFalse);
   });
+
+  test('claimを並列実行しても報酬は二重加算されない', () async {
+    for (var i = 0; i < WeeklyChallengeService.targetHighDifficultyWins; i++) {
+      await service.recordBattle(
+        won: true,
+        isCpuBattle: true,
+        difficulty: EnemyDifficulty.hard,
+      );
+    }
+
+    final results = await Future.wait([
+      service.claim(),
+      service.claim(),
+    ]);
+
+    final successful = results.whereType<WeeklyChallengeClaimResult>().toList();
+    expect(successful.length, 1);
+    expect(successful.first.coinsAwarded, WeeklyChallengeService.rewardCoins);
+    expect(successful.first.gemsAwarded, WeeklyChallengeService.rewardGems);
+    expect(storage.getCoins(), WeeklyChallengeService.rewardCoins);
+    expect(storage.getPremiumGems(), WeeklyChallengeService.rewardGems);
+    expect(storage.isWeeklyChallengeClaimed(), isTrue);
+  });
 }

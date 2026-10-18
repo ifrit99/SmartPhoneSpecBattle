@@ -110,4 +110,25 @@ void main() {
     expect(storage.isLimitedEventClaimed(), isFalse);
     expect(storage.getClaimedLimitedEventMilestones(), isEmpty);
   });
+
+  test('claimを並列実行しても報酬は二重加算されない', () async {
+    final targetWins = service.loadEvent().definition.targetWins;
+    for (var i = 0; i < targetWins; i++) {
+      await service.recordBattle(won: true, isCpuBattle: true);
+    }
+
+    final event = service.loadEvent();
+    final results = await Future.wait([
+      service.claim(),
+      service.claim(),
+    ]);
+
+    final successful = results.whereType<LimitedEventClaimResult>().toList();
+    expect(successful.length, 1);
+    expect(successful.first.coinsAwarded, event.definition.rewardCoins);
+    expect(successful.first.gemsAwarded, event.definition.rewardGems);
+    expect(storage.getCoins(), event.definition.rewardCoins);
+    expect(storage.getPremiumGems(), event.definition.rewardGems);
+    expect(storage.isLimitedEventClaimed(), isTrue);
+  });
 }
