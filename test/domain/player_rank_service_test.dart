@@ -7,6 +7,8 @@ import 'package:spec_battle_game/domain/models/gacha_character.dart';
 import 'package:spec_battle_game/domain/services/currency_service.dart';
 import 'package:spec_battle_game/domain/services/player_rank_service.dart';
 
+import 'support/throwing_currency_service.dart';
+
 void main() {
   late LocalStorageService storage;
   late CurrencyService currencyService;
@@ -109,6 +111,32 @@ void main() {
     expect(storage.getCoins(), 300);
     expect(storage.getPremiumGems(), 10);
     expect(storage.getClaimedRankRewards(), ['hunter']);
+  });
+
+  test('通貨加算が失敗しても受取済みは残り再受取できない', () async {
+    for (var i = 0; i < 8; i++) {
+      await storage.incrementBattleCount();
+    }
+    for (var i = 0; i < 5; i++) {
+      await storage.incrementWinCount();
+    }
+    await storage.saveDefeatedEnemy('easy_01');
+    await storage.saveDefeatedEnemy('normal_01');
+    await storage.setBossBestTurns(18);
+
+    final failingService = PlayerRankService(
+      storage,
+      ThrowingCurrencyService(storage),
+    );
+
+    await expectLater(
+      failingService.claimAvailableRewards(),
+      throwsA(isA<StateError>()),
+    );
+    expect(storage.getClaimedRankRewards(), ['hunter']);
+    expect(storage.getCoins(), 0);
+    expect(storage.getPremiumGems(), 0);
+    expect(await failingService.claimAvailableRewards(), isNull);
   });
 
   test('イベント限定端末の所持数を重複なしでスコアに反映する', () async {

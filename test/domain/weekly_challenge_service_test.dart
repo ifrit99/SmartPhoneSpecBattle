@@ -5,6 +5,8 @@ import 'package:spec_battle_game/domain/services/currency_service.dart';
 import 'package:spec_battle_game/domain/services/enemy_generator.dart';
 import 'package:spec_battle_game/domain/services/weekly_challenge_service.dart';
 
+import 'support/throwing_currency_service.dart';
+
 void main() {
   late LocalStorageService storage;
   late CurrencyService currencyService;
@@ -123,5 +125,27 @@ void main() {
     expect(storage.getCoins(), WeeklyChallengeService.rewardCoins);
     expect(storage.getPremiumGems(), WeeklyChallengeService.rewardGems);
     expect(storage.isWeeklyChallengeClaimed(), isTrue);
+  });
+
+  test('通貨加算が失敗しても受取済みは残り再受取できない', () async {
+    for (var i = 0; i < WeeklyChallengeService.targetHighDifficultyWins; i++) {
+      await service.recordBattle(
+        won: true,
+        isCpuBattle: true,
+        difficulty: EnemyDifficulty.hard,
+      );
+    }
+
+    final failingService = WeeklyChallengeService(
+      storage,
+      ThrowingCurrencyService(storage),
+      now: () => DateTime(2026, 5, 5),
+    );
+
+    await expectLater(failingService.claim(), throwsA(isA<StateError>()));
+    expect(storage.isWeeklyChallengeClaimed(), isTrue);
+    expect(storage.getCoins(), 0);
+    expect(storage.getPremiumGems(), 0);
+    expect(await failingService.claim(), isNull);
   });
 }
