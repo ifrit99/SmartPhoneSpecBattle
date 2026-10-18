@@ -199,9 +199,6 @@ void main() {
   });
 }
 
-/// SharedPreferences のモックは setInt 時にキャッシュを同期更新するため、
-/// save の先頭で一度だけ待つ。本番の非同期 I/O と同じく、両方の load が
-/// 先に走ってから coins / gems を書く。
 class _YieldingSaveCurrencyService extends CurrencyService {
   _YieldingSaveCurrencyService(super.storage);
 
