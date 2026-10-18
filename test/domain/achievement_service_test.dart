@@ -49,6 +49,21 @@ void main() {
     expect(currencyService.load().coins, 100);
   });
 
+  test('claimを並列実行しても同じ実績は1回しか報酬が出ない', () async {
+    await storage.incrementBattleCount();
+
+    final results = await Future.wait([
+      service.claim('first_battle'),
+      service.claim('first_battle'),
+    ]);
+
+    final successful = results.whereType<AchievementClaimResult>().toList();
+    expect(successful.length, 1);
+    expect(successful.first.coinsAwarded, 100);
+    expect(currencyService.load().coins, 100);
+    expect(storage.getClaimedAchievements(), ['first_battle']);
+  });
+
   test('実績一覧は進捗・達成・受取状態を返す', () async {
     await storage.incrementBattleCount();
     await service.claim('first_battle');

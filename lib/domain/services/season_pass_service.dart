@@ -1,6 +1,7 @@
 import '../../data/local_storage_service.dart';
 import 'currency_service.dart';
 import 'enemy_generator.dart';
+import 'serial_executor.dart';
 
 class SeasonPassRewardDefinition {
   final String id;
@@ -115,6 +116,7 @@ class SeasonPassService {
   final LocalStorageService _storage;
   final CurrencyService _currencyService;
   final DateTime Function() _now;
+  final SerialExecutor _serial = SerialExecutor();
 
   SeasonPassService(
     this._storage,
@@ -172,36 +174,38 @@ class SeasonPassService {
     return earned;
   }
 
-  Future<SeasonPassClaimResult?> claimAllAvailable() async {
-    await _ensureCurrentSeason();
-    final snapshot = loadPass();
-    final claimable = snapshot.rewards
-        .where((reward) => reward.claimable)
-        .map((reward) => reward.definition)
-        .toList();
-    if (claimable.isEmpty) return null;
+  Future<SeasonPassClaimResult?> claimAllAvailable() {
+    return _serial.run(() async {
+      await _ensureCurrentSeason();
+      final snapshot = loadPass();
+      final claimable = snapshot.rewards
+          .where((reward) => reward.claimable)
+          .map((reward) => reward.definition)
+          .toList();
+      if (claimable.isEmpty) return null;
 
-    final coins = claimable.fold<int>(
-      0,
-      (total, reward) => total + reward.coinsReward,
-    );
-    final gems = claimable.fold<int>(
-      0,
-      (total, reward) => total + reward.gemsReward,
-    );
+      final coins = claimable.fold<int>(
+        0,
+        (total, reward) => total + reward.coinsReward,
+      );
+      final gems = claimable.fold<int>(
+        0,
+        (total, reward) => total + reward.gemsReward,
+      );
 
-    if (coins > 0) await _currencyService.addCoins(coins);
-    if (gems > 0) await _currencyService.addGems(gems);
+      final claimed = _storage.getClaimedSeasonPassRewards().toSet()
+        ..addAll(claimable.map((reward) => reward.id));
+      await _storage.saveClaimedSeasonPassRewards(claimed.toList());
 
-    final claimed = _storage.getClaimedSeasonPassRewards().toSet()
-      ..addAll(claimable.map((reward) => reward.id));
-    await _storage.saveClaimedSeasonPassRewards(claimed.toList());
+      if (coins > 0) await _currencyService.addCoins(coins);
+      if (gems > 0) await _currencyService.addGems(gems);
 
-    return SeasonPassClaimResult(
-      claimedCount: claimable.length,
-      coinsAwarded: coins,
-      gemsAwarded: gems,
-    );
+      return SeasonPassClaimResult(
+        claimedCount: claimable.length,
+        coinsAwarded: coins,
+        gemsAwarded: gems,
+      );
+    });
   }
 
   Future<void> _ensureCurrentSeason() async {

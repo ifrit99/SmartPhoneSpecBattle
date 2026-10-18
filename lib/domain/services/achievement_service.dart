@@ -1,5 +1,6 @@
 import '../../data/local_storage_service.dart';
 import 'currency_service.dart';
+import 'serial_executor.dart';
 
 class AchievementDefinition {
   final String id;
@@ -51,6 +52,7 @@ class AchievementClaimResult {
 class AchievementService {
   final LocalStorageService _storage;
   final CurrencyService _currencyService;
+  final SerialExecutor _serial = SerialExecutor();
 
   AchievementService(this._storage, this._currencyService);
 
@@ -136,30 +138,32 @@ class AchievementService {
   int claimableCount() =>
       loadAchievements().where((achievement) => achievement.claimable).length;
 
-  Future<AchievementClaimResult?> claim(String id) async {
-    AchievementSnapshot? snapshot;
-    for (final achievement in loadAchievements()) {
-      if (achievement.definition.id == id) {
-        snapshot = achievement;
-        break;
+  Future<AchievementClaimResult?> claim(String id) {
+    return _serial.run(() async {
+      AchievementSnapshot? snapshot;
+      for (final achievement in loadAchievements()) {
+        if (achievement.definition.id == id) {
+          snapshot = achievement;
+          break;
+        }
       }
-    }
-    if (snapshot == null || !snapshot.claimable) return null;
+      if (snapshot == null || !snapshot.claimable) return null;
 
-    final definition = snapshot.definition;
-    if (definition.coinsReward > 0) {
-      await _currencyService.addCoins(definition.coinsReward);
-    }
-    if (definition.gemsReward > 0) {
-      await _currencyService.addGems(definition.gemsReward);
-    }
+      final definition = snapshot.definition;
+      final claimed = _storage.getClaimedAchievements().toSet()..add(id);
+      await _storage.saveClaimedAchievements(claimed.toList());
 
-    final claimed = _storage.getClaimedAchievements().toSet()..add(id);
-    await _storage.saveClaimedAchievements(claimed.toList());
+      if (definition.coinsReward > 0) {
+        await _currencyService.addCoins(definition.coinsReward);
+      }
+      if (definition.gemsReward > 0) {
+        await _currencyService.addGems(definition.gemsReward);
+      }
 
-    return AchievementClaimResult(
-      coinsAwarded: definition.coinsReward,
-      gemsAwarded: definition.gemsReward,
-    );
+      return AchievementClaimResult(
+        coinsAwarded: definition.coinsReward,
+        gemsAwarded: definition.gemsReward,
+      );
+    });
   }
 }

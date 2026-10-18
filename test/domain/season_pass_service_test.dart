@@ -79,6 +79,27 @@ void main() {
     expect(second, isNull);
   });
 
+  test('claimAllAvailableを並列実行しても報酬は二重加算されない', () async {
+    final service = serviceFor(DateTime(2026, 5, 5));
+    await storage.setSeasonPassId('2026-05');
+    await storage.setSeasonPassXp(260);
+
+    final results = await Future.wait([
+      service.claimAllAvailable(),
+      service.claimAllAvailable(),
+    ]);
+
+    final successful = results.whereType<SeasonPassClaimResult>().toList();
+    expect(successful.length, 1);
+    expect(successful.first.claimedCount, 2);
+    expect(successful.first.coinsAwarded, 200);
+    expect(successful.first.gemsAwarded, 25);
+    expect(storage.getCoins(), 200);
+    expect(storage.getPremiumGems(), 25);
+    expect(storage.getClaimedSeasonPassRewards(), contains('season_100'));
+    expect(storage.getClaimedSeasonPassRewards(), contains('season_250'));
+  });
+
   test('月が変わると進捗と受取状態をリセットする', () async {
     await storage.setSeasonPassId('2026-05');
     await storage.setSeasonPassXp(700);
