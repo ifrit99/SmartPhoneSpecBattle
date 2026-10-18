@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:spec_battle_game/data/local_storage_service.dart';
 import 'package:spec_battle_game/domain/models/player_currency.dart';
 import 'package:spec_battle_game/domain/services/currency_service.dart';
 import 'package:spec_battle_game/domain/services/enemy_generator.dart';
@@ -172,4 +174,40 @@ void main() {
       expect(high, greaterThan(low));
     });
   });
+
+  group('CurrencyService', () {
+    late LocalStorageService storage;
+    late CurrencyService service;
+
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      storage = LocalStorageService();
+      await storage.resetForTest();
+      service = _YieldingSaveCurrencyService(storage);
+    });
+
+    test('addCoins と addGems を並列実行しても両方の残高が残る', () async {
+      await Future.wait([
+        service.addCoins(100),
+        service.addGems(10),
+      ]);
+
+      final currency = service.load();
+      expect(currency.coins, 100);
+      expect(currency.premiumGems, 10);
+    });
+  });
+}
+
+/// SharedPreferences のモックは setInt 時にキャッシュを同期更新するため、
+/// save の先頭で一度だけ待つ。本番の非同期 I/O と同じく、両方の load が
+/// 先に走ってから coins / gems を書く。
+class _YieldingSaveCurrencyService extends CurrencyService {
+  _YieldingSaveCurrencyService(super.storage);
+
+  @override
+  Future<void> save(PlayerCurrency currency) async {
+    await Future<void>.delayed(Duration.zero);
+    await super.save(currency);
+  }
 }
