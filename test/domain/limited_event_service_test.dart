@@ -4,6 +4,8 @@ import 'package:spec_battle_game/data/local_storage_service.dart';
 import 'package:spec_battle_game/domain/services/currency_service.dart';
 import 'package:spec_battle_game/domain/services/limited_event_service.dart';
 
+import 'support/throwing_currency_service.dart';
+
 void main() {
   late LocalStorageService storage;
   late CurrencyService currencyService;
@@ -130,5 +132,24 @@ void main() {
     expect(storage.getCoins(), event.definition.rewardCoins);
     expect(storage.getPremiumGems(), event.definition.rewardGems);
     expect(storage.isLimitedEventClaimed(), isTrue);
+  });
+
+  test('通貨加算が失敗しても受取済みは残り再受取できない', () async {
+    final targetWins = service.loadEvent().definition.targetWins;
+    for (var i = 0; i < targetWins; i++) {
+      await service.recordBattle(won: true, isCpuBattle: true);
+    }
+
+    final failingService = LimitedEventService(
+      storage,
+      ThrowingCurrencyService(storage),
+      now: () => DateTime(2026, 5, 5),
+    );
+
+    await expectLater(failingService.claim(), throwsA(isA<StateError>()));
+    expect(storage.isLimitedEventClaimed(), isTrue);
+    expect(storage.getCoins(), 0);
+    expect(storage.getPremiumGems(), 0);
+    expect(await failingService.claim(), isNull);
   });
 }
