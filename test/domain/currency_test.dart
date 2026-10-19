@@ -277,7 +277,6 @@ class _YieldingSaveCurrencyService extends CurrencyService {
   }
 }
 
-/// shared_preferences 2.5.3 の setInt と同じく、値を先に書いてから失敗する。
 class _ThrowAfterCacheStorage extends Fake implements LocalStorageService {
   _ThrowAfterCacheStorage({
     required this.coins,

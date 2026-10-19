@@ -30,7 +30,6 @@ class CurrencyService {
     }
   }
 
-  /// saveCoins がキャッシュ更新後に失敗すると gems まで届かないため、独立に戻す。
   Future<void> _restoreSnapshot(PlayerCurrency snapshot) async {
     try {
       await _storage.saveCoins(snapshot.coins);
@@ -40,7 +39,7 @@ class CurrencyService {
     try {
       await _storage.savePremiumGems(snapshot.premiumGems);
     } catch (_) {
-      // 同上。coins 側の失敗で gems の書き戻しが飛ばないようにする。
+      // キャッシュは setInt が先に更新するため、ここでの失敗は無視する。
     }
   }
 

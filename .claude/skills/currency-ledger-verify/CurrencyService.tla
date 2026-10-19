@@ -6,8 +6,7 @@
 (* is the code between two awaits. Code references:                        *)
 (*   CurrencyService  lib/domain/services/currency_service.dart            *)
 (*     addCoins/spendCoins/addGems/spendGems: _serial.run(load ->          *)
-(*     check -> await saveCoins -> await savePremiumGems; on throw,        *)
-(*     restore both keys to the pre-call snapshot then rethrow)            *)
+(*     check -> await saveCoins -> await savePremiumGems)                  *)
 (*   SerialExecutor   lib/domain/services/serial_executor.dart             *)
 (*   LocalStorageService.saveCoins/savePremiumGems                         *)
 (*     lib/data/local_storage_service.dart: SharedPreferences.setInt       *)
@@ -35,6 +34,7 @@ Premiums == {"p"}
 Procs    == Claimers \cup Pullers \cup Premiums
 Execs    == {"currency", "event"}   \* CurrencyService._serial, LimitedEventService._serial
 None     == <<"none", "none", 0>>   \* SerialExecutor._chain == null (token-shaped)
+OpPhases == {"idle", "wait", "gems", "rollbackCoins", "rollbackGems", "fin", "done"}
 
 VARIABLES
   coins, gems,        \* SharedPreferences cache: storage.getCoins()/getPremiumGems()
@@ -45,10 +45,10 @@ VARIABLES
   prev,               \* [Procs -> [Execs -> token]] `previous` captured in run()
   pc,                 \* caller position
   op,                 \* CurrencyService method in flight for this task
-  opPhase,            \* "idle" | "wait" | "gems" | "rollbackCoins" | "rollbackGems" | "fin" | "done"
+  opPhase,
   upd,                \* `updated` computed from load()
-  snap,               \* pre-call coins/gems, restored on persistThrows
-  wroteGems,          \* this op's savePremiumGems already wrote the cache
+  preCall,
+  wroteGems,
   opResult,           \* "pending" | "ok" | "null" | "throw"
   opApplied,          \* ghost: this op already wrote a nonzero delta
   effCoins, effGems,  \* ghost: Init + sum of deltas whose write reached the cache
@@ -58,7 +58,7 @@ VARIABLES
 
 storeVars == <<coins, gems, eventClaimed>>
 execVars  == <<chain, completed, runs, prev>>
-opVars    == <<op, opPhase, upd, snap, wroteGems, opResult, opApplied>>
+opVars    == <<op, opPhase, upd, preCall, wroteGems, opResult, opApplied>>
 ghostVars == <<effCoins, effGems, claimCoinCredits, claimGemCredits, failedWithEffect>>
 vars      == <<storeVars, execVars, pc, opVars, ghostVars, faults>>
 
@@ -84,7 +84,7 @@ Init ==
   /\ pc = [p \in Procs |-> "start"]
   /\ op = [p \in Procs |-> "none"] /\ opPhase = [p \in Procs |-> "idle"]
   /\ upd = [p \in Procs |-> [c |-> 0, g |-> 0]]
-  /\ snap = [p \in Procs |-> [c |-> 0, g |-> 0]]
+  /\ preCall = [p \in Procs |-> [c |-> 0, g |-> 0]]
   /\ wroteGems = [p \in Procs |-> FALSE]
   /\ opResult = [p \in Procs |-> "pending"] /\ opApplied = [p \in Procs |-> FALSE]
   /\ effCoins = InitCoins /\ effGems = InitGems
@@ -111,7 +111,7 @@ CallOp(p, k, next) ==
                            <<p, "currency", runs[p]["currency"] + 1>>]
        ELSE /\ prev' = [prev EXCEPT ![p]["currency"] = None]
             /\ UNCHANGED <<runs, chain>>
-  /\ UNCHANGED <<storeVars, completed, upd, snap, ghostVars, faults>>
+  /\ UNCHANGED <<storeVars, completed, upd, preCall, ghostVars, faults>>
 
 \* After `await previous`: load(); insufficiency check; compute `updated`;
 \* saveCoins -> setInt writes the cache, then awaits (may throw after write).
@@ -124,9 +124,9 @@ ActionStart(p) ==
      IN IF insufficient
         THEN /\ opPhase' = [opPhase EXCEPT ![p] = "fin"]
              /\ opResult' = [opResult EXCEPT ![p] = "null"]
-             /\ UNCHANGED <<coins, upd, snap, opApplied, effCoins, claimCoinCredits, faults>>
+             /\ UNCHANGED <<coins, upd, preCall, opApplied, effCoins, claimCoinCredits, faults>>
         ELSE \E f \in PersistChoices :
-             /\ snap' = [snap EXCEPT ![p] = [c |-> coins, g |-> gems]]
+             /\ preCall' = [preCall EXCEPT ![p] = [c |-> coins, g |-> gems]]
              /\ coins' = coins + CDelta(k)
              /\ upd' = [upd EXCEPT ![p] = [c |-> coins + CDelta(k), g |-> gems + GDelta(k)]]
              /\ effCoins' = effCoins + CDelta(k)
@@ -152,25 +152,23 @@ WriteGems(p) ==
        /\ faults' = IF f THEN faults + 1 ELSE faults
        /\ opPhase' = [opPhase EXCEPT ![p] = IF f THEN "rollbackCoins" ELSE "fin"]
        /\ opResult' = [opResult EXCEPT ![p] = IF f THEN "throw" ELSE "ok"]
-  /\ UNCHANGED <<coins, eventClaimed, execVars, pc, op, upd, snap,
+  /\ UNCHANGED <<coins, eventClaimed, execVars, pc, op, upd, preCall,
                  effCoins, claimCoinCredits, failedWithEffect>>
 
-\* After persistThrows: restore coins to the pre-call snapshot (saveCoins).
 RollbackCoins(p) ==
   /\ opPhase[p] = "rollbackCoins"
-  /\ coins' = snap[p].c
+  /\ coins' = preCall[p].c
   /\ effCoins' = effCoins - CDelta(op[p])
   /\ claimCoinCredits' = IF p \in Claimers /\ op[p] = "addCoins"
                            THEN claimCoinCredits - 1 ELSE claimCoinCredits
   /\ opPhase' = [opPhase EXCEPT ![p] = "rollbackGems"]
-  /\ UNCHANGED <<gems, eventClaimed, execVars, pc, op, upd, snap, wroteGems,
+  /\ UNCHANGED <<gems, eventClaimed, execVars, pc, op, upd, preCall, wroteGems,
                  opResult, opApplied, effGems, claimGemCredits,
                  failedWithEffect, faults>>
 
-\* Restore gems independently so a failed coin restore cannot skip gems.
 RollbackGems(p) ==
   /\ opPhase[p] = "rollbackGems"
-  /\ gems' = snap[p].g
+  /\ gems' = preCall[p].g
   /\ IF wroteGems[p]
        THEN /\ effGems' = effGems - GDelta(op[p])
             /\ claimGemCredits' = IF p \in Claimers /\ op[p] = "addGems"
@@ -178,7 +176,7 @@ RollbackGems(p) ==
        ELSE UNCHANGED <<effGems, claimGemCredits>>
   /\ opApplied' = [opApplied EXCEPT ![p] = FALSE]
   /\ opPhase' = [opPhase EXCEPT ![p] = "fin"]
-  /\ UNCHANGED <<coins, eventClaimed, execVars, pc, op, upd, snap, wroteGems,
+  /\ UNCHANGED <<coins, eventClaimed, execVars, pc, op, upd, preCall, wroteGems,
                  opResult, effCoins, claimCoinCredits, failedWithEffect, faults>>
 
 \* SerialExecutor.run finally: completer.complete(); reset _chain if mine.
@@ -190,7 +188,7 @@ Finally(p) ==
        THEN /\ completed' = completed \cup {CurTok(p)}
             /\ chain' = [chain EXCEPT !["currency"] = IF @ = CurTok(p) THEN None ELSE @]
        ELSE UNCHANGED <<completed, chain>>
-  /\ UNCHANGED <<storeVars, runs, prev, pc, op, upd, snap, wroteGems, opResult, opApplied,
+  /\ UNCHANGED <<storeVars, runs, prev, pc, op, upd, preCall, wroteGems, opResult, opApplied,
                  effCoins, effGems, claimCoinCredits, claimGemCredits, faults>>
 
 -----------------------------------------------------------------------------
@@ -237,15 +235,15 @@ ClaimAwaitCoins(p) ==
   /\ p \in Claimers /\ pc[p] = "awaitCoins" /\ opPhase[p] = "done"
   /\ IF opResult[p] = "throw"
        THEN /\ ClaimExit(p) /\ ClearOp(p)
-            /\ UNCHANGED <<storeVars, runs, prev, upd, snap, wroteGems, opResult, opApplied, ghostVars, faults>>
+            /\ UNCHANGED <<storeVars, runs, prev, upd, preCall, wroteGems, opResult, opApplied, ghostVars, faults>>
        ELSE \/ CallOp(p, "addGems", "awaitGems")
             \/ /\ CallThrows /\ ClaimExit(p) /\ ClearOp(p)
-               /\ UNCHANGED <<storeVars, runs, prev, upd, snap, wroteGems, opResult, opApplied, ghostVars>>
+               /\ UNCHANGED <<storeVars, runs, prev, upd, preCall, wroteGems, opResult, opApplied, ghostVars>>
 
 ClaimAwaitGems(p) ==
   /\ p \in Claimers /\ pc[p] = "awaitGems" /\ opPhase[p] = "done"
   /\ ClaimExit(p) /\ ClearOp(p)
-  /\ UNCHANGED <<storeVars, runs, prev, upd, snap, wroteGems, opResult, opApplied, ghostVars, faults>>
+  /\ UNCHANGED <<storeVars, runs, prev, upd, preCall, wroteGems, opResult, opApplied, ghostVars, faults>>
 
 \* pullSingle / pullPremium: precheck load(), then call spend (same sync step).
 PullStart(p) ==
@@ -264,7 +262,7 @@ PullStart(p) ==
 PullAwait(p) ==
   /\ p \in Pullers \cup Premiums /\ pc[p] = "await" /\ opPhase[p] = "done"
   /\ pc' = [pc EXCEPT ![p] = "done"] /\ ClearOp(p)
-  /\ UNCHANGED <<storeVars, execVars, upd, snap, wroteGems, opResult, opApplied, ghostVars, faults>>
+  /\ UNCHANGED <<storeVars, execVars, upd, preCall, wroteGems, opResult, opApplied, ghostVars, faults>>
 
 AllDone == \A p \in Procs : pc[p] = "done"
 
@@ -294,4 +292,6 @@ NoOverspend == coins >= 0 /\ gems >= 0
 
 \* A currency call that throws left the balance untouched.
 FailedOpHasNoEffect == ~failedWithEffect
+
+TypeOK == opPhase \in [Procs -> OpPhases]
 =============================================================================

@@ -46,9 +46,9 @@ The other claimers (`DailyRewardService`, `BossBountyService`, `WeeklyChallengeS
 
 TLC prints a numbered trace. Each `State n: <Action("proc") ...>` line is one uninterrupted stretch of Dart between two `await`s. Translate it like this:
 
-- `ActionStart("c1")` with `op.c1 = "addGems"`: c1 ran `load()` and wrote coins. `upd.c1` is the `updated` value it will write. `snap.c1` is the pre-call balance.
+- `ActionStart("c1")` with `op.c1 = "addGems"`: c1 ran `load()` and wrote coins. `upd.c1` is the `updated` value it will write. `preCall.c1` is the pre-call balance.
 - `WriteGems("p")`: p's `savePremiumGems(updated.premiumGems)` hit the cache.
-- `RollbackCoins("p")` / `RollbackGems("p")`: persistThrows fired; save restores both keys to `snap`.
+- `RollbackCoins("p")` / `RollbackGems("p")`: persistThrows fired; save restores both keys to `preCall`.
 - `NoLostUpdate` violated: `coins`/`gems` differ from `effCoins`/`effGems`. A write based on a stale `load()` overwrote another call's change.
 - `NoDuplicateClaim`: `claimCoinCredits` or `claimGemCredits` is greater than 1.
 - `NoOverspend`: a balance went negative.
