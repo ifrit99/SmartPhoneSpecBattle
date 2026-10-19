@@ -197,6 +197,74 @@ void main() {
       expect(currency.premiumGems, 10);
     });
   });
+
+  group('永続化がキャッシュ更新後に失敗しても残高は変わらない', () {
+    const startCoins = 100;
+    const startGems = 20;
+
+    Future<void> expectNoTrace(
+      _ThrowAfterCacheStorage storage,
+      Future<void> Function(CurrencyService service) action,
+    ) async {
+      final currencyService = CurrencyService(storage);
+      await expectLater(action(currencyService), throwsA(isA<StateError>()));
+      final currency = currencyService.load();
+      expect(currency.coins, startCoins);
+      expect(currency.premiumGems, startGems);
+    }
+
+    test('spendCoins', () async {
+      await expectNoTrace(
+        _ThrowAfterCacheStorage(
+          coins: startCoins,
+          gems: startGems,
+          throwOnCoins: true,
+        ),
+        (currencyService) async {
+          await currencyService.spendCoins(40);
+        },
+      );
+    });
+
+    test('addCoins', () async {
+      await expectNoTrace(
+        _ThrowAfterCacheStorage(
+          coins: startCoins,
+          gems: startGems,
+          throwOnCoins: true,
+        ),
+        (currencyService) async {
+          await currencyService.addCoins(40);
+        },
+      );
+    });
+
+    test('spendGems', () async {
+      await expectNoTrace(
+        _ThrowAfterCacheStorage(
+          coins: startCoins,
+          gems: startGems,
+          throwOnGems: true,
+        ),
+        (currencyService) async {
+          await currencyService.spendGems(5);
+        },
+      );
+    });
+
+    test('addGems', () async {
+      await expectNoTrace(
+        _ThrowAfterCacheStorage(
+          coins: startCoins,
+          gems: startGems,
+          throwOnGems: true,
+        ),
+        (currencyService) async {
+          await currencyService.addGems(5);
+        },
+      );
+    });
+  });
 }
 
 class _YieldingSaveCurrencyService extends CurrencyService {
@@ -207,4 +275,41 @@ class _YieldingSaveCurrencyService extends CurrencyService {
     await Future<void>.delayed(Duration.zero);
     await super.save(currency);
   }
+}
+
+/// shared_preferences 2.5.3 の setInt と同じく、値を先に書いてから失敗する。
+class _ThrowAfterCacheStorage extends Fake implements LocalStorageService {
+  _ThrowAfterCacheStorage({
+    required this.coins,
+    required this.gems,
+    this.throwOnCoins = false,
+    this.throwOnGems = false,
+  });
+
+  int coins;
+  int gems;
+  final bool throwOnCoins;
+  final bool throwOnGems;
+
+  @override
+  Future<void> saveCoins(int value) async {
+    coins = value;
+    if (throwOnCoins) {
+      throw StateError('platform write failed');
+    }
+  }
+
+  @override
+  Future<void> savePremiumGems(int value) async {
+    gems = value;
+    if (throwOnGems) {
+      throw StateError('platform write failed');
+    }
+  }
+
+  @override
+  int getCoins() => coins;
+
+  @override
+  int getPremiumGems() => gems;
 }
