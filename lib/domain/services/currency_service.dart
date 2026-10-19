@@ -18,10 +18,30 @@ class CurrencyService {
     );
   }
 
-  /// 通貨情報を保存する
+  /// 通貨情報を保存する。失敗時は呼び出し前の残高へ戻してから投げ直す。
   Future<void> save(PlayerCurrency currency) async {
-    await _storage.saveCoins(currency.coins);
-    await _storage.savePremiumGems(currency.premiumGems);
+    final snapshot = load();
+    try {
+      await _storage.saveCoins(currency.coins);
+      await _storage.savePremiumGems(currency.premiumGems);
+    } catch (_) {
+      await _restoreSnapshot(snapshot);
+      rethrow;
+    }
+  }
+
+  /// saveCoins がキャッシュ更新後に失敗すると gems まで届かないため、独立に戻す。
+  Future<void> _restoreSnapshot(PlayerCurrency snapshot) async {
+    try {
+      await _storage.saveCoins(snapshot.coins);
+    } catch (_) {
+      // キャッシュは setInt が先に更新するため、ここでの失敗は無視する。
+    }
+    try {
+      await _storage.savePremiumGems(snapshot.premiumGems);
+    } catch (_) {
+      // 同上。coins 側の失敗で gems の書き戻しが飛ばないようにする。
+    }
   }
 
   /// バトル勝利時のコイン報酬を計算する
