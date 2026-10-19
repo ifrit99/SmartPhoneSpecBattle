@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Model-check CurrencyService gem/coin updates with TLC.
 # Usage (from repo root): bash .claude/skills/currency-ledger-verify/run.sh
-# Exit 0: main check passes and the known finding still reproduces.
+# Exit 0: all four invariants pass on both configs.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -29,7 +29,7 @@ run() { (cd "$WORK" && tlc -workers auto -metadir "$WORK/states-$1" -config "$1.
 
 run CurrencyService
 if grep -q "No error has been found" "$WORK/CurrencyService.out"; then
-  echo "PASS  NoLostUpdate, NoDuplicateClaim, NoOverspend"
+  echo "PASS  NoLostUpdate, NoDuplicateClaim, NoOverspend, FailedOpHasNoEffect"
   main=0
 else
   echo "FAIL  main check. TLC output:"
@@ -38,14 +38,11 @@ else
 fi
 
 run CurrencyServiceFailedOp
-if grep -q "Invariant FailedOpHasNoEffect is violated" "$WORK/CurrencyServiceFailedOp.out"; then
-  echo "KNOWN FINDING still reproduces: FailedOpHasNoEffect (a spend can throw after deducting)"
+if grep -q "No error has been found" "$WORK/CurrencyServiceFailedOp.out"; then
+  echo "PASS  FailedOpHasNoEffect (CONSTANTS match main cfg)"
   finding=0
-elif grep -q "No error has been found" "$WORK/CurrencyServiceFailedOp.out"; then
-  echo "FINDING GONE: FailedOpHasNoEffect now holds. Update SKILL.md and move it into CurrencyService.cfg."
-  finding=3
 else
-  echo "UNEXPECTED: finding check failed in another way. TLC output:"
+  echo "FAIL  FailedOpHasNoEffect check. TLC output:"
   sed -n '/^Error:/,$p' "$WORK/CurrencyServiceFailedOp.out"
   finding=1
 fi
