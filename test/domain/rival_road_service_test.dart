@@ -135,4 +135,71 @@ void main() {
     expect(road.progressRatio, 1.0);
     expect(road.bestTurnsByStage, hasLength(RivalRoadService.stages.length));
   });
+
+  test('通貨加算が失敗してもクリア進捗は残らず再クリアできる', () async {
+    final stage = RivalRoadService.stages.first;
+
+    storage.throwAfterSavingGems = true;
+    await expectLater(
+      service.recordBattle(
+        won: true,
+        isCpuBattle: true,
+        enemyDeviceId: stage.enemyDeviceId,
+        turnsPlayed: 11,
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(storage.getRivalRoadClearedStage(), 0);
+    expect(storage.getCoins(), 0);
+    expect(storage.getPremiumGems(), 0);
+
+    storage.throwAfterSavingGems = false;
+    final result = await service.recordBattle(
+      won: true,
+      isCpuBattle: true,
+      enemyDeviceId: stage.enemyDeviceId,
+      turnsPlayed: 11,
+    );
+
+    expect(result, isNotNull);
+    expect(result!.stageCleared, isTrue);
+    expect(storage.getRivalRoadClearedStage(), 1);
+    expect(storage.getCoins(), stage.rewardCoins);
+    expect(storage.getPremiumGems(), stage.rewardGems);
+    expect(
+      await service.recordBattle(
+        won: true,
+        isCpuBattle: true,
+        enemyDeviceId: stage.enemyDeviceId,
+        turnsPlayed: 15,
+      ),
+      isNull,
+    );
+  });
+
+  test('同じステージクリアを並列実行しても報酬は二重加算されない', () async {
+    final stage = RivalRoadService.stages.first;
+
+    final results = await Future.wait([
+      service.recordBattle(
+        won: true,
+        isCpuBattle: true,
+        enemyDeviceId: stage.enemyDeviceId,
+        turnsPlayed: 11,
+      ),
+      service.recordBattle(
+        won: true,
+        isCpuBattle: true,
+        enemyDeviceId: stage.enemyDeviceId,
+        turnsPlayed: 12,
+      ),
+    ]);
+
+    final successful = results.whereType<RivalRoadClearResult>().toList();
+    final clears = successful.where((result) => result.stageCleared).toList();
+    expect(clears.length, 1);
+    expect(storage.getRivalRoadClearedStage(), 1);
+    expect(storage.getCoins(), stage.rewardCoins);
+    expect(storage.getPremiumGems(), stage.rewardGems);
+  });
 }

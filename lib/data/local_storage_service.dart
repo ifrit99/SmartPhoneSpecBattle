@@ -148,6 +148,15 @@ class LocalStorageService {
 
   SharedPreferences? _prefs;
 
+  /// テスト用。setInt がキャッシュを更新したあとで投げ、実ライブラリの失敗を再現する。
+  bool throwAfterSavingCoins = false;
+
+  /// テスト用。setInt がキャッシュを更新したあとで投げ、実ライブラリの失敗を再現する。
+  bool throwAfterSavingGems = false;
+
+  /// テスト用。throwAfterSavingGems が立つまで成功させるジェム書き込み回数。
+  int allowGemWritesBeforeThrow = 0;
+
   /// SharedPreferencesが初期化済みかどうか
   bool get isInitialized => _prefs != null;
 
@@ -159,6 +168,9 @@ class LocalStorageService {
   /// テスト用: SharedPreferencesインスタンスをリセットして再取得する
   Future<void> resetForTest() async {
     _prefs = await SharedPreferences.getInstance();
+    throwAfterSavingCoins = false;
+    throwAfterSavingGems = false;
+    allowGemWritesBeforeThrow = 0;
   }
 
   /// 初期化済みのSharedPreferencesを取得（未初期化時は例外）
@@ -318,12 +330,21 @@ class LocalStorageService {
 
   Future<void> saveCoins(int coins) async {
     await _store.setInt(_keyCoins, coins);
+    if (throwAfterSavingCoins) {
+      throw StateError('platform write failed');
+    }
   }
 
   int getCoins() => _store.getInt(_keyCoins) ?? 0;
 
   Future<void> savePremiumGems(int gems) async {
     await _store.setInt(_keyPremiumGems, gems);
+    if (!throwAfterSavingGems) return;
+    if (allowGemWritesBeforeThrow > 0) {
+      allowGemWritesBeforeThrow--;
+      return;
+    }
+    throw StateError('platform write failed');
   }
 
   int getPremiumGems() => _store.getInt(_keyPremiumGems) ?? 0;

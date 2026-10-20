@@ -225,6 +225,38 @@ void main() {
     expect(storage.getDefeatedEnemies(), isNot(contains('hard_02')));
   });
 
+  test('初回撃破ボーナスの通貨保存失敗では撃破済みが残らず再付与できる', () async {
+    storage.throwAfterSavingGems = true;
+    storage.allowGemWritesBeforeThrow = 1;
+    await expectLater(
+      battleResultService.persistResult(
+        battleResult: const BattleResult(playerWon: true, expGained: 50),
+        enemyDifficulty: EnemyDifficulty.hard,
+        isCpuBattle: false,
+        enemyDeviceId: 'boss_01',
+      ),
+      throwsA(isA<StateError>()),
+    );
+    expect(storage.getDefeatedEnemies(), isNot(contains('boss_01')));
+    expect(storage.getPremiumGems(), 0);
+
+    storage.throwAfterSavingGems = false;
+    final persisted = await battleResultService.persistResult(
+      battleResult: const BattleResult(playerWon: true, expGained: 50),
+      enemyDifficulty: EnemyDifficulty.hard,
+      isCpuBattle: false,
+      enemyDeviceId: 'boss_01',
+    );
+
+    expect(storage.getDefeatedEnemies(), contains('boss_01'));
+    expect(persisted.enemyDiscoveryBonus, isNotNull);
+    expect(
+      persisted.enemyDiscoveryBonus!.gemsAwarded,
+      BattleResultService.firstDefeatBonusGems,
+    );
+    expect(storage.getPremiumGems(), BattleResultService.firstDefeatBonusGems);
+  });
+
   test('CPU対戦時はデイリーバトル報酬を返す', () async {
     final persisted = await battleResultService.persistResult(
       battleResult: const BattleResult(playerWon: true, expGained: 50),

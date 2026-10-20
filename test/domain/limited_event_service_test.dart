@@ -4,8 +4,6 @@ import 'package:spec_battle_game/data/local_storage_service.dart';
 import 'package:spec_battle_game/domain/services/currency_service.dart';
 import 'package:spec_battle_game/domain/services/limited_event_service.dart';
 
-import 'support/throwing_currency_service.dart';
-
 void main() {
   late LocalStorageService storage;
   late CurrencyService currencyService;
@@ -140,16 +138,69 @@ void main() {
       await service.recordBattle(won: true, isCpuBattle: true);
     }
 
-    final failingService = LimitedEventService(
-      storage,
-      ThrowingCurrencyService(storage),
-      now: () => DateTime(2026, 5, 5),
-    );
+    final event = service.loadEvent();
+    storage.throwAfterSavingGems = true;
 
-    await expectLater(failingService.claim(), throwsA(isA<StateError>()));
-    expect(storage.isLimitedEventClaimed(), isTrue);
+    await expectLater(service.claim(), throwsA(isA<StateError>()));
+    expect(storage.isLimitedEventClaimed(), isFalse);
     expect(storage.getCoins(), 0);
     expect(storage.getPremiumGems(), 0);
-    expect(await failingService.claim(), isNull);
+
+    storage.throwAfterSavingGems = false;
+    final result = await service.claim();
+
+    expect(result, isNotNull);
+    expect(result!.coinsAwarded, event.definition.rewardCoins);
+    expect(result.gemsAwarded, event.definition.rewardGems);
+    expect(storage.getCoins(), event.definition.rewardCoins);
+    expect(storage.getPremiumGems(), event.definition.rewardGems);
+    expect(storage.isLimitedEventClaimed(), isTrue);
+    expect(await service.claim(), isNull);
+  });
+
+  test('段階報酬の通貨加算が失敗しても受取済みは残らず再受取できる', () async {
+    await service.recordBattle(
+      won: true,
+      isCpuBattle: true,
+      enemyDeviceId: service.loadEvent().definition.rivalEnemyId,
+    );
+
+    storage.throwAfterSavingGems = true;
+    await expectLater(
+      service.claimAvailableMilestones(),
+      throwsA(isA<StateError>()),
+    );
+    expect(storage.getClaimedLimitedEventMilestones(), isEmpty);
+    expect(storage.getCoins(), 0);
+    expect(storage.getPremiumGems(), 0);
+
+    storage.throwAfterSavingGems = false;
+    final result = await service.claimAvailableMilestones();
+
+    expect(result, isNotNull);
+    expect(result!.claimedCount, 1);
+    expect(result.coinsAwarded, 200);
+    expect(storage.getCoins(), 200);
+    expect(storage.getClaimedLimitedEventMilestones(), ['event_2_wins']);
+    expect(await service.claimAvailableMilestones(), isNull);
+  });
+
+  test('claimAvailableMilestonesを並列実行しても報酬は二重加算されない', () async {
+    await service.recordBattle(
+      won: true,
+      isCpuBattle: true,
+      enemyDeviceId: service.loadEvent().definition.rivalEnemyId,
+    );
+
+    final results = await Future.wait([
+      service.claimAvailableMilestones(),
+      service.claimAvailableMilestones(),
+    ]);
+
+    final successful = results.whereType<LimitedEventClaimResult>().toList();
+    expect(successful.length, 1);
+    expect(successful.first.claimedCount, 1);
+    expect(storage.getCoins(), 200);
+    expect(storage.getClaimedLimitedEventMilestones(), ['event_2_wins']);
   });
 }

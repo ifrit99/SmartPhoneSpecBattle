@@ -100,6 +100,32 @@ void main() {
     expect(storage.getClaimedSeasonPassRewards(), contains('season_250'));
   });
 
+  test('通貨加算が失敗しても受取済みは残らず再受取できる', () async {
+    final service = serviceFor(DateTime(2026, 5, 5));
+    await storage.setSeasonPassId('2026-05');
+    await storage.setSeasonPassXp(260);
+
+    storage.throwAfterSavingGems = true;
+    await expectLater(
+      service.claimAllAvailable(),
+      throwsA(isA<StateError>()),
+    );
+    expect(storage.getClaimedSeasonPassRewards(), isEmpty);
+    expect(storage.getCoins(), 0);
+    expect(storage.getPremiumGems(), 0);
+
+    storage.throwAfterSavingGems = false;
+    final result = await service.claimAllAvailable();
+
+    expect(result, isNotNull);
+    expect(result!.claimedCount, 2);
+    expect(storage.getCoins(), 200);
+    expect(storage.getPremiumGems(), 25);
+    expect(storage.getClaimedSeasonPassRewards(), contains('season_100'));
+    expect(storage.getClaimedSeasonPassRewards(), contains('season_250'));
+    expect(await service.claimAllAvailable(), isNull);
+  });
+
   test('月が変わると進捗と受取状態をリセットする', () async {
     await storage.setSeasonPassId('2026-05');
     await storage.setSeasonPassXp(700);
