@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Model-check CurrencyService gem/coin updates with TLC.
 # Usage (from repo root): bash .claude/skills/currency-ledger-verify/run.sh
+# Exit 0: all four invariants pass on both configs.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
