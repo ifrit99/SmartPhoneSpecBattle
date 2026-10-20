@@ -258,12 +258,17 @@ class LocalStorageService {
 
   // --- 図鑑（対戦履歴） ---
 
+  /// 撃破した敵のIDリストを置き換える
+  Future<void> saveDefeatedEnemies(List<String> ids) async {
+    await _store.setStringList(_keyDefeatedEnemies, ids);
+  }
+
   /// 撃破した敵のID をリストに追記
   Future<void> saveDefeatedEnemy(String enemyId) async {
     final currentList = getDefeatedEnemies();
     if (!currentList.contains(enemyId)) {
       currentList.add(enemyId);
-      await _store.setStringList(_keyDefeatedEnemies, currentList);
+      await saveDefeatedEnemies(currentList);
     }
   }
 
@@ -451,9 +456,9 @@ class LocalStorageService {
   /// ログイン報酬の最終受取日を取得
   String? getLastLoginRewardDate() => _store.getString(_keyLastLoginRewardDate);
 
-  /// ログイン報酬の最終受取日を保存
-  Future<void> setLastLoginRewardDate(String dateStr) async {
-    await _store.setString(_keyLastLoginRewardDate, dateStr);
+  /// ログイン報酬の最終受取日を保存。null なら削除する。
+  Future<void> setLastLoginRewardDate(String? dateStr) async {
+    await _setOptionalString(_keyLastLoginRewardDate, dateStr);
   }
 
   /// 連続ログイン日数を取得
@@ -468,9 +473,9 @@ class LocalStorageService {
   String? getLastBattleRewardDate() =>
       _store.getString(_keyLastBattleRewardDate);
 
-  /// バトル報酬の最終受取日を保存
-  Future<void> setLastBattleRewardDate(String dateStr) async {
-    await _store.setString(_keyLastBattleRewardDate, dateStr);
+  /// バトル報酬の最終受取日を保存。null なら削除する。
+  Future<void> setLastBattleRewardDate(String? dateStr) async {
+    await _setOptionalString(_keyLastBattleRewardDate, dateStr);
   }
 
   // --- 実績 ---
@@ -668,8 +673,8 @@ class LocalStorageService {
 
   String? getLastBossBountyDate() => _store.getString(_keyLastBossBountyDate);
 
-  Future<void> setLastBossBountyDate(String dateStr) async {
-    await _store.setString(_keyLastBossBountyDate, dateStr);
+  Future<void> setLastBossBountyDate(String? dateStr) async {
+    await _setOptionalString(_keyLastBossBountyDate, dateStr);
   }
 
   // --- BOSSタイムアタック ---

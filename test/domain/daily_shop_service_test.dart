@@ -151,7 +151,6 @@ void main() {
     final service = serviceFor(DateTime(2026, 5, 5));
 
     storage.throwAfterSavingGems = true;
-    storage.allowGemWritesBeforeThrow = 1;
     await expectLater(service.purchase('gem_cache'), throwsA(isA<StateError>()));
     expect(storage.getCoins(), 800);
     expect(storage.getPremiumGems(), 0);

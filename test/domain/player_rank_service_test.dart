@@ -111,7 +111,7 @@ void main() {
     expect(storage.getClaimedRankRewards(), ['hunter']);
   });
 
-  test('通貨加算が失敗しても受取済みは残り再受取できない', () async {
+  test('通貨加算が失敗しても受取済みは残らず再受取できる', () async {
     for (var i = 0; i < 8; i++) {
       await storage.incrementBattleCount();
     }

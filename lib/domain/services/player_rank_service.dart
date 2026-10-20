@@ -230,12 +230,17 @@ class PlayerRankService {
         (total, reward) => total + reward.gemsReward,
       );
 
-      final claimed = _storage.getClaimedRankRewards().toSet()
+      final previous = _storage.getClaimedRankRewards();
+      final claimed = previous.toSet()
         ..addAll(claimable.map((reward) => reward.rankId));
       await _storage.saveClaimedRankRewards(claimed.toList());
 
-      if (coins > 0) await _currencyService.addCoins(coins);
-      if (gems > 0) await _currencyService.addGems(gems);
+      try {
+        await _currencyService.addReward(coins: coins, gems: gems);
+      } catch (_) {
+        await _storage.saveClaimedRankRewards(previous);
+        rethrow;
+      }
 
       return PlayerRankClaimResult(
         claimedCount: claimable.length,

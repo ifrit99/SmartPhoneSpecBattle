@@ -193,12 +193,17 @@ class SeasonPassService {
         (total, reward) => total + reward.gemsReward,
       );
 
-      final claimed = _storage.getClaimedSeasonPassRewards().toSet()
+      final previous = _storage.getClaimedSeasonPassRewards();
+      final claimed = previous.toSet()
         ..addAll(claimable.map((reward) => reward.id));
       await _storage.saveClaimedSeasonPassRewards(claimed.toList());
 
-      if (coins > 0) await _currencyService.addCoins(coins);
-      if (gems > 0) await _currencyService.addGems(gems);
+      try {
+        await _currencyService.addReward(coins: coins, gems: gems);
+      } catch (_) {
+        await _storage.saveClaimedSeasonPassRewards(previous);
+        rethrow;
+      }
 
       return SeasonPassClaimResult(
         claimedCount: claimable.length,

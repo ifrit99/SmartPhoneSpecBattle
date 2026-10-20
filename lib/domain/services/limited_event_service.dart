@@ -218,8 +218,15 @@ class LimitedEventService {
       if (!snapshot.claimable) return null;
 
       await _storage.setLimitedEventClaimed(true);
-      await _currencyService.addCoins(snapshot.definition.rewardCoins);
-      await _currencyService.addGems(snapshot.definition.rewardGems);
+      try {
+        await _currencyService.addReward(
+          coins: snapshot.definition.rewardCoins,
+          gems: snapshot.definition.rewardGems,
+        );
+      } catch (_) {
+        await _storage.setLimitedEventClaimed(false);
+        rethrow;
+      }
 
       return LimitedEventClaimResult(
         coinsAwarded: snapshot.definition.rewardCoins,
@@ -247,12 +254,17 @@ class LimitedEventService {
         (total, milestone) => total + milestone.rewardGems,
       );
 
-      final claimed = _storage.getClaimedLimitedEventMilestones().toSet()
+      final previous = _storage.getClaimedLimitedEventMilestones();
+      final claimed = previous.toSet()
         ..addAll(claimable.map((milestone) => milestone.id));
       await _storage.saveClaimedLimitedEventMilestones(claimed.toList());
 
-      if (coins > 0) await _currencyService.addCoins(coins);
-      if (gems > 0) await _currencyService.addGems(gems);
+      try {
+        await _currencyService.addReward(coins: coins, gems: gems);
+      } catch (_) {
+        await _storage.saveClaimedLimitedEventMilestones(previous);
+        rethrow;
+      }
 
       return LimitedEventClaimResult(
         claimedCount: claimable.length,

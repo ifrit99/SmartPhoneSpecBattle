@@ -13,4 +13,17 @@ class ThrowingCurrencyService extends CurrencyService {
   Future<PlayerCurrency> addGems(int _) {
     throw StateError('currency grant failed');
   }
+
+  @override
+  Future<PlayerCurrency> addReward({int coins = 0, int gems = 0}) {
+    throw StateError('currency grant failed');
+  }
+
+  @override
+  Future<PlayerCurrency?> exchangeCoinsForGems({
+    required int coins,
+    required int gems,
+  }) {
+    throw StateError('currency grant failed');
+  }
 }

@@ -132,7 +132,7 @@ void main() {
     expect(storage.isLimitedEventClaimed(), isTrue);
   });
 
-  test('通貨加算が失敗しても受取済みは残り再受取できない', () async {
+  test('通貨加算が失敗しても受取済みは残らず再受取できる', () async {
     final targetWins = service.loadEvent().definition.targetWins;
     for (var i = 0; i < targetWins; i++) {
       await service.recordBattle(won: true, isCpuBattle: true);

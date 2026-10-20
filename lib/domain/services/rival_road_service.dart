@@ -1,6 +1,7 @@
 import '../../data/local_storage_service.dart';
 import 'currency_service.dart';
 import 'enemy_generator.dart';
+import 'serial_executor.dart';
 
 class RivalRoadStageDefinition {
   final int index;
@@ -114,6 +115,7 @@ class RivalRoadService {
 
   final LocalStorageService _storage;
   final CurrencyService _currencyService;
+  final SerialExecutor _serial = SerialExecutor();
 
   RivalRoadService(this._storage, this._currencyService);
 
@@ -132,47 +134,55 @@ class RivalRoadService {
     required bool isCpuBattle,
     required String? enemyDeviceId,
     required int turnsPlayed,
-  }) async {
-    if (!won || !isCpuBattle || enemyDeviceId == null) return null;
+  }) {
+    return _serial.run(() async {
+      if (!won || !isCpuBattle || enemyDeviceId == null) return null;
 
-    final road = loadRoad();
-    final stage = _stageByEnemyDeviceId(enemyDeviceId);
-    if (stage == null) return null;
-    if (stage.index > road.clearedStageCount + 1) return null;
+      final road = loadRoad();
+      final stage = _stageByEnemyDeviceId(enemyDeviceId);
+      if (stage == null) return null;
+      if (stage.index > road.clearedStageCount + 1) return null;
 
-    final previousBestTurns = _storage.getRivalRoadBestTurnsForStage(
-      stage.index,
-    );
-    int? bestTurns;
-    if (turnsPlayed > 0 &&
-        (previousBestTurns == null || turnsPlayed < previousBestTurns)) {
-      bestTurns = turnsPlayed;
-      await _storage.setRivalRoadBestTurnsForStage(stage.index, turnsPlayed);
-    }
-
-    final nextStage = road.nextStage;
-    final stageCleared =
-        nextStage != null && nextStage.enemyDeviceId == enemyDeviceId;
-    if (!stageCleared && bestTurns == null) return null;
-
-    final nextCleared =
-        stageCleared ? road.clearedStageCount + 1 : road.clearedStageCount;
-    if (stageCleared) {
-      await _storage.setRivalRoadClearedStage(nextCleared);
-      await _currencyService.addCoins(stage.rewardCoins);
-      if (stage.rewardGems > 0) {
-        await _currencyService.addGems(stage.rewardGems);
+      final previousBestTurns = _storage.getRivalRoadBestTurnsForStage(
+        stage.index,
+      );
+      int? bestTurns;
+      if (turnsPlayed > 0 &&
+          (previousBestTurns == null || turnsPlayed < previousBestTurns)) {
+        bestTurns = turnsPlayed;
+        await _storage.setRivalRoadBestTurnsForStage(stage.index, turnsPlayed);
       }
-    }
 
-    return RivalRoadClearResult(
-      stage: stage,
-      clearedStageCount: nextCleared,
-      completed: nextCleared >= stages.length,
-      stageCleared: stageCleared,
-      previousBestTurns: previousBestTurns,
-      bestTurns: bestTurns,
-    );
+      final nextStage = road.nextStage;
+      final stageCleared =
+          nextStage != null && nextStage.enemyDeviceId == enemyDeviceId;
+      if (!stageCleared && bestTurns == null) return null;
+
+      final nextCleared =
+          stageCleared ? road.clearedStageCount + 1 : road.clearedStageCount;
+      if (stageCleared) {
+        final previousCleared = road.clearedStageCount;
+        await _storage.setRivalRoadClearedStage(nextCleared);
+        try {
+          await _currencyService.addReward(
+            coins: stage.rewardCoins,
+            gems: stage.rewardGems,
+          );
+        } catch (_) {
+          await _storage.setRivalRoadClearedStage(previousCleared);
+          rethrow;
+        }
+      }
+
+      return RivalRoadClearResult(
+        stage: stage,
+        clearedStageCount: nextCleared,
+        completed: nextCleared >= stages.length,
+        stageCleared: stageCleared,
+        previousBestTurns: previousBestTurns,
+        bestTurns: bestTurns,
+      );
+    });
   }
 
   RivalRoadStageDefinition? _stageByEnemyDeviceId(String enemyDeviceId) {

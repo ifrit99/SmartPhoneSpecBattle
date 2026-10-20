@@ -84,8 +84,15 @@ class WeeklyChallengeService {
       if (!snapshot.claimable) return null;
 
       await _storage.setWeeklyChallengeClaimed(true);
-      await _currencyService.addCoins(rewardCoins);
-      await _currencyService.addGems(rewardGems);
+      try {
+        await _currencyService.addReward(
+          coins: rewardCoins,
+          gems: rewardGems,
+        );
+      } catch (_) {
+        await _storage.setWeeklyChallengeClaimed(false);
+        rethrow;
+      }
 
       return const WeeklyChallengeClaimResult(
         coinsAwarded: rewardCoins,

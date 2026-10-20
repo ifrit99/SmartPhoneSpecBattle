@@ -59,7 +59,7 @@ void main() {
     expect(storage.getLastBossBountyDate(), '2026-05-05');
   });
 
-  test('通貨加算が失敗しても受取済みは残り再受取できない', () async {
+  test('通貨加算が失敗しても受取済みは残らず再受取できる', () async {
     storage.throwAfterSavingGems = true;
 
     await expectLater(service.claimForBossWin(), throwsA(isA<StateError>()));

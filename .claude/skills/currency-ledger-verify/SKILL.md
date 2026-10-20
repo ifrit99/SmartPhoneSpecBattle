@@ -26,7 +26,7 @@ Files in this skill: `SKILL.md`, `run.sh`, `CurrencyService.tla`, `CurrencyServi
 | `FAIL  main check` and a trace | Real bug or modeling error. See below. | 1 |
 | `MODEL OUT OF SYNC` | A CurrencyService method was renamed or removed, or `save` lost `_restoreSnapshot` or `rethrow`. Update the model. | 2 |
 
-`run.sh` reads two facts from `currency_service.dart` on every run: `SerializedOps` (which of `addCoins/spendCoins/addGems/spendGems` call `_serial.run`), and that `save` still calls `_restoreSnapshot` and `rethrow`. Removing `_serial.run`, `_restoreSnapshot`, or `rethrow` is checked with no model edit. Every other change needs the model updated by hand.
+`run.sh` reads three facts from `currency_service.dart` on every run: `SerializedOps` (which of `addCoins/spendCoins/addGems/spendGems` call `_serial.run`), that `addReward` and `exchangeCoinsForGems` exist and call `_serial.run` (they are not added to `SerializedOps`), and that `save` still calls `_restoreSnapshot` and `rethrow`. Removing `_serial.run`, `_restoreSnapshot`, or `rethrow` is checked with no model edit. Every other change needs the model updated by hand. The TLA model still treats claim credit as two `add` calls. Combined credit is a Dart-only entry point that uses the same `save` rollback.
 
 ## Does my change touch this?
 
@@ -35,6 +35,7 @@ Yes if it changes any of these:
 | Code | Modeled as |
 | --- | --- |
 | `CurrencyService.addCoins/spendCoins/addGems/spendGems` (`lib/domain/services/currency_service.dart`) | `CallOp`, `ActionStart` (load, check, `saveCoins`), `WriteGems` (`savePremiumGems`), `RollbackCoins` / `RollbackGems` (restore snapshot), `Finally` |
+| `CurrencyService.addReward` / `exchangeCoinsForGems` | Not a separate TLA process. Same `save` write/rollback as the four ops. `run.sh` only checks that each method exists and uses `_serial.run` |
 | `CurrencyService.save` writing coins then gems, each with `await`; on throw, restore both keys independently then rethrow | the two write steps plus two rollback steps; each writes the *whole* value, not a delta |
 | `SerialExecutor.run` (`lib/domain/services/serial_executor.dart`) | `chain`, `prev`, `completed`, token reset in `Finally`/`ClaimExit` |
 | `LocalStorageService.saveCoins/savePremiumGems` (`lib/data/local_storage_service.dart`) | the cache write happens synchronously, then the `await` can throw (`persistThrows`) |

@@ -35,9 +35,17 @@ class BossBountyService {
     return _serial.run(() async {
       if (!canReceiveToday) return null;
 
+      final previous = _storage.getLastBossBountyDate();
       await _storage.setLastBossBountyDate(todayString);
-      await _currencyService.addCoins(dailyBossCoins);
-      await _currencyService.addGems(dailyBossGems);
+      try {
+        await _currencyService.addReward(
+          coins: dailyBossCoins,
+          gems: dailyBossGems,
+        );
+      } catch (_) {
+        await _storage.setLastBossBountyDate(previous);
+        rethrow;
+      }
 
       return const BossBountyResult(
         coinsAwarded: dailyBossCoins,
