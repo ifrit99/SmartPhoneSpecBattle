@@ -18,13 +18,15 @@ bash .claude/skills/currency-ledger-verify/run.sh
 
 It takes about 10s and ~1.3M states. It needs `tlc` on PATH (TLC2 2026.10.15 rev 932d35e, Java 21). It does not use flutter.
 
+Files in this skill: `SKILL.md`, `run.sh`, `CurrencyService.tla`, `CurrencyService.cfg`.
+
 | Output | Meaning | Exit |
 | --- | --- | --- |
-| `PASS  NoLostUpdate, NoDuplicateClaim, NoOverspend, FailedOpHasNoEffect` plus `PASS  FailedOpHasNoEffect (CONSTANTS match main cfg)` | Expected today. | 0 |
-| `FAIL  main check` or `FAIL  FailedOpHasNoEffect check` and a trace | Real bug or modeling error. See below. | 1 |
-| `MODEL OUT OF SYNC` | A CurrencyService method was renamed or removed. Update the model. | 2 |
+| `PASS  NoLostUpdate, NoDuplicateClaim, NoOverspend, FailedOpHasNoEffect` | Expected today. | 0 |
+| `FAIL  main check` and a trace | Real bug or modeling error. See below. | 1 |
+| `MODEL OUT OF SYNC` | A CurrencyService method was renamed or removed, or `save` lost `_restoreSnapshot` or `rethrow`. Update the model. | 2 |
 
-`run.sh` reads `SerializedOps` (which of `addCoins/spendCoins/addGems/spendGems` call `_serial.run`) from `currency_service.dart` on every run, so removing `_serial.run` there is checked with no model edit. Every other change needs the model updated by hand.
+`run.sh` reads two facts from `currency_service.dart` on every run: `SerializedOps` (which of `addCoins/spendCoins/addGems/spendGems` call `_serial.run`), and that `save` still calls `_restoreSnapshot` and `rethrow`. Removing `_serial.run`, `_restoreSnapshot`, or `rethrow` is checked with no model edit. Every other change needs the model updated by hand.
 
 ## Does my change touch this?
 
@@ -58,11 +60,11 @@ TLC prints a numbered trace. Each `State n: <Action("proc") ...>` line is one un
 
 Reference break, checked 2026-10-19: remove `_serial.run` from `addGems`. The trace: claim c1's `addCoins` finishes, then c1 calls `addGems`, which loads gems=1 and computes 2. `pullPremium` (p) runs `spendGems`, loads gems=1 and computes 0. p writes gems=0, then c1 writes gems=2. The 1-gem pull is erased: stored 2, expected 1.
 
-A persistThrows break: drop the restore in `save()`. `FailedOpHasNoEffect` fails. Trace: p `spendGems` writes gems=0, throws, and the cache stays at 0.
+A persistThrows break: drop the restore inside `_restoreSnapshot` (keep the call and `rethrow` in `save()`, or `run.sh` exits 2 before TLC). `FailedOpHasNoEffect` fails. Trace: p `spendGems` writes gems=0, throws, and the cache stays at 0.
 
-## Failed op (CurrencyServiceFailedOp.cfg)
+## Failed op
 
-`FailedOpHasNoEffect` is an invariant of both configs. `shared_preferences` 2.5.3 `setInt` still updates its in-memory cache *before* the platform write (`_preferenceCache[key] = value; return _store.setValue(...)`). `CurrencyService.save` snapshots `load()`, writes coins then gems, and on any throw restores both keys independently before rethrowing. CONSTANTS in the two cfgs must stay identical.
+`FailedOpHasNoEffect` is an invariant of `CurrencyService.cfg`. `shared_preferences` 2.5.3 `setInt` still updates its in-memory cache *before* the platform write (`_preferenceCache[key] = value; return _store.setValue(...)`). `CurrencyService.save` snapshots `load()`, writes coins then gems, and on any throw restores both keys independently before rethrowing.
 
 ## Bounds and assumptions
 
@@ -75,17 +77,16 @@ A persistThrows break: drop the restore in `save()`. `FailedOpHasNoEffect` fails
 ## Updating the model for an intended change
 
 1. Map the changed code to the action in the table above and edit `CurrencyService.tla` so that each action is still exactly the code between two `await`s.
-2. Keep the CONSTANTS in `CurrencyService.cfg` and `CurrencyServiceFailedOp.cfg` identical.
-3. Prove that the edited model can still fail: make a scratch break in the Dart code (for example, drop `_serial.run` from one method, or drop the snapshot restore in `save()` and make the matching model edit), run `run.sh`, see it fail, and revert.
-4. Run `run.sh` again on the real code.
-5. Only then move the sync commit below forward.
+2. Prove that the edited model can still fail: make a scratch break in the Dart code (for example, drop `_serial.run` from one method, or drop `_restoreSnapshot` or `rethrow` from `save()`), run `run.sh`, see it fail or exit 2, and revert.
+3. Run `run.sh` again on the real code.
+4. Only then move the sync commit below forward.
 
 ## Sync record
 
 - Covered files: `lib/domain/services/currency_service.dart`, `lib/domain/services/serial_executor.dart`, `lib/data/local_storage_service.dart` (saveCoins/getCoins/savePremiumGems/getPremiumGems), `lib/domain/services/limited_event_service.dart` (claim), `lib/domain/services/gacha_service.dart` (pullSingle, pullPremium).
 - **Last confirmed in sync at commit `81c0faeb364b4aef0cc188064b34d62fa121a93d`.** To see whether the model needs another look, run `git diff 81c0faeb364b4aef0cc188064b34d62fa121a93d -- <covered files>`.
 - Move this commit forward only after you confirm the model describes the code at the new commit and `run.sh` gives the expected result there.
-- Mutations seen failing on 2026-10-19: no `_serial.run` on `addGems` → `NoLostUpdate`; no `setLimitedEventClaimed(true)` → `NoDuplicateClaim`; no balance check in `spendCoins` → `NoOverspend`; no snapshot restore in `save()` → `FailedOpHasNoEffect`.
+- Mutations seen failing on 2026-10-19: no `_serial.run` on `addGems` → `NoLostUpdate`; no `setLimitedEventClaimed(true)` → `NoDuplicateClaim`; no balance check in `spendCoins` → `NoOverspend`; no snapshot restore in `save()` → `FailedOpHasNoEffect`. Dropping `_restoreSnapshot` or `rethrow` from `save()` now exits 2 (`MODEL OUT OF SYNC`) before TLC.
 
 ## 深掘りメモ
 
