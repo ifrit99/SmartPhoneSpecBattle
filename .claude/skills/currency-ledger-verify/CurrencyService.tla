@@ -5,17 +5,20 @@
 (* Dart runs one isolate: a task only yields at `await`. Each action below *)
 (* is the code between two awaits. Code references:                        *)
 (*   CurrencyService  lib/domain/services/currency_service.dart            *)
-(*     addCoins/spendCoins/addGems/spendGems: _serial.run(load ->          *)
-(*     check -> await saveCoins -> await savePremiumGems; on throw,        *)
-(*     restore both keys to the pre-call snapshot then rethrow)            *)
+(*     addCoins/spendCoins/addGems/spendGems/addReward: _serial.run(       *)
+(*     load -> check -> await saveCoins -> await savePremiumGems; on       *)
+(*     throw, restore both keys to the pre-call snapshot then rethrow).    *)
+(*     addReward writes coins and gems in that one save.                   *)
 (*   SerialExecutor   lib/domain/services/serial_executor.dart             *)
 (*   LocalStorageService.saveCoins/savePremiumGems                         *)
 (*     lib/data/local_storage_service.dart: SharedPreferences.setInt       *)
 (*     writes its in-memory cache synchronously, then awaits the platform  *)
 (*     write. load() reads that cache.                                     *)
 (*   Claimers c1,c2   LimitedEventService.claim()  (two concurrent taps)   *)
-(*     lib/domain/services/limited_event_service.dart: own _serial; marks  *)
-(*     claimed, then await addCoins, then await addGems.                   *)
+(*     lib/domain/services/limited_event_service.dart: own _serial;        *)
+(*     previous = claimed; mark; try await addReward({coins, gems});       *)
+(*     catch { restore previous; rethrow }. Unmark-write failure is a      *)
+(*     residual path that does not consume MaxFaults.                      *)
 (*   Pullers g1,g2    GachaService.pullSingle() (precheck load, spendCoins)*)
 (*   Premium p        GachaService.pullPremium() (precheck load, spendGems)*)
 (*     lib/domain/services/gacha_service.dart (no executor of its own)     *)
@@ -27,7 +30,10 @@ CONSTANTS InitCoins, InitGems,
           SinglePullCost, PremiumPullCost,
           SerializedOps,   \* CurrencyService methods wrapped in _serial.run
           Faults,          \* subset of {"callThrows", "persistThrows"}
-          MaxFaults
+          MaxFaults,
+          RestoreClaimOnFailure  \* TRUE: catch unmarks. FALSE: known-bad
+
+ASSUME RestoreClaimOnFailure \in BOOLEAN
 
 Claimers == {"c1", "c2"}
 Pullers  == {"g1", "g2"}
@@ -52,22 +58,28 @@ VARIABLES
   opResult,           \* "pending" | "ok" | "null" | "throw"
   opApplied,          \* ghost: this op already wrote a nonzero delta
   effCoins, effGems,  \* ghost: Init + sum of deltas whose write reached the cache
-  claimCoinCredits, claimGemCredits,  \* ghost: event reward credits written
+  claimCredits,       \* ghost: full event rewards that finished addReward ok
+  unmarkFailed,       \* ghost: some catch restore left claimed=true
   failedWithEffect,   \* ghost: some op threw after its delta was written
   faults
 
 storeVars == <<coins, gems, eventClaimed>>
 execVars  == <<chain, completed, runs, prev>>
 opVars    == <<op, opPhase, upd, snap, wroteGems, opResult, opApplied>>
-ghostVars == <<effCoins, effGems, claimCoinCredits, claimGemCredits, failedWithEffect>>
+ghostVars == <<effCoins, effGems, claimCredits, unmarkFailed, failedWithEffect>>
 vars      == <<storeVars, execVars, pc, opVars, ghostVars, faults>>
 
-Amount(k) == CASE k = "addCoins"   -> EventRewardCoins
-               [] k = "addGems"    -> EventRewardGems
-               [] k = "spendCoins" -> SinglePullCost
+CDelta(k) == CASE k = "addCoins"   -> EventRewardCoins
+               [] k = "addReward"  -> EventRewardCoins
+               [] k = "spendCoins" -> -SinglePullCost
+               [] OTHER            -> 0
+GDelta(k) == CASE k = "addGems"    -> EventRewardGems
+               [] k = "addReward"  -> EventRewardGems
+               [] k = "spendGems"  -> -PremiumPullCost
+               [] OTHER            -> 0
+Amount(k) == CASE k = "spendCoins" -> SinglePullCost
                [] k = "spendGems"  -> PremiumPullCost
-CDelta(k) == CASE k = "addCoins" -> Amount(k) [] k = "spendCoins" -> -Amount(k) [] OTHER -> 0
-GDelta(k) == CASE k = "addGems"  -> Amount(k) [] k = "spendGems"  -> -Amount(k) [] OTHER -> 0
+               [] OTHER            -> 0
 
 CurTok(p) == <<p, "currency", runs[p]["currency"]>>
 EvTok(p)  == <<p, "event", runs[p]["event"]>>
@@ -88,7 +100,7 @@ Init ==
   /\ wroteGems = [p \in Procs |-> FALSE]
   /\ opResult = [p \in Procs |-> "pending"] /\ opApplied = [p \in Procs |-> FALSE]
   /\ effCoins = InitCoins /\ effGems = InitGems
-  /\ claimCoinCredits = 0 /\ claimGemCredits = 0
+  /\ claimCredits = 0 /\ unmarkFailed = FALSE
   /\ failedWithEffect = FALSE /\ faults = 0
 
 -----------------------------------------------------------------------------
@@ -124,20 +136,18 @@ ActionStart(p) ==
      IN IF insufficient
         THEN /\ opPhase' = [opPhase EXCEPT ![p] = "fin"]
              /\ opResult' = [opResult EXCEPT ![p] = "null"]
-             /\ UNCHANGED <<coins, upd, snap, opApplied, effCoins, claimCoinCredits, faults>>
+             /\ UNCHANGED <<coins, upd, snap, opApplied, effCoins, faults>>
         ELSE \E f \in PersistChoices :
              /\ snap' = [snap EXCEPT ![p] = [c |-> coins, g |-> gems]]
              /\ coins' = coins + CDelta(k)
              /\ upd' = [upd EXCEPT ![p] = [c |-> coins + CDelta(k), g |-> gems + GDelta(k)]]
              /\ effCoins' = effCoins + CDelta(k)
-             /\ claimCoinCredits' = IF p \in Claimers /\ k = "addCoins"
-                                      THEN claimCoinCredits + 1 ELSE claimCoinCredits
              /\ opApplied' = [opApplied EXCEPT ![p] = CDelta(k) # 0]
              /\ faults' = IF f THEN faults + 1 ELSE faults
              /\ opPhase' = [opPhase EXCEPT ![p] = IF f THEN "rollbackCoins" ELSE "gems"]
              /\ opResult' = [opResult EXCEPT ![p] = IF f THEN "throw" ELSE "pending"]
   /\ UNCHANGED <<gems, eventClaimed, execVars, pc, op, wroteGems,
-                 effGems, claimGemCredits, failedWithEffect>>
+                 effGems, claimCredits, unmarkFailed, failedWithEffect>>
 
 \* After `await saveCoins`: savePremiumGems writes `updated.premiumGems`.
 WriteGems(p) ==
@@ -145,26 +155,22 @@ WriteGems(p) ==
   /\ \E f \in PersistChoices :
        /\ gems' = upd[p].g
        /\ effGems' = effGems + GDelta(op[p])
-       /\ claimGemCredits' = IF p \in Claimers /\ op[p] = "addGems"
-                               THEN claimGemCredits + 1 ELSE claimGemCredits
        /\ opApplied' = [opApplied EXCEPT ![p] = @ \/ GDelta(op[p]) # 0]
        /\ wroteGems' = [wroteGems EXCEPT ![p] = TRUE]
        /\ faults' = IF f THEN faults + 1 ELSE faults
        /\ opPhase' = [opPhase EXCEPT ![p] = IF f THEN "rollbackCoins" ELSE "fin"]
        /\ opResult' = [opResult EXCEPT ![p] = IF f THEN "throw" ELSE "ok"]
   /\ UNCHANGED <<coins, eventClaimed, execVars, pc, op, upd, snap,
-                 effCoins, claimCoinCredits, failedWithEffect>>
+                 effCoins, claimCredits, unmarkFailed, failedWithEffect>>
 
 \* After persistThrows: restore coins to the pre-call snapshot (saveCoins).
 RollbackCoins(p) ==
   /\ opPhase[p] = "rollbackCoins"
   /\ coins' = snap[p].c
   /\ effCoins' = effCoins - CDelta(op[p])
-  /\ claimCoinCredits' = IF p \in Claimers /\ op[p] = "addCoins"
-                           THEN claimCoinCredits - 1 ELSE claimCoinCredits
   /\ opPhase' = [opPhase EXCEPT ![p] = "rollbackGems"]
   /\ UNCHANGED <<gems, eventClaimed, execVars, pc, op, upd, snap, wroteGems,
-                 opResult, opApplied, effGems, claimGemCredits,
+                 opResult, opApplied, effGems, claimCredits, unmarkFailed,
                  failedWithEffect, faults>>
 
 \* Restore gems independently so a failed coin restore cannot skip gems.
@@ -172,26 +178,29 @@ RollbackGems(p) ==
   /\ opPhase[p] = "rollbackGems"
   /\ gems' = snap[p].g
   /\ IF wroteGems[p]
-       THEN /\ effGems' = effGems - GDelta(op[p])
-            /\ claimGemCredits' = IF p \in Claimers /\ op[p] = "addGems"
-                                    THEN claimGemCredits - 1 ELSE claimGemCredits
-       ELSE UNCHANGED <<effGems, claimGemCredits>>
+       THEN effGems' = effGems - GDelta(op[p])
+       ELSE UNCHANGED effGems
   /\ opApplied' = [opApplied EXCEPT ![p] = FALSE]
   /\ opPhase' = [opPhase EXCEPT ![p] = "fin"]
   /\ UNCHANGED <<coins, eventClaimed, execVars, pc, op, upd, snap, wroteGems,
-                 opResult, effCoins, claimCoinCredits, failedWithEffect, faults>>
+                 opResult, effCoins, claimCredits, unmarkFailed,
+                 failedWithEffect, faults>>
 
 \* SerialExecutor.run finally: completer.complete(); reset _chain if mine.
+\* claimCredits counts a finished ok addReward, not a mid-save write.
 Finally(p) ==
   /\ opPhase[p] = "fin"
   /\ opPhase' = [opPhase EXCEPT ![p] = "done"]
   /\ failedWithEffect' = (failedWithEffect \/ (opResult[p] = "throw" /\ opApplied[p]))
+  /\ IF p \in Claimers /\ op[p] = "addReward" /\ opResult[p] = "ok"
+       THEN claimCredits' = claimCredits + 1
+       ELSE UNCHANGED claimCredits
   /\ IF op[p] \in SerializedOps
        THEN /\ completed' = completed \cup {CurTok(p)}
             /\ chain' = [chain EXCEPT !["currency"] = IF @ = CurTok(p) THEN None ELSE @]
        ELSE UNCHANGED <<completed, chain>>
   /\ UNCHANGED <<storeVars, runs, prev, pc, op, upd, snap, wroteGems, opResult, opApplied,
-                 effCoins, effGems, claimCoinCredits, claimGemCredits, faults>>
+                 effCoins, effGems, unmarkFailed, faults>>
 
 -----------------------------------------------------------------------------
 (* Callers                                                                 *)
@@ -208,6 +217,15 @@ ClaimExit(p) ==
 \* ThrowingCurrencyService (test/domain/support): method throws before run().
 CallThrows == CanFault("callThrows") /\ faults' = faults + 1
 
+\* After addReward throws: restore previous claimed flag, then rethrow.
+\* The unmark write can fail on its own. That path does not use MaxFaults,
+\* so credit-throw plus stuck-unclaimable is reachable. Double pay is not.
+OnCreditThrow(p) ==
+  IF RestoreClaimOnFailure
+    THEN /\ pc' = [pc EXCEPT ![p] = "unmark"]
+         /\ UNCHANGED <<completed, chain>>
+    ELSE ClaimExit(p)
+
 \* claim(): _serial.run sync part, then `await _ensureCurrentWeek()`.
 ClaimEnter(p) ==
   /\ p \in Claimers /\ pc[p] = "start"
@@ -222,30 +240,37 @@ ClaimCheck(p) ==
   /\ p \in Claimers /\ pc[p] = "check" /\ Done(prev[p]["event"])
   /\ IF eventClaimed
        THEN /\ ClaimExit(p) /\ UNCHANGED eventClaimed
-       ELSE /\ eventClaimed' = TRUE /\ pc' = [pc EXCEPT ![p] = "callCoins"]
+       ELSE /\ eventClaimed' = TRUE /\ pc' = [pc EXCEPT ![p] = "callReward"]
             /\ UNCHANGED <<completed, chain>>
   /\ UNCHANGED <<coins, gems, runs, prev, opVars, ghostVars, faults>>
 
-ClaimCallCoins(p) ==
-  /\ p \in Claimers /\ pc[p] = "callCoins"
-  /\ \/ CallOp(p, "addCoins", "awaitCoins")
-     \/ /\ CallThrows /\ ClaimExit(p)
+ClaimCallReward(p) ==
+  /\ p \in Claimers /\ pc[p] = "callReward"
+  /\ \/ CallOp(p, "addReward", "awaitReward")
+     \/ /\ CallThrows /\ OnCreditThrow(p)
         /\ UNCHANGED <<storeVars, runs, prev, opVars, ghostVars>>
 
-\* Resume after `await addCoins`; on success call addGems.
-ClaimAwaitCoins(p) ==
-  /\ p \in Claimers /\ pc[p] = "awaitCoins" /\ opPhase[p] = "done"
+\* Resume after `await addReward`. Success exits. Throw goes to unmark.
+ClaimAwaitReward(p) ==
+  /\ p \in Claimers /\ pc[p] = "awaitReward" /\ opPhase[p] = "done"
   /\ IF opResult[p] = "throw"
-       THEN /\ ClaimExit(p) /\ ClearOp(p)
-            /\ UNCHANGED <<storeVars, runs, prev, upd, snap, wroteGems, opResult, opApplied, ghostVars, faults>>
-       ELSE \/ CallOp(p, "addGems", "awaitGems")
-            \/ /\ CallThrows /\ ClaimExit(p) /\ ClearOp(p)
-               /\ UNCHANGED <<storeVars, runs, prev, upd, snap, wroteGems, opResult, opApplied, ghostVars>>
+       THEN OnCreditThrow(p)
+       ELSE ClaimExit(p)
+  /\ ClearOp(p)
+  /\ UNCHANGED <<storeVars, runs, prev, upd, snap, wroteGems, opResult, opApplied,
+                 ghostVars, faults>>
 
-ClaimAwaitGems(p) ==
-  /\ p \in Claimers /\ pc[p] = "awaitGems" /\ opPhase[p] = "done"
-  /\ ClaimExit(p) /\ ClearOp(p)
-  /\ UNCHANGED <<storeVars, runs, prev, upd, snap, wroteGems, opResult, opApplied, ghostVars, faults>>
+\* `await setLimitedEventClaimed(false)` after a thrown credit.
+\* Fail leaves claimed=true. Retry is then impossible. Double pay is not.
+ClaimUnmark(p) ==
+  /\ p \in Claimers /\ pc[p] = "unmark"
+  /\ \/ /\ eventClaimed' = FALSE
+        /\ UNCHANGED unmarkFailed
+     \/ /\ UNCHANGED eventClaimed
+        /\ unmarkFailed' = TRUE
+  /\ ClaimExit(p)
+  /\ UNCHANGED <<coins, gems, runs, prev, opVars,
+                 effCoins, effGems, claimCredits, failedWithEffect, faults>>
 
 \* pullSingle / pullPremium: precheck load(), then call spend (same sync step).
 PullStart(p) ==
@@ -272,8 +297,8 @@ Next ==
   \/ \E p \in Procs :
        \/ ActionStart(p) \/ WriteGems(p)
        \/ RollbackCoins(p) \/ RollbackGems(p) \/ Finally(p)
-       \/ ClaimEnter(p) \/ ClaimCheck(p) \/ ClaimCallCoins(p)
-       \/ ClaimAwaitCoins(p) \/ ClaimAwaitGems(p)
+       \/ ClaimEnter(p) \/ ClaimCheck(p)
+       \/ ClaimCallReward(p) \/ ClaimAwaitReward(p) \/ ClaimUnmark(p)
        \/ PullStart(p) \/ PullAwait(p)
   \/ (AllDone /\ UNCHANGED vars)   \* finished; any other stuck state is a deadlock
 
@@ -286,12 +311,24 @@ Spec == Init /\ [][Next]_vars
 \* balance plus every delta that was actually written.
 NoLostUpdate == coins = effCoins /\ gems = effGems
 
-\* The event reward is credited at most once (#69). At-least-once is NOT
-\* promised: claim marks claimed before crediting (#73 pins this).
-NoDuplicateClaim == claimCoinCredits <= 1 /\ claimGemCredits <= 1
+\* The event reward is credited at most once (#69). A full addReward counts
+\* as one credit. Fail-then-unmark-then-retry still cannot pay twice.
+NoDuplicateClaim == claimCredits <= 1
 
 NoOverspend == coins >= 0 /\ gems >= 0
 
 \* A currency call that throws left the balance untouched.
 FailedOpHasNoEffect == ~failedWithEffect
+
+\* A claim that is not mid-mark/credit/unmark has either paid the full
+\* reward once, left claimed and balances as they were (retryable), or
+\* stuck after the unmark write failed (unclaimable, not double-paid).
+ClaimBusy(p) == p \in Claimers /\ pc[p] \in {"check", "callReward", "awaitReward", "unmark"}
+
+ClaimAllOrNothing ==
+  \/ \E p \in Claimers : ClaimBusy(p)
+  \/ /\ claimCredits <= 1
+     /\ \/ (eventClaimed /\ claimCredits = 1)
+        \/ (~eventClaimed /\ claimCredits = 0)
+        \/ (eventClaimed /\ claimCredits = 0 /\ unmarkFailed)
 =============================================================================
