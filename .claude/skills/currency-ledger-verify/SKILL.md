@@ -34,9 +34,9 @@ Files in this skill: `SKILL.md`, `run.sh`, `CurrencyService.tla`, `CurrencyServi
 | `PASS  known-bad: ClaimAllOrNothing fails when RestoreClaimOnFailure is FALSE` | Expected for `--expect-fail-no-unmark`. | 0 |
 | `FAIL  main check` and a trace | Real bug or modeling error. See below. | 1 |
 | `FAIL  tlc is not on PATH` | Sync checks passed. TLC did not run. | 1 |
-| `MODEL OUT OF SYNC` | A CurrencyService method was renamed or removed, `save` lost `_restoreSnapshot` or `rethrow`, or `_restoreSnapshot` no longer writes `snapshot.coins` / `snapshot.premiumGems`. Update the model. | 2 |
+| `MODEL OUT OF SYNC` | A CurrencyService method was renamed or removed, `addCoins` / `addGems` / `addReward` / `exchangeCoinsForGems` lost `_serial.run`, `save` lost `_restoreSnapshot` or `rethrow`, `_restoreSnapshot` no longer writes `snapshot.coins` / `snapshot.premiumGems`, or `LimitedEventService.claim` lost `setLimitedEventClaimed(false)`. Update the model. | 2 |
 
-`run.sh` reads these facts from `currency_service.dart` on every run: `SerializedOps` (which of `addCoins/spendCoins/addGems/spendGems/addReward` call `_serial.run`), that `exchangeCoinsForGems` exists and calls `_serial.run` (it is not added to `SerializedOps`), that `save` still calls `_restoreSnapshot` and `rethrow`, and that `_restoreSnapshot` still writes coins and gems from the snapshot object. An emptied `_restoreSnapshot` body fails this check. Removing `_serial.run`, `_restoreSnapshot`, `rethrow`, or the snapshot writes is checked with no model edit. Every other change needs the model updated by hand.
+`run.sh` reads these facts from `currency_service.dart` on every run: `SerializedOps` (which of `addCoins/spendCoins/addGems/spendGems/addReward` call `_serial.run`), that `addCoins`, `addGems`, and `addReward` are in that set (gacha refund and battle reward still call `addCoins` directly), that `exchangeCoinsForGems` exists and calls `_serial.run` (it is not added to `SerializedOps`), that `save` still calls `_restoreSnapshot` and `rethrow`, and that `_restoreSnapshot` still writes coins and gems from the snapshot object. It also reads `LimitedEventService.claim` and requires `setLimitedEventClaimed(false)` in that method body, not in `_ensureCurrentWeek`. An emptied `_restoreSnapshot` body fails this check. Removing `_serial.run` from `addCoins` / `addGems` / `addReward`, `_restoreSnapshot`, `rethrow`, the snapshot writes, or the claim unmark is checked with no model edit. Every other change needs the model updated by hand.
 
 ## Does my change touch this?
 
@@ -72,7 +72,7 @@ TLC prints a numbered trace. Each `State n: <Action("proc") ...>` line is one un
 
 **Real bug or modeling error?** Open the code at each step of the trace and ask whether Dart can really reach that order. Two things in the model are coarser than the code: (1) entering `run()` and starting the action are split into two steps even when `_chain` was null, and (2) a few async-return hops are merged. Both only add or remove orderings that cannot change a balance. Unmark-write failure is also coarser: it does not consume `MaxFaults`, so credit-throw plus stuck-unclaimable is always reachable on the catch path. If the trace depends on something else the code cannot do, fix the model. Never weaken an invariant to get a pass.
 
-Reference break, checked 2026-10-19: remove `_serial.run` from `addGems`. That mutation is stale now. Claimers call `addReward`, and `run.sh` exits 2 if `addReward` loses `_serial.run`. To see `NoLostUpdate` in TLC, drop `_serial.run` from `spendGems` so `SerializedOps` omits it. The trace is a claim `addReward` racing an unserialized `spendGems` write.
+Reference break: remove `_serial.run` from `addCoins` or `addGems`. `run.sh` exits 2. Those methods are still live callers (`GachaService` duplicate refund, `BattleResultService` battle reward). The model no longer drives them from claim, so TLC would not see the race if the sync check skipped them. To see `NoLostUpdate` in TLC, drop `_serial.run` from `spendGems` so `SerializedOps` omits it. The trace is a claim `addReward` racing an unserialized `spendGems` write. Removing `setLimitedEventClaimed(false)` from `LimitedEventService.claim` also exits 2. The known-bad cfg is the model-side version of that break.
 
 A persistThrows break: empty the body of `_restoreSnapshot` (keep the call and `rethrow` in `save()`). `run.sh` exits 2. The old claim that TLC would then fail `FailedOpHasNoEffect` was wrong, because the sync check used to look only for the call. To see `FailedOpHasNoEffect` in TLC, remove `RollbackCoins` / `RollbackGems` from the model.
 
@@ -93,7 +93,7 @@ The known-bad variant sets `RestoreClaimOnFailure = FALSE`. After a thrown `addR
 ## Updating the model for an intended change
 
 1. Map the changed code to the action in the table above and edit `CurrencyService.tla` so that each action is still exactly the code between two `await`s.
-2. Prove that the edited model can still fail: make a scratch break in the Dart code (for example, drop `_serial.run` from `spendGems`, or empty `_restoreSnapshot`), run `run.sh`, see it fail or exit 2, and revert. For the claim restore, run `--expect-fail-no-unmark` and confirm `ClaimAllOrNothing` fails.
+2. Prove that the edited model can still fail: make a scratch break in the Dart code (for example, drop `_serial.run` from `addCoins` or `addGems`, drop `setLimitedEventClaimed(false)` from `claim`, or empty `_restoreSnapshot`), run `run.sh`, see it exit 2, and revert. For the claim restore in the model, run `--expect-fail-no-unmark` and confirm `ClaimAllOrNothing` fails.
 3. Run `run.sh` again on the real code.
 4. Only then move the sync commit below forward.
 
@@ -102,7 +102,7 @@ The known-bad variant sets `RestoreClaimOnFailure = FALSE`. After a thrown `addR
 - Covered files: `lib/domain/services/currency_service.dart`, `lib/domain/services/serial_executor.dart`, `lib/data/local_storage_service.dart` (saveCoins/getCoins/savePremiumGems/getPremiumGems), `lib/domain/services/limited_event_service.dart` (claim), `lib/domain/services/gacha_service.dart` (pullSingle, pullPremium).
 - **Last confirmed in sync at commit `b3848753be910722d8ced6347b9c8601b4742388`.** That is current master (#77). `run.sh` has no `tlc` on PATH in the Cloud Agent image. A temporary TLC2 2026.10.20 jar was used to confirm the counts above. To see whether the model needs another look, run `git diff b3848753be910722d8ced6347b9c8601b4742388 -- <covered files>`.
 - Move this commit forward only after you confirm the model describes the code at the new commit and `run.sh` gives the expected result there.
-- Mutations: no `_serial.run` on `addReward` → exit 2; no `_serial.run` on `spendGems` → `NoLostUpdate`; no `setLimitedEventClaimed(true)` → `NoDuplicateClaim` / `ClaimAllOrNothing`; no balance check in `spendCoins` → `NoOverspend`; empty `_restoreSnapshot` body → exit 2; `RestoreClaimOnFailure = FALSE` → `ClaimAllOrNothing`. Dropping `_restoreSnapshot` or `rethrow` from `save()` also exits 2 (`MODEL OUT OF SYNC`) before TLC.
+- Mutations: no `_serial.run` on `addCoins`, `addGems`, or `addReward` → exit 2; no `setLimitedEventClaimed(false)` in `claim` → exit 2; no `_serial.run` on `spendGems` → `NoLostUpdate`; no `setLimitedEventClaimed(true)` → `NoDuplicateClaim` / `ClaimAllOrNothing`; no balance check in `spendCoins` → `NoOverspend`; empty `_restoreSnapshot` body → exit 2; `RestoreClaimOnFailure = FALSE` → `ClaimAllOrNothing`. Dropping `_restoreSnapshot` or `rethrow` from `save()` also exits 2 (`MODEL OUT OF SYNC`) before TLC.
 
 ## 深掘りメモ
 

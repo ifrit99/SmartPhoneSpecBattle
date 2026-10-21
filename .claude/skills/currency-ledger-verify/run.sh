@@ -4,6 +4,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(git -C "$HERE" rev-parse --show-toplevel)"
 SRC="$REPO/lib/domain/services/currency_service.dart"
+EVENT_SRC="$REPO/lib/domain/services/limited_event_service.dart"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
@@ -16,7 +17,9 @@ elif [ -n "${1:-}" ]; then
 fi
 
 method_body() {
-  awk -v m="$1" '$0 ~ ("> " m "\\(") {on=1} on {print} on && /^  }$/ {exit}' "$SRC"
+  local m="$1"
+  local file="${2:-$SRC}"
+  awk -v m="$m" '$0 ~ ("> " m "\\(") {on=1} on {print} on && /^  }$/ {exit}' "$file"
 }
 
 ops=()
@@ -35,8 +38,17 @@ for m in exchangeCoinsForGems; do
 done
 serialized="{$(IFS=,; echo "${ops[*]-}")}"
 echo "SerializedOps from code: $serialized"
-if [[ "$serialized" != *addReward* ]]; then
-  echo "MODEL OUT OF SYNC: CurrencyService.addReward is missing _serial.run in $SRC"
+for m in addCoins addGems addReward; do
+  if [[ "$serialized" != *$m* ]]; then
+    echo "MODEL OUT OF SYNC: CurrencyService.$m is missing _serial.run in $SRC"
+    exit 2
+  fi
+done
+
+claim_body="$(method_body claim "$EVENT_SRC")"
+[ -n "$claim_body" ] || { echo "MODEL OUT OF SYNC: LimitedEventService.claim not found in $EVENT_SRC"; exit 2; }
+if ! grep -q 'setLimitedEventClaimed(false)' <<<"$claim_body"; then
+  echo "MODEL OUT OF SYNC: LimitedEventService.claim is missing setLimitedEventClaimed(false) in $EVENT_SRC"
   exit 2
 fi
 
