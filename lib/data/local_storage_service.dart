@@ -148,6 +148,15 @@ class LocalStorageService {
 
   SharedPreferences? _prefs;
 
+  /// テスト用。setInt がキャッシュを更新したあとで投げ、実ライブラリの失敗を再現する。
+  bool throwAfterSavingCoins = false;
+
+  /// テスト用。setInt がキャッシュを更新したあとで投げ、実ライブラリの失敗を再現する。
+  bool throwAfterSavingGems = false;
+
+  /// テスト用。throwAfterSavingGems が立つまで成功させるジェム書き込み回数。
+  int allowGemWritesBeforeThrow = 0;
+
   /// SharedPreferencesが初期化済みかどうか
   bool get isInitialized => _prefs != null;
 
@@ -159,6 +168,9 @@ class LocalStorageService {
   /// テスト用: SharedPreferencesインスタンスをリセットして再取得する
   Future<void> resetForTest() async {
     _prefs = await SharedPreferences.getInstance();
+    throwAfterSavingCoins = false;
+    throwAfterSavingGems = false;
+    allowGemWritesBeforeThrow = 0;
   }
 
   /// 初期化済みのSharedPreferencesを取得（未初期化時は例外）
@@ -246,12 +258,17 @@ class LocalStorageService {
 
   // --- 図鑑（対戦履歴） ---
 
+  /// 撃破した敵のIDリストを置き換える
+  Future<void> saveDefeatedEnemies(List<String> ids) async {
+    await _store.setStringList(_keyDefeatedEnemies, ids);
+  }
+
   /// 撃破した敵のID をリストに追記
   Future<void> saveDefeatedEnemy(String enemyId) async {
     final currentList = getDefeatedEnemies();
     if (!currentList.contains(enemyId)) {
       currentList.add(enemyId);
-      await _store.setStringList(_keyDefeatedEnemies, currentList);
+      await saveDefeatedEnemies(currentList);
     }
   }
 
@@ -318,12 +335,21 @@ class LocalStorageService {
 
   Future<void> saveCoins(int coins) async {
     await _store.setInt(_keyCoins, coins);
+    if (throwAfterSavingCoins) {
+      throw StateError('platform write failed');
+    }
   }
 
   int getCoins() => _store.getInt(_keyCoins) ?? 0;
 
   Future<void> savePremiumGems(int gems) async {
     await _store.setInt(_keyPremiumGems, gems);
+    if (!throwAfterSavingGems) return;
+    if (allowGemWritesBeforeThrow > 0) {
+      allowGemWritesBeforeThrow--;
+      return;
+    }
+    throw StateError('platform write failed');
   }
 
   int getPremiumGems() => _store.getInt(_keyPremiumGems) ?? 0;
@@ -430,9 +456,9 @@ class LocalStorageService {
   /// ログイン報酬の最終受取日を取得
   String? getLastLoginRewardDate() => _store.getString(_keyLastLoginRewardDate);
 
-  /// ログイン報酬の最終受取日を保存
-  Future<void> setLastLoginRewardDate(String dateStr) async {
-    await _store.setString(_keyLastLoginRewardDate, dateStr);
+  /// ログイン報酬の最終受取日を保存。null なら削除する。
+  Future<void> setLastLoginRewardDate(String? dateStr) async {
+    await _setOptionalString(_keyLastLoginRewardDate, dateStr);
   }
 
   /// 連続ログイン日数を取得
@@ -447,9 +473,9 @@ class LocalStorageService {
   String? getLastBattleRewardDate() =>
       _store.getString(_keyLastBattleRewardDate);
 
-  /// バトル報酬の最終受取日を保存
-  Future<void> setLastBattleRewardDate(String dateStr) async {
-    await _store.setString(_keyLastBattleRewardDate, dateStr);
+  /// バトル報酬の最終受取日を保存。null なら削除する。
+  Future<void> setLastBattleRewardDate(String? dateStr) async {
+    await _setOptionalString(_keyLastBattleRewardDate, dateStr);
   }
 
   // --- 実績 ---
@@ -647,8 +673,8 @@ class LocalStorageService {
 
   String? getLastBossBountyDate() => _store.getString(_keyLastBossBountyDate);
 
-  Future<void> setLastBossBountyDate(String dateStr) async {
-    await _store.setString(_keyLastBossBountyDate, dateStr);
+  Future<void> setLastBossBountyDate(String? dateStr) async {
+    await _setOptionalString(_keyLastBossBountyDate, dateStr);
   }
 
   // --- BOSSタイムアタック ---

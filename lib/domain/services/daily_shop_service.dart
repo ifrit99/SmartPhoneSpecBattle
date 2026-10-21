@@ -167,24 +167,27 @@ class DailyShopService {
       if (offer == null || !offer.canPurchase) return null;
 
       final beforeCharacter = _gachaService.getEquippedCharacter();
-      final spent = await _currencyService.spendCoins(definition.costCoins);
-      if (spent == null) return null;
-
-      var updatedCurrency = spent;
+      late final PlayerCurrency updatedCurrency;
       GachaCharacter? updatedCharacter;
       var levelsGained = 0;
 
       switch (definition.rewardKind) {
         case DailyShopRewardKind.trainingExp:
+          final spent = await _currencyService.spendCoins(definition.costCoins);
+          if (spent == null) return null;
           final target = beforeCharacter;
           if (target == null) return null;
+          updatedCurrency = spent;
           updatedCharacter = target.gainExp(definition.rewardAmount);
           levelsGained =
               updatedCharacter.character.level - target.character.level;
           await _gachaService.updateCharacter(updatedCharacter);
         case DailyShopRewardKind.batteryCharge:
+          final spent = await _currencyService.spendCoins(definition.costCoins);
+          if (spent == null) return null;
           final target = beforeCharacter;
           if (target == null) return null;
+          updatedCurrency = spent;
           final nextBattery =
               (target.character.batteryLevel + definition.rewardAmount)
                   .clamp(0, 100)
@@ -192,9 +195,12 @@ class DailyShopService {
           updatedCharacter = target.withBattery(nextBattery);
           await _gachaService.updateCharacter(updatedCharacter);
         case DailyShopRewardKind.premiumGems:
-          updatedCurrency = await _currencyService.addGems(
-            definition.rewardAmount,
+          final exchanged = await _currencyService.exchangeCoinsForGems(
+            coins: definition.costCoins,
+            gems: definition.rewardAmount,
           );
+          if (exchanged == null) return null;
+          updatedCurrency = exchanged;
       }
 
       final purchased = _storage.getPurchasedDailyShopOffers().toSet()

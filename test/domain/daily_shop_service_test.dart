@@ -145,4 +145,24 @@ void main() {
     expect(secondDay!.updatedCurrency.coins, 80);
     expect(secondDay.updatedCurrency.premiumGems, 16);
   });
+
+  test('解析Gemパックの保存失敗ではCoinも購入済みも変わらない', () async {
+    await currencyService.addCoins(800);
+    final service = serviceFor(DateTime(2026, 5, 5));
+
+    storage.throwAfterSavingGems = true;
+    await expectLater(service.purchase('gem_cache'), throwsA(isA<StateError>()));
+    expect(storage.getCoins(), 800);
+    expect(storage.getPremiumGems(), 0);
+    expect(storage.getPurchasedDailyShopOffers(), isEmpty);
+
+    storage.throwAfterSavingGems = false;
+    final result = await service.purchase('gem_cache');
+
+    expect(result, isNotNull);
+    expect(result!.updatedCurrency.coins, 440);
+    expect(result.updatedCurrency.premiumGems, 8);
+    expect(storage.getPurchasedDailyShopOffers(), ['gem_cache']);
+    expect(await service.purchase('gem_cache'), isNull);
+  });
 }

@@ -214,4 +214,56 @@ void main() {
       expect(service.canClaimBattleReward(), isTrue);
     });
   });
+
+  group('DailyRewardService - 通貨保存失敗', () {
+    test('ログイン報酬の保存失敗では受取日も連続日数も残らず再受取できる', () async {
+      storage.throwAfterSavingGems = true;
+      await expectLater(
+        service.claimLoginReward(),
+        throwsA(isA<StateError>()),
+      );
+      expect(storage.getLastLoginRewardDate(), isNull);
+      expect(storage.getLoginStreakDays(), 0);
+      expect(storage.getPremiumGems(), 0);
+      expect(service.canClaimLoginReward(), isTrue);
+
+      storage.throwAfterSavingGems = false;
+      final result = await service.claimLoginReward();
+
+      expect(result, isNotNull);
+      expect(result!.gemsAwarded, 10);
+      expect(storage.getPremiumGems(), 10);
+      expect(service.canClaimLoginReward(), isFalse);
+    });
+
+    test('バトル報酬の保存失敗では受取日が残らず再受取できる', () async {
+      storage.throwAfterSavingGems = true;
+      await expectLater(
+        service.claimBattleReward(),
+        throwsA(isA<StateError>()),
+      );
+      expect(storage.getLastBattleRewardDate(), isNull);
+      expect(storage.getPremiumGems(), 0);
+      expect(service.canClaimBattleReward(), isTrue);
+
+      storage.throwAfterSavingGems = false;
+      final result = await service.claimBattleReward();
+
+      expect(result, isNotNull);
+      expect(result!.gemsAwarded, 15);
+      expect(storage.getPremiumGems(), 15);
+      expect(service.canClaimBattleReward(), isFalse);
+    });
+
+    test('ログイン報酬を並列実行しても1回しか付与されない', () async {
+      final results = await Future.wait([
+        service.claimLoginReward(),
+        service.claimLoginReward(),
+      ]);
+
+      final successful = results.whereType<DailyRewardResult>().toList();
+      expect(successful.length, 1);
+      expect(storage.getPremiumGems(), 10);
+    });
+  });
 }

@@ -109,4 +109,29 @@ class CurrencyService {
       return updated;
     });
   }
+
+  /// コインとジェムを1回の直列saveで加算する。失敗時は両方とも呼び出し前へ戻る。
+  Future<PlayerCurrency> addReward({int coins = 0, int gems = 0}) {
+    return _serial.run(() async {
+      final current = load();
+      if (coins == 0 && gems == 0) return current;
+      final updated = current.addCoins(coins).addGems(gems);
+      await save(updated);
+      return updated;
+    });
+  }
+
+  /// コインを消費してジェムを加算する。不足時はnull。失敗時は両方とも呼び出し前へ戻る。
+  Future<PlayerCurrency?> exchangeCoinsForGems({
+    required int coins,
+    required int gems,
+  }) {
+    return _serial.run(() async {
+      final current = load();
+      if (current.coins < coins) return null;
+      final updated = current.spendCoins(coins).addGems(gems);
+      await save(updated);
+      return updated;
+    });
+  }
 }

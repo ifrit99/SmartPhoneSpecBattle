@@ -155,14 +155,18 @@ class DailyMissionService {
       if (snapshot == null || !snapshot.claimable) return null;
 
       final definition = snapshot.definition;
-      final claimed = _storage.getClaimedDailyMissions().toSet()..add(id);
+      final previous = _storage.getClaimedDailyMissions();
+      final claimed = previous.toSet()..add(id);
       await _storage.saveClaimedDailyMissions(claimed.toList());
 
-      if (definition.coinsReward > 0) {
-        await _currencyService.addCoins(definition.coinsReward);
-      }
-      if (definition.gemsReward > 0) {
-        await _currencyService.addGems(definition.gemsReward);
+      try {
+        await _currencyService.addReward(
+          coins: definition.coinsReward,
+          gems: definition.gemsReward,
+        );
+      } catch (_) {
+        await _storage.saveClaimedDailyMissions(previous);
+        rethrow;
       }
 
       return DailyMissionClaimResult(
@@ -182,7 +186,8 @@ class DailyMissionService {
           .toList();
       if (claimable.isEmpty) return null;
 
-      final claimed = _storage.getClaimedDailyMissions().toSet()
+      final previous = _storage.getClaimedDailyMissions();
+      final claimed = previous.toSet()
         ..addAll(claimable.map((definition) => definition.id));
       await _storage.saveClaimedDailyMissions(claimed.toList());
 
@@ -195,11 +200,11 @@ class DailyMissionService {
         (total, definition) => total + definition.gemsReward,
       );
 
-      if (coins > 0) {
-        await _currencyService.addCoins(coins);
-      }
-      if (gems > 0) {
-        await _currencyService.addGems(gems);
+      try {
+        await _currencyService.addReward(coins: coins, gems: gems);
+      } catch (_) {
+        await _storage.saveClaimedDailyMissions(previous);
+        rethrow;
       }
 
       return DailyMissionClaimAllResult(

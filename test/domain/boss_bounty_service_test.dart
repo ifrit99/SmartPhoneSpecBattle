@@ -4,8 +4,6 @@ import 'package:spec_battle_game/data/local_storage_service.dart';
 import 'package:spec_battle_game/domain/services/boss_bounty_service.dart';
 import 'package:spec_battle_game/domain/services/currency_service.dart';
 
-import 'support/throwing_currency_service.dart';
-
 void main() {
   late LocalStorageService storage;
   late CurrencyService currencyService;
@@ -61,20 +59,21 @@ void main() {
     expect(storage.getLastBossBountyDate(), '2026-05-05');
   });
 
-  test('通貨加算が失敗しても受取済みは残り再受取できない', () async {
-    final failingService = BossBountyService(
-      storage,
-      ThrowingCurrencyService(storage),
-      now: () => DateTime(2026, 5, 5),
-    );
+  test('通貨加算が失敗しても受取済みは残らず再受取できる', () async {
+    storage.throwAfterSavingGems = true;
 
-    await expectLater(
-      failingService.claimForBossWin(),
-      throwsA(isA<StateError>()),
-    );
-    expect(storage.getLastBossBountyDate(), '2026-05-05');
+    await expectLater(service.claimForBossWin(), throwsA(isA<StateError>()));
+    expect(storage.getLastBossBountyDate(), isNull);
     expect(storage.getCoins(), 0);
     expect(storage.getPremiumGems(), 0);
-    expect(await failingService.claimForBossWin(), isNull);
+
+    storage.throwAfterSavingGems = false;
+    final result = await service.claimForBossWin();
+
+    expect(result, isNotNull);
+    expect(storage.getCoins(), BossBountyService.dailyBossCoins);
+    expect(storage.getPremiumGems(), BossBountyService.dailyBossGems);
+    expect(storage.getLastBossBountyDate(), '2026-05-05');
+    expect(await service.claimForBossWin(), isNull);
   });
 }

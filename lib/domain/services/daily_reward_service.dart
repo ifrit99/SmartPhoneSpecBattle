@@ -106,9 +106,17 @@ class DailyRewardService {
       final bonusGems = loginStreakBonusFor(streakDays);
       final totalGems = loginRewardGems + bonusGems;
 
+      final previousDate = _storage.getLastLoginRewardDate();
+      final previousStreak = _storage.getLoginStreakDays();
       await _storage.setLastLoginRewardDate(_todayString());
       await _storage.setLoginStreakDays(streakDays);
-      await _currencyService.addGems(totalGems);
+      try {
+        await _currencyService.addReward(gems: totalGems);
+      } catch (_) {
+        await _storage.setLastLoginRewardDate(previousDate);
+        await _storage.setLoginStreakDays(previousStreak);
+        rethrow;
+      }
 
       return DailyRewardResult(
         type: DailyRewardType.login,
@@ -125,8 +133,14 @@ class DailyRewardService {
   Future<DailyRewardResult?> claimBattleReward() {
     return _serial.run(() async {
       if (!canClaimBattleReward()) return null;
+      final previousDate = _storage.getLastBattleRewardDate();
       await _storage.setLastBattleRewardDate(_todayString());
-      await _currencyService.addGems(battleRewardGems);
+      try {
+        await _currencyService.addReward(gems: battleRewardGems);
+      } catch (_) {
+        await _storage.setLastBattleRewardDate(previousDate);
+        rethrow;
+      }
       return const DailyRewardResult(
         type: DailyRewardType.battle,
         gemsAwarded: battleRewardGems,

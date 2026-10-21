@@ -17,6 +17,14 @@ for m in addCoins spendCoins addGems spendGems; do
   [ -n "$body" ] || { echo "MODEL OUT OF SYNC: CurrencyService.$m not found in $SRC"; exit 2; }
   if grep -q '_serial\.run' <<<"$body"; then ops+=("\"$m\""); fi
 done
+for m in addReward exchangeCoinsForGems; do
+  body="$(method_body "$m")"
+  [ -n "$body" ] || { echo "MODEL OUT OF SYNC: CurrencyService.$m not found in $SRC"; exit 2; }
+  if ! grep -q '_serial\.run' <<<"$body"; then
+    echo "MODEL OUT OF SYNC: CurrencyService.$m is missing _serial.run in $SRC"
+    exit 2
+  fi
+done
 serialized="{$(IFS=,; echo "${ops[*]-}")}"
 echo "SerializedOps from code: $serialized"
 

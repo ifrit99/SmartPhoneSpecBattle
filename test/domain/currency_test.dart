@@ -264,6 +264,75 @@ void main() {
         },
       );
     });
+
+    test('addReward', () async {
+      await expectNoTrace(
+        _ThrowAfterCacheStorage(
+          coins: startCoins,
+          gems: startGems,
+          throwOnGems: true,
+        ),
+        (currencyService) async {
+          await currencyService.addReward(coins: 40, gems: 5);
+        },
+      );
+    });
+
+    test('exchangeCoinsForGems', () async {
+      await expectNoTrace(
+        _ThrowAfterCacheStorage(
+          coins: startCoins,
+          gems: startGems,
+          throwOnGems: true,
+        ),
+        (currencyService) async {
+          await currencyService.exchangeCoinsForGems(coins: 40, gems: 5);
+        },
+      );
+    });
+  });
+
+  group('CurrencyService.addReward / exchangeCoinsForGems', () {
+    late LocalStorageService storage;
+    late CurrencyService service;
+
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      storage = LocalStorageService();
+      await storage.resetForTest();
+      service = CurrencyService(storage);
+    });
+
+    test('addReward はコインとジェムを一度に加算する', () async {
+      final updated = await service.addReward(coins: 100, gems: 7);
+
+      expect(updated.coins, 100);
+      expect(updated.premiumGems, 7);
+      expect(service.load().coins, 100);
+      expect(service.load().premiumGems, 7);
+    });
+
+    test('exchangeCoinsForGems は不足ならnullを返し残高を変えない', () async {
+      await service.addCoins(10);
+
+      final updated = await service.exchangeCoinsForGems(coins: 40, gems: 5);
+
+      expect(updated, isNull);
+      expect(service.load().coins, 10);
+      expect(service.load().premiumGems, 0);
+    });
+
+    test('exchangeCoinsForGems はコインを減らしジェムを増やす', () async {
+      await service.addCoins(100);
+
+      final updated = await service.exchangeCoinsForGems(coins: 40, gems: 5);
+
+      expect(updated, isNotNull);
+      expect(updated!.coins, 60);
+      expect(updated.premiumGems, 5);
+      expect(service.load().coins, 60);
+      expect(service.load().premiumGems, 5);
+    });
   });
 }
 

@@ -321,9 +321,17 @@ class BattleResultService {
     if (!won || enemyDeviceId == null) return null;
     if (_storage.getDefeatedEnemies().contains(enemyDeviceId)) return null;
 
+    final previous = List<String>.from(_storage.getDefeatedEnemies());
     await _storage.saveDefeatedEnemy(enemyDeviceId);
-    await _currencyService.addCoins(firstDefeatBonusCoins);
-    await _currencyService.addGems(firstDefeatBonusGems);
+    try {
+      await _currencyService.addReward(
+        coins: firstDefeatBonusCoins,
+        gems: firstDefeatBonusGems,
+      );
+    } catch (_) {
+      await _storage.saveDefeatedEnemies(previous);
+      rethrow;
+    }
 
     return const EnemyDiscoveryBonus(
       coinsAwarded: firstDefeatBonusCoins,

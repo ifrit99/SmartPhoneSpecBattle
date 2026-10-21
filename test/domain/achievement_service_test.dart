@@ -115,4 +115,28 @@ void main() {
     expect(result.gemsAwarded, 40);
     expect(storage.getClaimedAchievements(), contains('rival_road_clear'));
   });
+
+  test('通貨加算が失敗しても受取済みは残らず再受取できる', () async {
+    await storage.setRivalRoadClearedStage(5);
+
+    storage.throwAfterSavingGems = true;
+    await expectLater(
+      service.claim('rival_road_clear'),
+      throwsA(isA<StateError>()),
+    );
+    expect(storage.getClaimedAchievements(), isEmpty);
+    expect(storage.getCoins(), 0);
+    expect(storage.getPremiumGems(), 0);
+
+    storage.throwAfterSavingGems = false;
+    final result = await service.claim('rival_road_clear');
+
+    expect(result, isNotNull);
+    expect(result!.coinsAwarded, 900);
+    expect(result.gemsAwarded, 40);
+    expect(storage.getCoins(), 900);
+    expect(storage.getPremiumGems(), 40);
+    expect(storage.getClaimedAchievements(), ['rival_road_clear']);
+    expect(await service.claim('rival_road_clear'), isNull);
+  });
 }

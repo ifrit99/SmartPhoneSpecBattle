@@ -168,4 +168,49 @@ void main() {
     expect(findMission('battle_1').claimable, isTrue);
     expect(findMission('win_1').claimable, isFalse);
   });
+
+  test('claimの通貨加算が失敗しても受取済みは残らず再受取できる', () async {
+    await service.recordBattle(won: false);
+
+    storage.throwAfterSavingGems = true;
+    await expectLater(service.claim('battle_1'), throwsA(isA<StateError>()));
+    expect(storage.getClaimedDailyMissions(), isEmpty);
+    expect(storage.getCoins(), 0);
+
+    storage.throwAfterSavingGems = false;
+    final result = await service.claim('battle_1');
+
+    expect(result, isNotNull);
+    expect(result!.coinsAwarded, 80);
+    expect(storage.getCoins(), 80);
+    expect(storage.getClaimedDailyMissions(), ['battle_1']);
+    expect(await service.claim('battle_1'), isNull);
+  });
+
+  test('claimAllAvailableの通貨加算が失敗しても受取済みは残らず再受取できる', () async {
+    await service.recordBattle(won: true);
+    await service.recordGachaPulls(1);
+
+    storage.throwAfterSavingGems = true;
+    await expectLater(
+      service.claimAllAvailable(),
+      throwsA(isA<StateError>()),
+    );
+    expect(storage.getClaimedDailyMissions(), isEmpty);
+    expect(storage.getCoins(), 0);
+    expect(storage.getPremiumGems(), 0);
+
+    storage.throwAfterSavingGems = false;
+    final result = await service.claimAllAvailable();
+
+    expect(result, isNotNull);
+    expect(result!.claimedCount, 3);
+    expect(storage.getCoins(), 200);
+    expect(storage.getPremiumGems(), 5);
+    expect(
+      storage.getClaimedDailyMissions(),
+      containsAll(['battle_1', 'win_1', 'gacha_1']),
+    );
+    expect(await service.claimAllAvailable(), isNull);
+  });
 }

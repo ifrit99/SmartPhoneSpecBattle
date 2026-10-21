@@ -150,14 +150,18 @@ class AchievementService {
       if (snapshot == null || !snapshot.claimable) return null;
 
       final definition = snapshot.definition;
-      final claimed = _storage.getClaimedAchievements().toSet()..add(id);
+      final previous = _storage.getClaimedAchievements();
+      final claimed = previous.toSet()..add(id);
       await _storage.saveClaimedAchievements(claimed.toList());
 
-      if (definition.coinsReward > 0) {
-        await _currencyService.addCoins(definition.coinsReward);
-      }
-      if (definition.gemsReward > 0) {
-        await _currencyService.addGems(definition.gemsReward);
+      try {
+        await _currencyService.addReward(
+          coins: definition.coinsReward,
+          gems: definition.gemsReward,
+        );
+      } catch (_) {
+        await _storage.saveClaimedAchievements(previous);
+        rethrow;
       }
 
       return AchievementClaimResult(
