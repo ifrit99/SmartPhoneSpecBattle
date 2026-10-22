@@ -65,8 +65,14 @@ void main() {
     expect(hashes, hasLength(6));
 
     final headers = File('web/_headers').readAsStringSync();
-    final scriptSrc = RegExp(r'script-src ([^;]+)').firstMatch(headers)?.group(1);
-    expect(scriptSrc, isNotNull, reason: 'web/_headers に script-src が無い');
+    final cspLines = headers
+        .split('\n')
+        .map((line) => line.trim())
+        .where((line) => line.startsWith('Content-Security-Policy:'));
+    expect(cspLines, isNotEmpty, reason: 'web/_headers に Content-Security-Policy が無い');
+    final scriptSrc =
+        RegExp(r'script-src ([^;]+)').firstMatch(cspLines.first)?.group(1);
+    expect(scriptSrc, isNotNull, reason: 'CSP に script-src が無い');
     expect(
       scriptSrc!.contains("'unsafe-inline'"),
       isFalse,
@@ -95,7 +101,13 @@ Uri _packageRoot(String name) {
   );
   expect(package, isNotEmpty, reason: '$name が package_config.json に無い');
 
-  return configFile.absolute.uri.resolve(package.first['rootUri'] as String);
+  final resolved = configFile.absolute.uri.resolve(
+    package.first['rootUri'] as String,
+  );
+  if (resolved.path.endsWith('/')) {
+    return resolved;
+  }
+  return resolved.replace(path: '${resolved.path}/');
 }
 
 /// dart2js は `'''` 直後の改行を注入文面に含めない（本番 main.dart.js と CSP ハッシュで確認）。
