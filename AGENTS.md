@@ -44,6 +44,11 @@ Cursor Projects / Project Agent でも本書の席を崩さない。
 - コード変更は `flutter analyze` / `flutter test` を通し、変更に応じた検証結果を添える。未検証は理由を明記する。文書のみなら差分・参照整合性を確認する。
 - Grok が検証後にコミット・push・PRを作成し、レビュー指摘（Plus 時 Codex / それ以外は thermos + grok-4.6 high）を修正する。マージはユーザー判断に従う。
 
+## UI / 見た目
+- Avoid unnecessary secondary labels and descriptions. Let the layout do the explaining.
+- 必要のない補足のラベルや説明文は付けない。配置で伝わるようにする。
+- 同意・安全、オンボーディング、空状態の次アクションなど、必要な説明は削らない。
+
 ## Language
 - Pull request review comments must be written in Japanese.
 
