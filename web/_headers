@@ -1,8 +1,11 @@
 # Cloudflare Pages 用（RFC S-3 / S-5）。GitHub Pages はこのファイルを無視する。
 # CSP は PR-3 で enforce。HSTS はカスタムドメイン確定後（S-4）。
 # F6 PR-A': Firebase JS + Auth/Firestore を script-src / connect-src に追加（匿名認証のみ。frame-src は不要）。
+# flutterfire（firebase_core_web 3.11.0 / firebasejs 12.18.0）が core / auth / firestore 起動時に書く
+# インラインスクリプトの SHA-256（Trusted Types あり＝Chrome、なし＝Safari 等。'unsafe-inline' は使わない）。
+# 版を上げたら test/data/firebase_csp_headers_test.dart が落ちるのでハッシュを更新する。
 /*
-  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://www.gstatic.com/flutter-canvaskit/ https://www.gstatic.com/firebasejs/; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://www.gstatic.com/flutter-canvaskit/ https://fonts.gstatic.com https://fonts.googleapis.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; worker-src 'self' blob:; frame-ancestors 'none'
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'sha256-wv/MkaW+e2bdw8mgY/lUXEmxvFXYRbAowmoG67zWVw4=' 'sha256-Es/H8bnAYEcwfgwk5d4gg6L+E55oQsvfP3BwN2FA8yQ=' 'sha256-X6Scj2CxtCGTiYfFsglfaS9gJHaGoc/iHm5EoFfx1Yk=' 'sha256-gXDm/07lFfRJMSLvFMXgAb3T5Jz+h6s4LtKwKMJtHaU=' 'sha256-/CylKjx4HxkC/e+Cmu2QjhDR7osdiQNiObjFi7+OQsQ=' 'sha256-LKe0G7+/Le6MRl9LOE3uM9tJEeSwTA3+ygvVpX7a81Y=' https://www.gstatic.com/flutter-canvaskit/ https://www.gstatic.com/firebasejs/; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://www.gstatic.com/flutter-canvaskit/ https://fonts.gstatic.com https://fonts.googleapis.com https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; worker-src 'self' blob:; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=()
