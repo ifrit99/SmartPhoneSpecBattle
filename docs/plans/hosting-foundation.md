@@ -34,7 +34,7 @@ Status: PR-4 done（RFC は 2026-09-11 ユーザー承認済み。実装席は g
 ## 運用メモ（PR-2 マージ後に追記）
 - 月次確認: Cloudflare Pages の帯域/リクエスト数、Pages Functions の実行回数（F8 着手後）
 - 正規 URL 予定: `https://smartphonespecbattle.pages.dev`（初回デプロイでプロジェクト作成。名前が取られていれば URL が変わる）
-- シークレット: リポジトリ secrets `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`（Environment `production` は使わない）
+- シークレット: GitHub Environment `production` の `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`（RFC S-7 / M-4。リポジトリ secrets には置かない。`deploy.yml` の deploy ジョブだけが参照する）
 - ブランチプレビュー（M-7）: Git 連携なし。`deploy.yml` は master のみ `--branch=master`。`wrangler.toml` に preview 無効化キーは無い
 - GitHub Pages 停止: リポジトリ設定で unpublished 済み。リダイレクトスタブは作らない（M-3）。`deploy-github-pages.yml` は緊急ロールバック用に残す（M-5）。M-6 のファイル削除は後続
 - ロールバック: (1) Pages のデプロイ履歴、(2) `deploy-github-pages.yml` を `workflow_dispatch` で実行
@@ -43,6 +43,7 @@ Status: PR-4 done（RFC は 2026-09-11 ユーザー承認済み。実装席は g
 - 2026-09-12 grok-4.6: PR-2 実装。起点は #45 `cursor/hosting-headers-21ba`（`web/_headers` 同梱）。旧 `deploy.yml` を `deploy-github-pages.yml` にリネームし push トリガーを外した。新 `deploy.yml` は wrangler Direct Upload。`--base-href "/"`、`SITE_URL` dart-define、`og:url` / `_gameUrl` を pages.dev に揃えた。
 - 2026-09-12 grok-4.6: PR-3 実装。`web/_headers` の CSP を Report-Only から enforce に切替。ディレクティブ本文は変更なし。HSTS なし。`deploy-github-pages.yml` は残置。起点は master `e6cc47a1`（#47）。
 - 2026-09-12 grok-4.6: PR-4 実装。起点は master `787b2e62`（#48）。third-party action を現行メジャータグの最新パッチ SHA に固定。`.github/dependabot.yml` で `github-actions` 週次。`deploy-github-pages.yml` は残置してピンのみ。`cloudflare/wrangler-action` は現行ワークフローに無い（npx wrangler@4）。
+- 2026-10-23 grok-4.6: `deploy.yml` の deploy ジョブに `environment: production` と `if: github.ref == 'refs/heads/master'` を付け、wrangler を `4.152.0` に固定。RFC S-7 / M-4 の偏差を戻す。他 workflow は未変更。
 
 ---
 ## 評価

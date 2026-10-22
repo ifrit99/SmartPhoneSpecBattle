@@ -1,9 +1,12 @@
 # Cloudflare Pages へ Flutter Web を Direct Upload するワークフロー
-# トリガー: master ブランチへの push / 手動実行
+# トリガー: master ブランチへの push / 手動実行（master 以外はジョブをスキップ）
 # RFC: docs/rfc_hosting_foundation.md PR-2（M-1, M-2, M-4, M-5, M-7）
 #
-# シークレットはリポジトリ secrets を参照する。
-# Environment `production` は使わない（Environments UI が使えないため）。
+# CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID は GitHub Environment `production`
+# のシークレットを参照する。deploy ジョブだけが environment: production を宣言する。
+# リポジトリ secrets には置かない（RFC S-7 / M-4）。
+# if だけではブランチ側の workflow 改変を止められない。Environment の
+# Deployment branches を master に限ることが必須。
 name: Deploy to Cloudflare Pages
 
 on:
@@ -15,6 +18,7 @@ on:
 env:
   SITE_URL: https://smartphonespecbattle.pages.dev
   CF_PAGES_PROJECT: smartphonespecbattle
+  WRANGLER_VERSION: 4.152.0
 
 # 配置は Cloudflare API トークンのみ。GitHub Pages 権限は不要。
 permissions:
@@ -26,6 +30,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     steps:
       - name: リポジトリをチェックアウト
@@ -61,8 +66,10 @@ jobs:
           path: build/web
 
   deploy:
+    if: github.ref == 'refs/heads/master'
     needs: build
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - name: リポジトリをチェックアウト
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
@@ -80,11 +87,11 @@ jobs:
         run: |
           set -euo pipefail
           # 初回はプロジェクトを作成する。既存なら create をスキップ。
-          if ! npx --yes wrangler@4 pages project list | grep -F "${CF_PAGES_PROJECT}"; then
-            npx --yes wrangler@4 pages project create "${CF_PAGES_PROJECT}" --production-branch=master
+          if ! npx --yes "wrangler@${WRANGLER_VERSION}" pages project list | grep -F "${CF_PAGES_PROJECT}"; then
+            npx --yes "wrangler@${WRANGLER_VERSION}" pages project create "${CF_PAGES_PROJECT}" --production-branch=master
           fi
           # RFC M-7: Git 連携しない。master のみ本番配置し、プレビュー枝は作らない。
-          npx --yes wrangler@4 pages deploy build/web \
+          npx --yes "wrangler@${WRANGLER_VERSION}" pages deploy build/web \
             --project-name="${CF_PAGES_PROJECT}" \
             --branch=master \
             --commit-hash="${GITHUB_SHA}" \
