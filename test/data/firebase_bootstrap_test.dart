@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spec_battle_game/data/firebase_bootstrap.dart';
@@ -26,6 +28,29 @@ void main() {
     expect(await ensureFirebaseInitialized(), isTrue);
     expect(await ensureFirebaseInitialized(), isTrue);
 
+    expect(initializeCount, 1);
+    expect(debugInitializeCallCount, 1);
+  });
+
+  test('同時呼び出しでも初期化は1回にまとめる', () async {
+    debugHasConfigOverride = true;
+    final started = Completer<void>();
+    final release = Completer<void>();
+    var initializeCount = 0;
+    debugInitializeApp = (_) async {
+      initializeCount++;
+      started.complete();
+      await release.future;
+    };
+
+    final first = ensureFirebaseInitialized();
+    final second = ensureFirebaseInitialized();
+    await started.future;
+    expect(debugInitializeCallCount, 1);
+    release.complete();
+
+    expect(await first, isTrue);
+    expect(await second, isTrue);
     expect(initializeCount, 1);
     expect(debugInitializeCallCount, 1);
   });

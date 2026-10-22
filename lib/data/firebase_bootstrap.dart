@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'firebase_options.dart';
 
 bool _initialized = false;
+Future<bool>? _initializing;
 
 /// テスト用: [FirebaseOptionsConfig.hasConfig] を上書きする。
 @visibleForTesting
@@ -21,6 +22,7 @@ int debugInitializeCallCount = 0;
 @visibleForTesting
 void resetFirebaseBootstrapForTest() {
   _initialized = false;
+  _initializing = null;
   debugInitializeCallCount = 0;
   debugInitializeApp = null;
   debugHasConfigOverride = null;
@@ -31,6 +33,7 @@ void resetFirebaseBootstrapForTest() {
 /// [FirebaseOptionsConfig.hasConfig] が false なら何もせず false。
 /// 起動時（`main` / [ServiceLocator.init]）からは呼ばない。
 /// ランキング参加 ON（保存済みフラグ含む）のときだけ呼ぶこと。
+/// 同時呼び出しは進行中の初期化 Future を共有し、`initializeApp` は1回だけにする。
 Future<bool> ensureFirebaseInitialized() async {
   final hasConfig = debugHasConfigOverride ?? FirebaseOptionsConfig.hasConfig;
   if (!hasConfig) {
@@ -39,14 +42,22 @@ Future<bool> ensureFirebaseInitialized() async {
   if (_initialized) {
     return true;
   }
+  return _initializing ??= _initializeFirebase();
+}
 
+Future<bool> _initializeFirebase() async {
   debugInitializeCallCount++;
-  final initialize = debugInitializeApp;
-  if (initialize != null) {
-    await initialize(FirebaseOptionsConfig.options);
-  } else {
-    await Firebase.initializeApp(options: FirebaseOptionsConfig.options);
+  try {
+    final initialize = debugInitializeApp;
+    if (initialize != null) {
+      await initialize(FirebaseOptionsConfig.options);
+    } else {
+      await Firebase.initializeApp(options: FirebaseOptionsConfig.options);
+    }
+    _initialized = true;
+    return true;
+  } catch (_) {
+    _initializing = null;
+    rethrow;
   }
-  _initialized = true;
-  return true;
 }

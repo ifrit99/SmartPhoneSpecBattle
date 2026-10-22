@@ -306,6 +306,12 @@ class FirestoreRankingService implements RankingService {
   int? _cachedPowerRating;
   RankingSnapshot? _cachedLeaderboard;
 
+  /// 参加 OFF の途中。保存フラグがまだ true でも送信を止める。
+  bool _optOutInProgress = false;
+
+  /// 送信してよい参加状態か。OFF 操作中は保存フラグが残っていても不可。
+  bool get _isParticipating => isOptedIn && !_optOutInProgress;
+
   static Future<bool> _skipInitialize() async => false;
 
   static String _defaultWeekId() => LocalLeagueService.weekIdAt(DateTime.now());
@@ -341,6 +347,7 @@ class FirestoreRankingService implements RankingService {
       return;
     }
     await _backend.signInAnonymously();
+    _optOutInProgress = false;
     await _storage.setRankingOptedIn(true);
     if (local != null) {
       try {
@@ -363,26 +370,34 @@ class FirestoreRankingService implements RankingService {
     if (!isOptedIn) {
       return;
     }
-    final initialized = await _ensureInitialized();
-    if (!initialized) {
-      throw FirebaseException(
-        plugin: 'cloud_firestore',
-        code: 'unavailable',
-        message: 'Firebase 未初期化のため参加解除できません',
-      );
-    }
-    await _backend.signInAnonymously();
+    // 進行中の送信が、削除後に entry を作り直さないよう先に止める。
+    _optOutInProgress = true;
     try {
-      await _backend.deleteAllOwnEntries();
-    } catch (error) {
-      // 削除が途中失敗したらフラグは OFF にしない。
+      final initialized = await _ensureInitialized();
+      if (!initialized) {
+        throw FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'unavailable',
+          message: 'Firebase 未初期化のため参加解除できません',
+        );
+      }
+      await _backend.signInAnonymously();
+      try {
+        await _backend.deleteAllOwnEntries();
+      } catch (error) {
+        // 削除が途中失敗したらフラグは OFF にしない。
+        rethrow;
+      }
+      await _backend.signOut();
+      await _storage.clearRankingSendCache();
+      await _storage.setRankingOptedIn(false);
+      _clearLeaderboardCache();
+      await _analytics.logEvent('ranking_opt_in', params: {'enabled': false});
+    } catch (_) {
+      _optOutInProgress = false;
       rethrow;
     }
-    await _backend.signOut();
-    await _storage.clearRankingSendCache();
-    await _storage.setRankingOptedIn(false);
-    _clearLeaderboardCache();
-    await _analytics.logEvent('ranking_opt_in', params: {'enabled': false});
+    _optOutInProgress = false;
   }
 
   @override
@@ -438,11 +453,14 @@ class FirestoreRankingService implements RankingService {
     String characterCode = '',
     String title = '',
   }) async {
-    if (!isOptedIn) {
+    if (!_isParticipating) {
       return;
     }
     try {
       if (!await _prepareSession()) {
+        return;
+      }
+      if (!_isParticipating) {
         return;
       }
       await _submit(
@@ -501,6 +519,11 @@ class FirestoreRankingService implements RankingService {
     final clippedTitle = title.length > rankingMaxTitleLength
         ? title.substring(0, rankingMaxTitleLength)
         : title;
+
+    // 書き込み直前に参加中かを確かめ直す。OFF 操作中の作り直しを防ぐ。
+    if (!_isParticipating) {
+      return;
+    }
 
     await _backend.submitEntry(
       weekId: weekId,

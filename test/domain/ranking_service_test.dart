@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -306,6 +308,81 @@ void main() {
 
       await expectLater(service.loadMyStanding(local), throwsStateError);
     });
+
+    test('送信中に参加OFFすると、初期化後もentryを作り直さない', () async {
+      await storage.setRankingOptedIn(true);
+      final initGate = Completer<bool>();
+      var initCalls = 0;
+      service = FirestoreRankingService(
+        backend: backend,
+        storage: storage,
+        analytics: analytics,
+        ensureInitialized: () async {
+          initCalls++;
+          if (initCalls == 1) {
+            return initGate.future;
+          }
+          return true;
+        },
+        weekIdProvider: () => weekId,
+      );
+
+      final submit = service.submitIfNeeded(
+        local: local,
+        characterCode: 'c1',
+        title: 't1',
+      );
+      await service.setOptIn(false);
+      initGate.complete(true);
+      await submit;
+
+      expect(service.isOptedIn, isFalse);
+      expect(backend.ownEntryCount, 0);
+      expect(backend.submitCount, 0);
+      expect(backend.ops, isNot(contains('submitEntry')));
+    });
+
+    test('削除直後〜signOut前に送信が再開しても孤児entryを残さない', () async {
+      await storage.setRankingOptedIn(true);
+      final initGate = Completer<bool>();
+      final signOutHold = Completer<void>();
+      var initCalls = 0;
+      backend.holdSignOut = signOutHold;
+      service = FirestoreRankingService(
+        backend: backend,
+        storage: storage,
+        analytics: analytics,
+        ensureInitialized: () async {
+          initCalls++;
+          if (initCalls == 1) {
+            return initGate.future;
+          }
+          return true;
+        },
+        weekIdProvider: () => weekId,
+      );
+
+      final submit = service.submitIfNeeded(
+        local: local,
+        characterCode: 'c1',
+        title: 't1',
+      );
+      final optOut = service.setOptIn(false);
+      await backend.deleteCompleted.future;
+      initGate.complete(true);
+      await submit;
+
+      expect(backend.ownEntryCount, 0);
+      expect(backend.submitCount, 0);
+      expect(service.isOptedIn, isTrue);
+
+      signOutHold.complete();
+      await optOut;
+
+      expect(service.isOptedIn, isFalse);
+      expect(backend.ownEntryCount, 0);
+      expect(backend.signedIn, isFalse);
+    });
   });
 }
 
@@ -333,6 +410,9 @@ class _FakeRankingBackend implements RankingBackend {
   int countAboveCount = 0;
   int countAllCount = 0;
   DateTime? lastExpiresAt;
+  Completer<void>? holdSignOut;
+  final deleteCompleted = Completer<void>();
+  final ops = <String>[];
   final submittedWeekIds = <String>[];
   final weeks = <String, Map<String, RankingBackendEntry>>{};
 
@@ -347,7 +427,12 @@ class _FakeRankingBackend implements RankingBackend {
 
   @override
   Future<void> signOut() async {
+    final hold = holdSignOut;
+    if (hold != null) {
+      await hold.future;
+    }
     signedIn = false;
+    ops.add('signOut');
   }
 
   @override
@@ -359,6 +444,7 @@ class _FakeRankingBackend implements RankingBackend {
     required String title,
     required DateTime expiresAt,
   }) async {
+    ops.add('submitEntry');
     submitCount++;
     submittedWeekIds.add(weekId);
     lastExpiresAt = expiresAt;
@@ -415,6 +501,10 @@ class _FakeRankingBackend implements RankingBackend {
         );
       }
       weeks[ownWeeks[i]]!.remove(uid);
+    }
+    ops.add('deleteAllOwnEntries');
+    if (!deleteCompleted.isCompleted) {
+      deleteCompleted.complete();
     }
   }
 
