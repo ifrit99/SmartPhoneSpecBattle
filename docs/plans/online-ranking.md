@@ -108,6 +108,8 @@ Status: IN_PROGRESS（PR-A / PR-A' マージ済み。PR-B 実装済み・PR #58�
 - `frame-src` は匿名認証のみなら不要（popup/redirect 認証を使わないため）
 実際に必要なドメインは PR-B のローカル確認（DevTools Console の CSP violation）で確定し、PR-A' に反映する。PR-A' が未マージの間は本番で ON にしてもフォールバックで推定表示になるだけで壊れないが、**PR-B の本番検証は PR-A' マージ後に行う**。
 
+`script-src` の gstatic 許可だけでは足りない。`firebase_core_web` の `injectSrcScript` は `window.ff_trigger_firebase_*` をインラインで書く（Trusted Types あり／なしでインデントが違う）。`'unsafe-inline'` は使わず、core / auth / firestore の SHA-256 を `web/_headers` に置く。ハッシュは firebasejs の版（`supportedFirebaseJsSdkVersion`）と文面に結びつく。firebase 系を上げたら `test/data/firebase_csp_headers_test.dart` が落ちるので、ソースから再計算して更新する。Safari / iPhone 実機は未確認。
+
 ## 完了条件
 - [ ] `flutter analyze` エラー 0 / `flutter test` 全パス（PR ごと。Firebase 未設定＝No-op 状態でも通る）
 - [ ] `flutter build web --release --base-href "/"` 成功。`main.dart.js` サイズ差分を PR-A 本文に記録（+15% 目安）

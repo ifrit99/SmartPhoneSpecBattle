@@ -30,3 +30,5 @@
 
 ## 学習パターン（失敗→ルール）
 - 想定外の動作をしたら、そのパターンを1行で追記して同じミスを防ぐ。
+- ランキング参加の CSP: flutterfire は `initializeApp` 時に core / auth / firestore のインラインスクリプトを書く。`web/_headers` の `script-src` にその SHA-256 が無いと本番で「参加に失敗しました」になる。firebase 系（とくに `firebase_core_web` / firebasejs）を上げたら `test/data/firebase_csp_headers_test.dart` が落ちるので、ソースからハッシュを再計算して `_headers` を更新する（`'unsafe-inline'` は使わない）。
+- firebase 系のサービス（Storage など）を pubspec に足したら、`test/data/firebase_csp_headers_test.dart` の `_firebaseInlineServices` にも足し、`web/_headers` のハッシュを更新する。
