@@ -76,10 +76,17 @@ def dest_is_master(token: str) -> bool:
     return dest in MASTER_DESTS
 
 
-def looks_like_gh_pr_merge(command: str) -> bool:
-    return re.search(r"\bgh\b", command) is not None and re.search(
-        r"\bpr\s+merge\b", command
-    ) is not None
+def looks_like_gh_merge(command: str) -> bool:
+    if re.search(r"\bgh\b", command) is None:
+        return False
+    if re.search(r"\bpr\s+merge\b", command):
+        return True
+    if re.search(r"\bapi\b", command) is None:
+        return False
+    return (
+        re.search(r"/merges?(?:\b|$|\?)", command) is not None
+        or re.search(r"mergePullRequest", command) is not None
+    )
 
 
 def extract_git_push_args(tokens: list[str]) -> list[str] | None:
@@ -171,18 +178,24 @@ def push_targets_master(push_args: list[str], cwd: str) -> bool:
         return current_branch(cwd) == "master"
     if len(positional) == 1:
         only = positional[0]
-        if dest_is_master(only):
-            return True
-        if ":" in only:
-            return dest_is_master(only)
-        if only in {"HEAD", "@"} or "/" not in only:
+        dests = [only]
+        if (
+            not dest_is_master(only)
+            and ":" not in only
+            and only not in {"HEAD", "@"}
+            and "/" not in only
+        ):
             return current_branch(cwd) == "master"
-        return False
-    for token in positional[1:]:
+    else:
+        dests = positional[1:]
+    saw_head = False
+    for token in dests:
         if dest_is_master(token):
             return True
         if token in {"HEAD", "@"}:
-            return current_branch(cwd) == "master"
+            saw_head = True
+    if saw_head:
+        return current_branch(cwd) == "master"
     return False
 
 
@@ -195,7 +208,7 @@ def inner_commands(command: str) -> list[str]:
 
 def decide(command: str, cwd: str) -> str | None:
     for candidate in inner_commands(command):
-        if looks_like_gh_pr_merge(candidate):
+        if looks_like_gh_merge(candidate):
             return DENY_MERGE
         tokens = tokenize(candidate)
         push_args = extract_git_push_args(tokens)

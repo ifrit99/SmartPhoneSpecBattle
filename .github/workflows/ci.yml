@@ -16,6 +16,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  agent-hooks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+
+      - name: master push / PR merge 拒否 hook のテスト
+        run: python3 .cursor/hooks/test_deny_master_push.py
+
   check:
     runs-on: ubuntu-latest
     steps:
