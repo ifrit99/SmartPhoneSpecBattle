@@ -1,0 +1,3 @@
+# Required-review rulesets can require a review from this owner.
+# Agents push feature/ branches only. A human merges to master.
+* @ifrit99

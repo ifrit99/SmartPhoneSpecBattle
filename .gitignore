@@ -56,9 +56,10 @@ firestore-debug.log
 ui-debug.log
 
 # AIエージェント設定ファイル
-# .claude/ はサブエージェント定義（agents/）のみ追跡し、それ以外は無視する
+# .claude/ はサブエージェント定義（agents/）とプロジェクト権限（settings.json）を追跡し、それ以外は無視する
 .claude/*
 !.claude/agents/
+!.claude/settings.json
 .codex/
 .mcp.json
 .superset/

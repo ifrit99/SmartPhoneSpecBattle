@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": "python3 .cursor/hooks/deny-master-push.py",
+        "matcher": "git(\\s+\\S+)*\\s+push|gh\\s+pr\\s+merge",
+        "timeout": 10,
+        "failClosed": true
+      }
+    ]
+  }
+}
