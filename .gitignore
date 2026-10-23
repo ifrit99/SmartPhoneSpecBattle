@@ -49,6 +49,9 @@ docs/reports/
 # 一時メモ・スクラッチ領域（Git追跡しない）
 .local/
 
+# デプロイ用 wrangler（lockfile 固定。CI で npm ci）
+tool/deploy/node_modules/
+
 # Firestore ルールテスト（ローカル Emulator。CI 対象外）
 test/firestore/node_modules/
 firebase-debug.log
