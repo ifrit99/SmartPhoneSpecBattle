@@ -42,22 +42,25 @@ Future<bool> ensureFirebaseInitialized() async {
   if (_initialized) {
     return true;
   }
-  return _initializing ??= _initializeFirebase();
+  final future = _initializing ??= _initializeFirebase();
+  try {
+    return await future;
+  } catch (_) {
+    if (identical(_initializing, future)) {
+      _initializing = null;
+    }
+    rethrow;
+  }
 }
 
 Future<bool> _initializeFirebase() async {
   debugInitializeCallCount++;
-  try {
-    final initialize = debugInitializeApp;
-    if (initialize != null) {
-      await initialize(FirebaseOptionsConfig.options);
-    } else {
-      await Firebase.initializeApp(options: FirebaseOptionsConfig.options);
-    }
-    _initialized = true;
-    return true;
-  } catch (_) {
-    _initializing = null;
-    rethrow;
+  final initialize = debugInitializeApp;
+  if (initialize != null) {
+    await initialize(FirebaseOptionsConfig.options);
+  } else {
+    await Firebase.initializeApp(options: FirebaseOptionsConfig.options);
   }
+  _initialized = true;
+  return true;
 }

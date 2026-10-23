@@ -6,6 +6,7 @@ import 'analytics_service.dart';
 import 'character_codec.dart';
 import 'local_league_service.dart';
 import 'power_rating_service.dart';
+import 'serial_executor.dart';
 
 /// Q4: CharacterGenerator の Lv1 基礎値上限（HP 202 / ATK·DEF·SPD 27）の
 /// [PowerRatingService.powerScore] = 252 に +10%。`ceil(252 * 1.1) = 278`。
@@ -301,6 +302,7 @@ class FirestoreRankingService implements RankingService {
   final DateTime Function() _clock;
   final int _maxSubmitsPerSession;
 
+  final SerialExecutor _serial = SerialExecutor();
   int _sessionSubmitCount = 0;
   String? _cachedWeekId;
   int? _cachedPowerRating;
@@ -326,15 +328,17 @@ class FirestoreRankingService implements RankingService {
     String characterCode = '',
     String title = '',
   }) async {
-    if (enabled) {
-      await _optIn(
-        local: local,
-        characterCode: characterCode,
-        title: title,
-      );
-      return;
-    }
-    await _optOut();
+    return _serial.run(() async {
+      if (enabled) {
+        await _optIn(
+          local: local,
+          characterCode: characterCode,
+          title: title,
+        );
+        return;
+      }
+      await _optOut();
+    });
   }
 
   Future<void> _optIn({
@@ -463,11 +467,13 @@ class FirestoreRankingService implements RankingService {
       if (!_isParticipating) {
         return;
       }
-      await _submit(
-        local: local,
-        characterCode: characterCode,
-        title: title,
-        force: false,
+      await _serial.run(
+        () => _submit(
+          local: local,
+          characterCode: characterCode,
+          title: title,
+          force: false,
+        ),
       );
     } catch (error) {
       if (isExpectedRankingFailure(error)) {
@@ -480,6 +486,9 @@ class FirestoreRankingService implements RankingService {
   Future<bool> _prepareSession() async {
     final initialized = await _ensureInitialized();
     if (!initialized) {
+      return false;
+    }
+    if (!_isParticipating) {
       return false;
     }
     await _backend.signInAnonymously();

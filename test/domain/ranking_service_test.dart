@@ -358,7 +358,6 @@ void main() {
       );
       await backend.submitStarted.future;
       final optOut = service.setOptIn(false);
-      // OFF が送信を待たないなら、この間に削除まで進む。
       for (var i = 0; i < 10; i++) {
         await Future<void>.delayed(Duration.zero);
       }
