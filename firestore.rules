@@ -69,8 +69,12 @@ service cloud.firestore {
     match /rankings/{weekId}/entries/{uid} {
       allow read: if isSignedIn();
       allow create: if isValidRankingEntry(uid, weekId);
-      allow update: if isValidRankingEntry(uid, weekId);
-      // R-2（更新間隔 30 秒）は Q2 既定どおり今回は入れない。
+      // R-2: 同一文書の update は前回 updatedAt から 30 秒以上空ける。
+      // delete→create はこの間隔を迂回できる。墓石や副文書なしでは
+      // create 側で「直近の削除」を見られず、delete を 30 秒制限すると
+      // 参加 OFF の即時削除が壊れる。T-R4（UID 量産）と同種の残リスクとして受け入れる。
+      allow update: if isValidRankingEntry(uid, weekId)
+        && request.time >= resource.data.updatedAt + duration.value(30, 's');
       allow delete: if isSignedIn() && request.auth.uid == resource.data.uid;
     }
 

@@ -1,6 +1,6 @@
 # Plan: セキュリティ強化（Firestore ルール・App Check・デプロイの供給網）
 Created: 2026-10-12
-Status: PLANNING（RFC の §10 にイフリトさんが回答するまで着手しない。実装席は grok-4.6）
+Status: IN_PROGRESS（R-1 済み。R-2 は 2026-10-23 A3 で実装。App Check / D-2 などは未着手。実装席は grok-4.6）
 
 ## 要件
 `docs/rfc_security_hardening.md` を**唯一の正本**とする。本ファイルは PR の順序・完了条件の写しと Generator ログだけを持ち、脅威の整理・案の比較・判断理由は RFC 側を参照する。
@@ -16,14 +16,16 @@ Status: PLANNING（RFC の §10 にイフリトさんが回答するまで着手
 | 順 | ブランチ（案） | 内容 | 対応する RFC | 規模 |
 |----|---|---|---|---|
 | PR-0 | （イフリトさんの作業、PR なし） | RFC §7-1〜§7-3 のコンソール確認、TTL ポリシー確認、§7-5 の履歴点検。A-1 採用なら reCAPTCHA v3 サイトキー作成 → GitHub secrets `RECAPTCHA_SITE_KEY` | §7、§8 PR-0 | — |
-| PR-S1 | `feature/firestore-rules-hardening` | `firestore.rules` を RFC §4-4（R-1。Q2 Yes なら R-2）に更新。`test/firestore/rules.test.mjs` に §9-1 の観点 7〜13（R-2 時 14）を追加し、固定 `weekId` を「実行日の月曜」に差し替え。（任意）`test/firestore/package-lock.json` | §4、§9-1 | 小 |
+| PR-S1 | `feature/firestore-rules-hardening` | `firestore.rules` を RFC §4-4 の R-1 に更新。`test/firestore/rules.test.mjs` に §9-1 の観点 7〜13 を追加し、固定 `weekId` を「実行日の月曜」に差し替え。R-2 は後続 | §4、§9-1 | 小 |
+| PR-S1b | `feature/firestore-r2-interval-53bc` | R-2: 同一 entry の update に 30 秒間隔。delete→create は墓石なしでは止められない残リスクとして文書化。Emulator 観点 14〜16 とクライアント間隔 | §4 R-2、§9-1 14〜16 | 小 |
 | PR-S2 | `feature/deploy-wrangler-pin` | `tool/deploy/package.json` + `package-lock.json`（wrangler 完全版固定）、`deploy.yml` を `npm ci --prefix tool/deploy` → `npx --prefix tool/deploy wrangler` に変更、`.github/dependabot.yml` に `npm`（`/tool/deploy`）追加。`workflow_dispatch` で検証 | §6、§9-2 | 小 |
 | PR-S3 | `feature/app-check-recaptcha` | `firebase_app_check` 追加、`ensureFirebaseInitialized` 内で `initializeApp` 直後に `activate`（サイトキー空なら No-op）、`ci.yml` / `deploy.yml` に `--dart-define=RECAPTCHA_SITE_KEY`、`web/_headers` に reCAPTCHA / App Check のドメイン追加、テスト。監視モードで本番確認 | §5、§9-3 | 中 |
 
 PR-S1 / PR-S2 / PR-S3 のマージ後にイフリトさんが行う作業（ルール公開・トークン再発行・App Check 強制切替）は RFC §8 の「〜後」行を参照。
 
 ## 完了条件（RFC §9 の写し）
-- [ ] PR-S1: ルールテスト 13 観点（R-2 時 14）がローカル Emulator で全パス。結果を PR 本文に貼る。`flutter analyze` / `flutter test` は未変更で通る
+- [x] PR-S1: R-1 のルールテスト（weekId / expiresAt）がローカル Emulator でパス（実装済み）
+- [x] PR-S1b / R-2: 作成直後 update 拒否、30 秒後 update 許可、delete→create 許可。クライアントは同一週 update を 30 秒間引き、`permission-denied` は想定内。`flutter analyze` / `flutter test` と Emulator テストを通す
 - [ ] PR-S1 後: Firebase コンソールのルールがリポと同一。pages.dev で参加 ON → 順位表示 → OFF → 推定へ戻る
 - [ ] PR-S2: `workflow_dispatch` のログで `wrangler --version` が lockfile と一致し、`pages deploy` 成功。Dependabot が `/tool/deploy` を対象にしている
 - [ ] PR-S2 後: Pages: Edit のみの新トークンで配置成功。旧トークン失効
@@ -33,7 +35,7 @@ PR-S1 / PR-S2 / PR-S3 のマージ後にイフリトさんが行う作業（ル�
 
 ---
 ## Generator ログ
-（実装時に追記）
+- 2026-10-23 grok-4.6: A3 / R-2。`firestore.rules` の update に `request.time >= resource.data.updatedAt + 30s`。delete→create は参加 OFF の即時削除を守るため残リスクとして文書化（墓石や副文書は入れない）。`ranking_service.dart` に同一週のクライアント間隔。Emulator 観点 14〜16。App Check は範囲外。
 
 ---
 ## 評価

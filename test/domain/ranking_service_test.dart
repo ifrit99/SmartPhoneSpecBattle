@@ -285,19 +285,72 @@ void main() {
     });
 
     test('1セッションの送信上限でデバウンスする', () async {
+      var now = DateTime(2026, 5, 4, 12);
       service = FirestoreRankingService(
         backend: backend,
         storage: storage,
         analytics: analytics,
         ensureInitialized: () async => true,
         weekIdProvider: () => weekId,
+        clock: () => now,
         maxSubmitsPerSession: 2,
       );
       await service.setOptIn(true, local: local, title: 'a');
+      now = now.add(rankingMinSubmitInterval);
       await service.submitIfNeeded(local: local, title: 'b');
+      now = now.add(rankingMinSubmitInterval);
       await service.submitIfNeeded(local: local, title: 'c');
 
       expect(backend.submitCount, 2);
+    });
+
+    test('同一週の再送は 30 秒間隔を空ける', () async {
+      var now = DateTime(2026, 5, 4, 12);
+      service = FirestoreRankingService(
+        backend: backend,
+        storage: storage,
+        analytics: analytics,
+        ensureInitialized: () async => true,
+        weekIdProvider: () => weekId,
+        clock: () => now,
+      );
+      await service.setOptIn(true, local: local, title: 'a');
+      await service.submitIfNeeded(local: local, title: 'b');
+      expect(backend.submitCount, 1);
+
+      now = now.add(const Duration(seconds: 29));
+      await service.submitIfNeeded(local: local, title: 'b');
+      expect(backend.submitCount, 1);
+
+      now = now.add(const Duration(seconds: 1));
+      await service.submitIfNeeded(local: local, title: 'b');
+      expect(backend.submitCount, 2);
+    });
+
+    test('送信の permission-denied は握りつぶす', () async {
+      var now = DateTime(2026, 5, 4, 12);
+      service = FirestoreRankingService(
+        backend: backend,
+        storage: storage,
+        analytics: analytics,
+        ensureInitialized: () async => true,
+        weekIdProvider: () => weekId,
+        clock: () => now,
+      );
+      await service.setOptIn(true, local: local, title: 'a');
+      backend.submitError = FirebaseException(
+        plugin: 'cloud_firestore',
+        code: 'permission-denied',
+      );
+      now = now.add(rankingMinSubmitInterval);
+
+      await service.submitIfNeeded(local: local, title: 'b');
+
+      expect(backend.submitCount, 1);
+      expect(
+        storage.getRankingLastSentPayloadHash(),
+        rankingPayloadHash(powerRating: local.score, characterCode: '', title: 'a'),
+      );
     });
 
     test('想定外の例外は伝播する', () async {
@@ -328,6 +381,7 @@ class _FakeRankingBackend implements RankingBackend {
   bool signedIn = false;
   bool failDeleteMidway = false;
   Object? readError;
+  Object? submitError;
   int submitCount = 0;
   int topLoadCount = 0;
   int countAboveCount = 0;
@@ -359,6 +413,9 @@ class _FakeRankingBackend implements RankingBackend {
     required String title,
     required DateTime expiresAt,
   }) async {
+    if (submitError != null) {
+      throw submitError!;
+    }
     submitCount++;
     submittedWeekIds.add(weekId);
     lastExpiresAt = expiresAt;

@@ -20,6 +20,9 @@ const int rankingMaxTitleLength = 32;
 /// 1 セッションあたりの送信上限。
 const int rankingSubmitSessionCap = 5;
 
+/// Firestore R-2 と同じ下限。同一週の update を 30 秒以内に重ねない。
+const Duration rankingMinSubmitInterval = Duration(seconds: 30);
+
 const int rankingEntryTtlDays = 30;
 
 /// ランキング一覧の1行。
@@ -302,6 +305,7 @@ class FirestoreRankingService implements RankingService {
   final int _maxSubmitsPerSession;
 
   int _sessionSubmitCount = 0;
+  DateTime? _lastSubmitAt;
   String? _cachedWeekId;
   int? _cachedPowerRating;
   RankingSnapshot? _cachedLeaderboard;
@@ -381,6 +385,7 @@ class FirestoreRankingService implements RankingService {
     await _backend.signOut();
     await _storage.clearRankingSendCache();
     await _storage.setRankingOptedIn(false);
+    _lastSubmitAt = null;
     _clearLeaderboardCache();
     await _analytics.logEvent('ranking_opt_in', params: {'enabled': false});
   }
@@ -491,6 +496,13 @@ class FirestoreRankingService implements RankingService {
     if (!force && !weekChanged && !payloadChanged) {
       return;
     }
+    // 同一週の update はルール R-2（30 秒間隔）に合わせ、クライアントでも間を空ける。
+    // 週替わりは別文書の create、force（参加 ON）は初回 create か delete 後の再 create。
+    if (!force && !weekChanged && _lastSubmitAt != null) {
+      if (_clock().difference(_lastSubmitAt!) < rankingMinSubmitInterval) {
+        return;
+      }
+    }
     if (!force && _sessionSubmitCount >= _maxSubmitsPerSession) {
       return;
     }
@@ -513,6 +525,7 @@ class FirestoreRankingService implements RankingService {
     await _storage.setRankingLastSentWeekId(weekId);
     await _storage.setRankingLastSentPayloadHash(hash);
     _sessionSubmitCount++;
+    _lastSubmitAt = _clock();
     _clearLeaderboardCache();
   }
 
