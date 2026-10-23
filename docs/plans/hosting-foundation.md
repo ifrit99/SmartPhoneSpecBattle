@@ -36,6 +36,7 @@ Status: PR-4 done（RFC は 2026-09-11 ユーザー承認済み。実装席は g
 - 正規 URL 予定: `https://smartphonespecbattle.pages.dev`（初回デプロイでプロジェクト作成。名前が取られていれば URL が変わる）
 - シークレット: GitHub Environment `production` の `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID`（RFC S-7 / M-4。リポジトリ secrets には置かない。`deploy.yml` の deploy ジョブだけが参照する）
 - ブランチプレビュー（M-7）: Git 連携なし。`deploy.yml` は master のみ `--branch=master`。`wrangler.toml` に preview 無効化キーは無い
+- wrangler: `tool/deploy` の lockfile で固定する。更新は Dependabot の npm（directory: `/tool/deploy`）
 - GitHub Pages 停止: リポジトリ設定で unpublished 済み。リダイレクトスタブは作らない（M-3）。`deploy-github-pages.yml` は緊急ロールバック用に残す（M-5）。M-6 のファイル削除は後続
 - ロールバック: (1) Pages のデプロイ履歴、(2) `deploy-github-pages.yml` を `workflow_dispatch` で実行
 ---
