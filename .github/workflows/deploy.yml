@@ -27,8 +27,10 @@ env:
 permissions:
   contents: read
 
+# github.ref を含め、master 以外の workflow_dispatch が
+# 進行中の本番デプロイを cancel-in-progress で消さないようにする。
 concurrency:
-  group: cloudflare-pages
+  group: cloudflare-pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
