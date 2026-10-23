@@ -340,6 +340,51 @@ void main() {
       expect(backend.ownEntryCount, 0);
       expect(backend.submitCount, 0);
       expect(backend.ops, isNot(contains('submitEntry')));
+      expect(backend.signedIn, isFalse);
+    });
+
+    test('送信中にOFFしたら送信完了を待ってから削除しキャッシュも残さない', () async {
+      await service.setOptIn(true, local: local, characterCode: 'c1', title: 't1');
+      expect(backend.submitCount, 1);
+      expect(storage.getRankingLastSentWeekId(), isNotNull);
+
+      final submitHold = Completer<void>();
+      backend.holdSubmit = submitHold;
+      backend.submitStarted = Completer<void>();
+      final submit = service.submitIfNeeded(
+        local: local,
+        characterCode: 'c2',
+        title: 't2',
+      );
+      await backend.submitStarted.future;
+      final optOut = service.setOptIn(false);
+      // OFF が送信を待たないなら、この間に削除まで進む。
+      for (var i = 0; i < 10; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      submitHold.complete();
+      await Future.wait([submit, optOut]);
+
+      expect(service.isOptedIn, isFalse);
+      expect(backend.ownEntryCount, 0);
+      expect(storage.getRankingLastSentWeekId(), isNull);
+      expect(storage.getRankingLastSentPayloadHash(), isNull);
+      expect(backend.signedIn, isFalse);
+    });
+
+    test('ONとOFFが重なってもsetOptInは1本ずつ処理する', () async {
+      await service.setOptIn(true, local: local);
+      final deleteHold = Completer<void>();
+      backend.holdDelete = deleteHold;
+
+      final off = service.setOptIn(false);
+      await backend.deleteStarted.future;
+      final on = service.setOptIn(true, local: local, title: 'again');
+      deleteHold.complete();
+      await Future.wait([off, on]);
+
+      expect(service.isOptedIn, isTrue);
+      expect(backend.signedIn, isTrue);
     });
 
     test('削除直後〜signOut前に送信が再開しても孤児entryを残さない', () async {
@@ -411,7 +456,11 @@ class _FakeRankingBackend implements RankingBackend {
   int countAllCount = 0;
   DateTime? lastExpiresAt;
   Completer<void>? holdSignOut;
+  Completer<void>? holdSubmit;
+  Completer<void>? holdDelete;
   final deleteCompleted = Completer<void>();
+  final deleteStarted = Completer<void>();
+  Completer<void> submitStarted = Completer<void>();
   final ops = <String>[];
   final submittedWeekIds = <String>[];
   final weeks = <String, Map<String, RankingBackendEntry>>{};
@@ -445,6 +494,13 @@ class _FakeRankingBackend implements RankingBackend {
     required DateTime expiresAt,
   }) async {
     ops.add('submitEntry');
+    final hold = holdSubmit;
+    if (hold != null) {
+      if (!submitStarted.isCompleted) {
+        submitStarted.complete();
+      }
+      await hold.future;
+    }
     submitCount++;
     submittedWeekIds.add(weekId);
     lastExpiresAt = expiresAt;
@@ -489,6 +545,13 @@ class _FakeRankingBackend implements RankingBackend {
 
   @override
   Future<void> deleteAllOwnEntries() async {
+    if (!deleteStarted.isCompleted) {
+      deleteStarted.complete();
+    }
+    final hold = holdDelete;
+    if (hold != null) {
+      await hold.future;
+    }
     final ownWeeks = weeks.entries
         .where((entry) => entry.value.containsKey(uid))
         .map((entry) => entry.key)
