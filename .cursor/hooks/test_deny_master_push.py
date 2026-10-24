@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import fnmatch
 import importlib.util
 import json
 import os
@@ -78,6 +79,8 @@ ALLOW_ON_FEATURE = [
     ("gh api repos/ifrit99/SmartPhoneSpecBattle/pulls/12", "gh api read PR"),
     ("git log --grep=push", "log grep push"),
     ("git -C . status", "git -C status"),
+    ("git -C dir push origin feature/x", "git -C feature"),
+    ("cd dir && git push origin feature/x", "cd then feature"),
 ]
 
 DENY_ON_MASTER = [
@@ -138,6 +141,14 @@ class DenyMasterPushTests(unittest.TestCase):
             )["permission"],
             "deny",
         )
+        self.assertEqual(
+            run_hook("git -C dir push origin feature/x")["permission"],
+            "allow",
+        )
+        self.assertEqual(
+            run_hook("cd dir && git push origin feature/x")["permission"],
+            "allow",
+        )
 
     def test_settings_deny_covers_review_gaps(self) -> None:
         settings_path = os.path.join(ROOT, ".claude", "settings.json")
@@ -147,13 +158,41 @@ class DenyMasterPushTests(unittest.TestCase):
         required = [
             "Bash(git push *:master*)",
             "Bash(git push * refs/heads/master)",
-            "Bash(git -C * push *)",
-            "Bash(cd * && git push *)",
+            "Bash(git -C * push * master)",
+            "Bash(git -C * push *:master*)",
+            "Bash(cd * && git push * master)",
+            "Bash(cd * && git push *:master*)",
             "Bash(gh api *merge*)",
             "Bash(git push * HEAD master)",
         ]
         for pattern in required:
             self.assertIn(pattern, deny, f"missing deny pattern: {pattern}")
+        self.assertNotIn("Bash(git -C * push *)", deny)
+        self.assertNotIn("Bash(cd * && git push *)", deny)
+
+        def bash_glob(pattern: str) -> str:
+            self.assertTrue(pattern.startswith("Bash(") and pattern.endswith(")"))
+            return pattern[len("Bash(") : -1]
+
+        allow_cmds = [
+            "git -C dir push origin feature/x",
+            "cd dir && git push origin feature/x",
+        ]
+        for command in allow_cmds:
+            hits = [p for p in deny if fnmatch.fnmatchcase(command, bash_glob(p))]
+            self.assertEqual(hits, [], f"{command!r} should not match deny {hits}")
+
+        deny_cmds = [
+            "git -C dir push origin master",
+            "git -C dir push origin HEAD:master",
+            "git -C dir push origin HEAD master",
+            "cd dir && git push origin master",
+            "cd dir && git push origin feature/x:master",
+            "cd dir && git push origin HEAD master",
+        ]
+        for command in deny_cmds:
+            hits = [p for p in deny if fnmatch.fnmatchcase(command, bash_glob(p))]
+            self.assertTrue(hits, f"{command!r} should match at least one deny")
 
     def test_hook_matcher_includes_gh_api(self) -> None:
         hooks_path = os.path.join(ROOT, ".cursor", "hooks.json")
