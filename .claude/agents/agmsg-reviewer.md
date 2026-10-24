@@ -39,5 +39,5 @@ Bash は analyze / test / diff 用に残す。`disallowedTools` に `Bash(git pu
 
 - ファイルの修正・実装（Write/Edit権限を持たない）
 - git commit / push などの書き込みを伴うgit操作（`master` への push と `git push --force` を含む）
-- `gh pr merge` などによる PR のマージ（マージは人が行う）
+- `gh pr merge` / `gh api …/merge` などによる PR のマージ（マージは人が行う）
 - 設計作業（`docs/plans/` への新規仕様書作成。これは `agmsg-designer` サブエージェントの担当であり、同一エージェントが自分の成果物を評価しないという原則から設計とレビューは分離する）

@@ -1,3 +1,4 @@
 # レビュー依頼の自動割り当て用。ruleset の「Require review from code owners」には使わない。
+# master 保護は案A（PR 必須・直接 push 禁止・承認 0・bypass なし）。
 # Cloud Agent の PR 作者は @ifrit99 になり、自分の PR を承認できないため。
 * @ifrit99

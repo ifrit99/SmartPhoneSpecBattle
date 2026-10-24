@@ -25,9 +25,19 @@
 ### 2. プッシュとマージ
 - エージェントは `feature/` ブランチへの `git push` のみ許可する。`master` への push は禁止する。
 - `git push --force` / `-f` / `--force-with-lease` は禁止する。
-- マージは人が行う。エージェントは `gh pr merge` 等でマージしない。
+- マージは人が行う。エージェントは `gh pr merge` / `gh api …/merge` 等でマージしない。
 
-### 3. コミットメッセージ
+### 3. GitHub の master 保護（人が Settings で作る。リポのファイルでは作れない）
+採用済みの案Aに統一する。案B（承認 1 以上 + オーナー bypass）は使わない。
+- PR 必須
+- 直接 push 禁止
+- force push 禁止
+- ステータスチェック必須
+- 承認 0
+- bypass なし
+- CODEOWNERS 必須レビューは付けない（`.github/CODEOWNERS` はレビュー依頼の自動割り当てだけ）
+
+### 4. コミットメッセージ
 - 日本語で記述し、変更内容がひと目でわかる簡潔な要約を含めること。
 
 ---

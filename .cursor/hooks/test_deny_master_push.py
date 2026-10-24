@@ -55,12 +55,15 @@ DENY_ON_FEATURE = [
         "gh api graphql mergePullRequest",
     ),
     ("git -C . push origin master", "git -C"),
+    ("git -C /tmp/repo push origin HEAD:master", "git -C HEAD:master"),
     ("bash -c 'git push origin master'", "bash -c"),
     (
         "docker compose exec flutter-dev bash -c 'git push origin master'",
         "docker wrap",
     ),
     ("cd sub && git push origin master", "cd then push master"),
+    ("cd /tmp && git push origin HEAD master", "cd then HEAD master"),
+    ("git push origin feature/foo:refs/heads/master", "x:refs/heads/master"),
 ]
 
 ALLOW_ON_FEATURE = [
@@ -135,6 +138,30 @@ class DenyMasterPushTests(unittest.TestCase):
             )["permission"],
             "deny",
         )
+
+    def test_settings_deny_covers_review_gaps(self) -> None:
+        settings_path = os.path.join(ROOT, ".claude", "settings.json")
+        with open(settings_path, encoding="utf-8") as handle:
+            settings = json.load(handle)
+        deny = settings["permissions"]["deny"]
+        required = [
+            "Bash(git push *:master*)",
+            "Bash(git push * refs/heads/master)",
+            "Bash(git -C * push *)",
+            "Bash(cd * && git push *)",
+            "Bash(gh api *merge*)",
+            "Bash(git push * HEAD master)",
+        ]
+        for pattern in required:
+            self.assertIn(pattern, deny, f"missing deny pattern: {pattern}")
+
+    def test_hook_matcher_includes_gh_api(self) -> None:
+        hooks_path = os.path.join(ROOT, ".cursor", "hooks.json")
+        with open(hooks_path, encoding="utf-8") as handle:
+            hooks = json.load(handle)
+        matcher = hooks["hooks"]["beforeShellExecution"][0]["matcher"]
+        self.assertIn("gh\\s+api", matcher)
+        self.assertIn("git(\\s+\\S+)*\\s+push", matcher)
 
     def test_invalid_json_is_denied(self) -> None:
         proc = subprocess.run(

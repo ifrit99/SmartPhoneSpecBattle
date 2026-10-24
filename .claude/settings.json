@@ -22,16 +22,28 @@
       "Bash(git push * master)",
       "Bash(git push * master *)",
       "Bash(git push *:master*)",
+      "Bash(git push * *:master*)",
       "Bash(git push origin HEAD:master)",
       "Bash(git push origin HEAD:master *)",
       "Bash(git push * HEAD:master)",
       "Bash(git push * HEAD:master *)",
+      "Bash(git push * HEAD master)",
+      "Bash(git push * HEAD master *)",
       "Bash(git push * refs/heads/master)",
       "Bash(git push * refs/heads/master *)",
       "Bash(git push *:refs/heads/master*)",
       "Bash(git -C * push *)",
+      "Bash(git -C * push * master*)",
+      "Bash(cd * && git push *)",
+      "Bash(cd * && git push * master*)",
+      "Bash(cd * && git push *:master*)",
+      "Bash(* && git push * master)",
+      "Bash(* && git push * master *)",
+      "Bash(* && git push *:master*)",
+      "Bash(* && git push * refs/heads/master*)",
       "Bash(gh pr merge *)",
-      "Bash(gh api *merge*)"
+      "Bash(gh api *merge*)",
+      "Bash(gh api */merge*)"
     ]
   }
 }
