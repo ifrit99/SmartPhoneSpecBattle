@@ -96,6 +96,7 @@ Status: IN_PROGRESS（PR-A / PR-A' マージ済み。PR-B 実装済み・PR #58�
 - `rankings/{weekId}/entries/{uid}`:
   - `create` / `update`: `request.auth != null && request.auth.uid == uid && request.resource.data.uid == uid`。
   - 値域: `powerRating` は int で `0 <= powerRating <= MAX_PWR`（Lv1 素体スコアの理論上限から算出する定数。Q4）。`characterCode` は string で長さ上限（v3 の実長＋余裕。実装時に定数化）。`title` は string で長さ上限。`updatedAt == request.time`。`expiresAt` は timestamp 必須（欠落は拒否）。それ以外のフィールドは拒否（`keys().hasOnly`）。
+  - R-2: `update` は前回 `updatedAt` から 30 秒以上空いていなければ拒否。`create` と `delete` には間隔を掛けない。
   - `read`: `request.auth != null`（上位一覧・count 集計に必要。未参加者は匿名サインインしないため到達しない）。
   - `delete`: `request.auth.uid == resource.data.uid`。
 - `match /{path=**}/entries/{entryId}`（collectionGroup 用）: `read, delete` を `request.auth != null && resource.data.uid == request.auth.uid` に限定。クエリ側は必ず `where('uid', '==', 自分の uid)` を付ける。
@@ -139,6 +140,7 @@ Status: IN_PROGRESS（PR-A / PR-A' マージ済み。PR-B 実装済み・PR #58�
 - `weekId` は端末ローカル日付の月曜（ローカルリーグと同一）。週境界付近ではタイムゾーン差で別週に登録され得る。カジュアル方針として許容し、UTC 統一はしない。
 - PWR はクライアント計算のため改ざん可能（§2-4 割り切り）。値域クランプ＋報酬なしで実害を限定。
 - 匿名 UID はブラウザ（IndexedDB）単位。バックアップコード復元では引き継がれない（`ranking_opt_in` をバックアップ対象外にする理由）。
+- R-2 の 30 秒間隔は同一文書の `update` のみ。delete→create は間隔を迂回できる。墓石や副文書を置かない限り create 側で直近削除を判定できず、delete を制限すると参加 OFF の即時削除が壊れる。T-R4（UID 量産）と同種の残リスクとして受け入れる。App Check は範囲外。
 
 ---
 ## Generator ログ
