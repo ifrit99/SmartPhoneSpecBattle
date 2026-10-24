@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -306,6 +308,125 @@ void main() {
 
       await expectLater(service.loadMyStanding(local), throwsStateError);
     });
+
+    test('送信中に参加OFFすると、初期化後もentryを作り直さない', () async {
+      await storage.setRankingOptedIn(true);
+      final initGate = Completer<bool>();
+      var initCalls = 0;
+      service = FirestoreRankingService(
+        backend: backend,
+        storage: storage,
+        analytics: analytics,
+        ensureInitialized: () async {
+          initCalls++;
+          if (initCalls == 1) {
+            return initGate.future;
+          }
+          return true;
+        },
+        weekIdProvider: () => weekId,
+      );
+
+      final submit = service.submitIfNeeded(
+        local: local,
+        characterCode: 'c1',
+        title: 't1',
+      );
+      await service.setOptIn(false);
+      initGate.complete(true);
+      await submit;
+
+      expect(service.isOptedIn, isFalse);
+      expect(backend.ownEntryCount, 0);
+      expect(backend.submitCount, 0);
+      expect(backend.ops, isNot(contains('submitEntry')));
+      expect(backend.signedIn, isFalse);
+    });
+
+    test('送信中にOFFしたら送信完了を待ってから削除しキャッシュも残さない', () async {
+      await service.setOptIn(true, local: local, characterCode: 'c1', title: 't1');
+      expect(backend.submitCount, 1);
+      expect(storage.getRankingLastSentWeekId(), isNotNull);
+
+      final submitHold = Completer<void>();
+      backend.holdSubmit = submitHold;
+      backend.submitStarted = Completer<void>();
+      final submit = service.submitIfNeeded(
+        local: local,
+        characterCode: 'c2',
+        title: 't2',
+      );
+      await backend.submitStarted.future;
+      final optOut = service.setOptIn(false);
+      for (var i = 0; i < 10; i++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      submitHold.complete();
+      await Future.wait([submit, optOut]);
+
+      expect(service.isOptedIn, isFalse);
+      expect(backend.ownEntryCount, 0);
+      expect(storage.getRankingLastSentWeekId(), isNull);
+      expect(storage.getRankingLastSentPayloadHash(), isNull);
+      expect(backend.signedIn, isFalse);
+    });
+
+    test('ONとOFFが重なってもsetOptInは1本ずつ処理する', () async {
+      await service.setOptIn(true, local: local);
+      final deleteHold = Completer<void>();
+      backend.holdDelete = deleteHold;
+
+      final off = service.setOptIn(false);
+      await backend.deleteStarted.future;
+      final on = service.setOptIn(true, local: local, title: 'again');
+      deleteHold.complete();
+      await Future.wait([off, on]);
+
+      expect(service.isOptedIn, isTrue);
+      expect(backend.signedIn, isTrue);
+    });
+
+    test('削除直後〜signOut前に送信が再開しても孤児entryを残さない', () async {
+      await storage.setRankingOptedIn(true);
+      final initGate = Completer<bool>();
+      final signOutHold = Completer<void>();
+      var initCalls = 0;
+      backend.holdSignOut = signOutHold;
+      service = FirestoreRankingService(
+        backend: backend,
+        storage: storage,
+        analytics: analytics,
+        ensureInitialized: () async {
+          initCalls++;
+          if (initCalls == 1) {
+            return initGate.future;
+          }
+          return true;
+        },
+        weekIdProvider: () => weekId,
+      );
+
+      final submit = service.submitIfNeeded(
+        local: local,
+        characterCode: 'c1',
+        title: 't1',
+      );
+      final optOut = service.setOptIn(false);
+      await backend.deleteCompleted.future;
+      initGate.complete(true);
+      await submit;
+
+      expect(backend.ownEntryCount, 0);
+      expect(backend.submitCount, 0);
+      expect(service.isOptedIn, isTrue);
+
+      signOutHold.complete();
+      await optOut;
+
+      expect(service.isOptedIn, isFalse);
+      expect(backend.ownEntryCount, 0);
+      expect(backend.signedIn, isFalse);
+    });
   });
 }
 
@@ -333,6 +454,13 @@ class _FakeRankingBackend implements RankingBackend {
   int countAboveCount = 0;
   int countAllCount = 0;
   DateTime? lastExpiresAt;
+  Completer<void>? holdSignOut;
+  Completer<void>? holdSubmit;
+  Completer<void>? holdDelete;
+  final deleteCompleted = Completer<void>();
+  final deleteStarted = Completer<void>();
+  Completer<void> submitStarted = Completer<void>();
+  final ops = <String>[];
   final submittedWeekIds = <String>[];
   final weeks = <String, Map<String, RankingBackendEntry>>{};
 
@@ -347,7 +475,12 @@ class _FakeRankingBackend implements RankingBackend {
 
   @override
   Future<void> signOut() async {
+    final hold = holdSignOut;
+    if (hold != null) {
+      await hold.future;
+    }
     signedIn = false;
+    ops.add('signOut');
   }
 
   @override
@@ -359,6 +492,14 @@ class _FakeRankingBackend implements RankingBackend {
     required String title,
     required DateTime expiresAt,
   }) async {
+    ops.add('submitEntry');
+    final hold = holdSubmit;
+    if (hold != null) {
+      if (!submitStarted.isCompleted) {
+        submitStarted.complete();
+      }
+      await hold.future;
+    }
     submitCount++;
     submittedWeekIds.add(weekId);
     lastExpiresAt = expiresAt;
@@ -403,6 +544,13 @@ class _FakeRankingBackend implements RankingBackend {
 
   @override
   Future<void> deleteAllOwnEntries() async {
+    if (!deleteStarted.isCompleted) {
+      deleteStarted.complete();
+    }
+    final hold = holdDelete;
+    if (hold != null) {
+      await hold.future;
+    }
     final ownWeeks = weeks.entries
         .where((entry) => entry.value.containsKey(uid))
         .map((entry) => entry.key)
@@ -415,6 +563,10 @@ class _FakeRankingBackend implements RankingBackend {
         );
       }
       weeks[ownWeeks[i]]!.remove(uid);
+    }
+    ops.add('deleteAllOwnEntries');
+    if (!deleteCompleted.isCompleted) {
+      deleteCompleted.complete();
     }
   }
 
