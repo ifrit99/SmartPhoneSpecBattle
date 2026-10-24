@@ -45,4 +45,5 @@ Cursor Projects / Project Agent でも本書の席を崩さない。
 - Grok が検証後にコミット・push・PRを作成し、レビュー指摘（Plus 時 Codex / それ以外は thermos + grok-4.6 high）を修正する。マージはユーザー判断に従う。
 
 ## レビュー
-- レビュー基準は [REVIEW.md](REVIEW.md)。
+- レビュー基準は @REVIEW.md。
+- PR のレビューは日本語で書く。
