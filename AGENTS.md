@@ -44,18 +44,5 @@ Cursor Projects / Project Agent でも本書の席を崩さない。
 - コード変更は `flutter analyze` / `flutter test` を通し、変更に応じた検証結果を添える。未検証は理由を明記する。文書のみなら差分・参照整合性を確認する。
 - Grok が検証後にコミット・push・PRを作成し、レビュー指摘（Plus 時 Codex / それ以外は thermos + grok-4.6 high）を修正する。マージはユーザー判断に従う。
 
-## Language
-- Pull request review comments must be written in Japanese.
-
-## Review style
-- Keep comments concise and concrete.
-- When pointing out an issue, explain:
-  - what is wrong
-  - why it matters
-  - how to fix it
-
-## Review focus
-- Prioritize regression risks.
-- Check state/flag management carefully.
-- Check branch漏れ for empty states and skip flows.
-- Point out missing tests when relevant.
+## レビュー
+- レビュー基準は [REVIEW.md](REVIEW.md)。
