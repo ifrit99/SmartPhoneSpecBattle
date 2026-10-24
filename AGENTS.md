@@ -49,18 +49,6 @@ Cursor Projects / Project Agent でも本書の席を崩さない。
 - 必要のない補足のラベルや説明文は付けない。配置で伝わるようにする。
 - 同意・安全、オンボーディング、空状態の次アクションなど、必要な説明は削らない。
 
-## Language
-- Pull request review comments must be written in Japanese.
-
-## Review style
-- Keep comments concise and concrete.
-- When pointing out an issue, explain:
-  - what is wrong
-  - why it matters
-  - how to fix it
-
-## Review focus
-- Prioritize regression risks.
-- Check state/flag management carefully.
-- Check branch漏れ for empty states and skip flows.
-- Point out missing tests when relevant.
+## レビュー
+- レビュー基準は [REVIEW.md](REVIEW.md)。
+- レビューは日本語で返す。
