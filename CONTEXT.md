@@ -1,8 +1,8 @@
 # SmartPhoneSpecBattle - CONTEXT
 
 ## 開発体制
-- **Claude Code**: 実装・テスト・Git操作・デプロイを担当するメインのAIアシスタント。
-- **Codex**: PRレビューを担当。レビュー指示は `AGENTS.md` に記載。
+判断基準・担当の正本は [`AGENTS.md`](AGENTS.md)。
+エージェントは `feature/` ブランチへの push まで。`master` への push・PR のマージ・本番デプロイは人が行う。
 
 ## 作業フロー
 1. **作業開始時**: `docs/TODO.md` を読み込み、現在の状況と残タスクを把握する。
