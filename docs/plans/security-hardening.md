@@ -25,7 +25,7 @@ PR-S1 / PR-S2 / PR-S3 のマージ後にイフリトさんが行う作業（ル�
 
 ## 完了条件（RFC §9 の写し）
 - [x] PR-S1: R-1 のルールテスト（weekId / expiresAt）がローカル Emulator でパス（実装済み）
-- [x] PR-S1b / R-2: 作成直後 update 拒否、30 秒後 update 許可、delete→create 許可。クライアントは同一週 update を 30 秒間引き、`permission-denied` は想定内。`flutter analyze` / `flutter test` と Emulator テストを通す
+- [x] PR-S1b / R-2: 作成直後 update 拒否、30 秒後 update 許可、delete→create 許可。クライアントは同一週 update を 35 秒間引き（ルールは 30 秒）、`permission-denied` は想定内。`flutter analyze` / `flutter test` と Emulator テストを通す
 - [ ] PR-S1 後: Firebase コンソールのルールがリポと同一。pages.dev で参加 ON → 順位表示 → OFF → 推定へ戻る
 - [ ] PR-S2: `workflow_dispatch` のログで `wrangler --version` が lockfile と一致し、`pages deploy` 成功。Dependabot が `/tool/deploy` を対象にしている
 - [ ] PR-S2 後: Pages: Edit のみの新トークンで配置成功。旧トークン失効

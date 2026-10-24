@@ -304,7 +304,7 @@ void main() {
       expect(backend.submitCount, 2);
     });
 
-    test('同一週の再送は 30 秒間隔を空ける', () async {
+    test('同一週の再送は 35 秒間隔を空ける', () async {
       var now = DateTime(2026, 5, 4, 12);
       service = FirestoreRankingService(
         backend: backend,
@@ -318,7 +318,7 @@ void main() {
       await service.submitIfNeeded(local: local, title: 'b');
       expect(backend.submitCount, 1);
 
-      now = now.add(const Duration(seconds: 29));
+      now = now.add(const Duration(seconds: 34));
       await service.submitIfNeeded(local: local, title: 'b');
       expect(backend.submitCount, 1);
 

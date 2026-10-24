@@ -139,7 +139,16 @@ const run = async () => {
     );
     console.log('PASS 12 expiresAt 今＋30 日 許可');
 
-    // 13: expiresAt 今＋40 日 / 過去 / 文字列
+    // 13: expiresAt 今＋40 日 / 過去 / 文字列。観点 12 の直後だと update
+    // 扱いになり 30 秒ルールで弾かれるので、各ケース前に消して create で見る。
+    const wipeAlice = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await deleteDoc(
+          doc(context.firestore(), `rankings/${thisMonday}/entries/alice`),
+        );
+      });
+    };
+    await wipeAlice();
     await assertFails(
       setDoc(
         aliceDoc,
@@ -148,6 +157,7 @@ const run = async () => {
         }),
       ),
     );
+    await wipeAlice();
     await assertFails(
       setDoc(
         aliceDoc,
@@ -156,12 +166,14 @@ const run = async () => {
         }),
       ),
     );
+    await wipeAlice();
     await assertFails(
       setDoc(aliceDoc, { ...validEntry('alice'), expiresAt: 'not-a-timestamp' }),
     );
     console.log('PASS 13 expiresAt 今＋40 日 / 過去 / 文字列 拒否');
 
     // 14: R-2 作成直後の同一文書 update は拒否
+    await assertSucceeds(setDoc(aliceDoc, validEntry('alice')));
     await assertFails(setDoc(aliceDoc, validEntry('alice')));
     console.log('PASS 14 作成直後の同一文書 update 拒否');
 
@@ -183,6 +195,27 @@ const run = async () => {
     await assertSucceeds(deleteDoc(aliceDoc));
     await assertSucceeds(setDoc(aliceDoc, validEntry('alice')));
     console.log('PASS 16 削除→再作成は 30 秒待たずに許可');
+
+    // 17: 間隔は満たすが expiresAt が不正な update は拒否
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      const adminDoc = doc(
+        context.firestore(),
+        `rankings/${thisMonday}/entries/alice`,
+      );
+      await setDoc(adminDoc, {
+        ...validEntry('alice'),
+        updatedAt: Timestamp.fromMillis(Date.now() - 31_000),
+      });
+    });
+    await assertFails(
+      setDoc(
+        aliceDoc,
+        validEntry('alice', {
+          expiresAt: Timestamp.fromDate(new Date(Date.now() + 40 * msDay)),
+        }),
+      ),
+    );
+    console.log('PASS 17 間隔OKでも expiresAt 不正な update 拒否');
   } finally {
     await testEnv.cleanup();
   }

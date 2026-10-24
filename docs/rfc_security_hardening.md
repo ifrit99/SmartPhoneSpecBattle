@@ -320,13 +320,14 @@ A-1 の設計上の要点（実装 PR で守ること）:
 | 10 | `weekId` が実在しない日（`2026-02-30`） | 拒否 |
 | 11 | `weekId` が 3 週間前の月曜 / 2 週間後の月曜 | 拒否（前週の月曜は実行曜日で結果が変わるので**テストしない**） |
 | 12 | `expiresAt` が今＋30 日 | 許可 |
-| 13 | `expiresAt` が今＋40 日 / 今より過去 / 文字列 | 拒否 |
+| 13 | `expiresAt` が今＋40 日 / 今より過去 / 文字列（各ケース前に消して **create** で確かめる） | 拒否 |
+| 13b | 前回 `updatedAt` から 31 秒空いた文書への `update` で、`expiresAt` が不正 | 拒否 |
 | 14（R-2） | 作成直後の同一文書 `update` | 拒否 |
 | 15（R-2） | 前回 `updatedAt` から 30 秒以上空いた `update` | 許可 |
 | 16（R-2） | 削除→再作成 | 許可（受け入れたギャップ。墓石なしでは create 側で直近削除を見られない） |
 
 その他:
-- R-2 実装時はクライアントも `rankingMinSubmitInterval`（30 秒）で同一週 update を間引き、`permission-denied` は既存の想定内処理で握りつぶす。`flutter analyze` / `flutter test` を通す。
+- R-2 実装時はクライアントも `rankingMinSubmitInterval`（35 秒。ルールは 30 秒のまま）で同一週 update を間引き、`permission-denied` は既存の想定内処理で握りつぶす。`flutter analyze` / `flutter test` を通す。
 - `firestore.rules` のコメントに「31 日 = `rankingEntryTtlDays`(30) ＋ 1 日」と「窓 −8 日 / ＋1 日の理由」を残す。
 - 本番公開後（イフリトさん）: pages.dev で参加 ON → 「世界○位」表示 → OFF → 推定表示へ戻る。Firestore コンソールで文書が今週の `weekId` にだけある。
 
