@@ -36,6 +36,7 @@ PR-S1 / PR-S2 / PR-S3 のマージ後にイフリトさんが行う作業（ル�
 ---
 ## Generator ログ
 - 2026-10-23 grok-4.6: A3 / R-2。`firestore.rules` の update に `request.time >= resource.data.updatedAt + 30s`。delete→create は参加 OFF の即時削除を守るため残リスクとして文書化（墓石や副文書は入れない）。`ranking_service.dart` に同一週のクライアント間隔。Emulator 観点 14〜16。App Check は範囲外。
+- 2026-10-24 grok-4.6: PR #84 レビュー直し。観点 13 を各ケース前 wipe して create で確かめる。観点 17（間隔OK・expiresAt 不正の update 拒否）を追加。クライアント間隔を 35 秒（ルールは 30 秒）。force／参加 ON の update 経路にコメント。
 
 ---
 ## 評価
@@ -43,3 +44,7 @@ PR-S1 / PR-S2 / PR-S3 のマージ後にイフリトさんが行う作業（ル�
   - `flutter analyze`: No issues found
   - `flutter test`: 553 passed
   - `cd test/firestore && npm test`（projectId `demo-smartphone-spec-battle`）: PASS 1〜16（14 直後 update 拒否 / 15 30 秒後 update 許可 / 16 削除→再作成許可）
+- 2026-10-24 grok-4.6（PR #84 レビュー直し）:
+  - `flutter analyze`: No issues found
+  - `flutter test`: 553 passed
+  - `cd test/firestore && npm test`（projectId `demo-smartphone-spec-battle`）: PASS 1〜17（13 は create として拒否 / 17 間隔OKでも expiresAt 不正な update 拒否）
