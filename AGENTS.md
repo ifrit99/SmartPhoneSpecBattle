@@ -44,6 +44,8 @@ Cursor Projects / Project Agent でも本書の席を崩さない。
 - GitHub の `master` 保護は **PR 必須・直接 push 禁止・承認 0・bypass なし**（案A）。ruleset は人が Settings で作る。エージェントはマージしない。承認 1 以上 + bypass なしにはしない（Cloud Agent の PR 作者がリポオーナーと同じになり、承認する人がいなくなるため）。
 - コード変更は `flutter analyze` / `flutter test` を通し、変更に応じた検証結果を添える。未検証は理由を明記する。文書のみなら差分・参照整合性を確認する。
 - Grok が検証後にコミット・push・PRを作成し、レビュー指摘（Plus 時 Codex / それ以外は thermos + grok-4.6 high）を修正する。マージはユーザー判断に従う。
+- 文書（本書・`docs/` 配下・コード中のコメント）と既存コードが食い違うときは、書き方や作法は既存コードに合わせる。古い文書に合わせて、動いている既存コードを書き換えない。見つけた食い違いは、最後の報告（PR 本文）にすべて挙げる。
+- 例外: 通貨の計算、Firebase / `firestore.rules`、CSP（`web/_headers` など）、CI・デプロイ設定、秘密情報の扱いで食い違いを見つけたときは、どちらにも合わせず手を止め、食い違いの内容を報告してユーザーの判断を待つ。
 
 ## UI / 見た目
 - Avoid unnecessary secondary labels and descriptions. Let the layout do the explaining.
