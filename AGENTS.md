@@ -14,6 +14,7 @@
 - Dual Review でも実装は grok-4.6 のまま（既存どおり）。
 - 画像: Plus 復帰時は Codex `gpt-image-2` を候補にする。生成アセットは `assets/` へ。Plus 無しのときは Codex 画像生成を前提にしない。
 - 判断: ユーザー。要求 → 設計案 → ユーザーの方針判断 → Grok が実装・検証・PR → レビュー（Plus 時 Codex / それ以外は thermos + grok-4.6 high）→ Grok 修正 → ユーザーがマージ可否を判断。
+- 途中確認: 見た目が変わる作業・区分「高」のファイルに触れる作業は、最初の一切れで止めて `.agents/skills/midway-check` の手順で見せ、答えを待ってから続ける。
 - 課金: Claude Pro + Cursor Pro + Open Code Go（Hermes）を継続。ChatGPT Plus は解約済み。Claude Pro は Cursor Other Models を補充しない。Claude Code は使わない。Grok Bot の共有PCには Codex / Claude Code を入れない。
 
 ## Cursor Projects（重要）
@@ -29,6 +30,8 @@ Cursor Projects / Project Agent でも本書の席を崩さない。
 - Cloud Agent からこのローカルパスを読めない場合、Mac 側で当該タスクの最小限の引継ぎを用意する。共有メモ全体を Cloud に複製しない。
 - life リポ直下の Hermes `STATUS.md` は上書きしない。本リポに別の `STATUS.md` は作らない。
 - `docs/TODO.md` は機能別の残タスク、`docs/plans/`・`docs/agent/` はタスク固有の計画/検証記録。横断進捗の入口は上記1か所とする。
+- 再開時は、該当する `docs/plans/<件名>.md` の完了条件と記録欄（Generator ログ）を先に読む。区切りごとに記録欄へ「済んだこと・次の一手・判断待ち」を 1 行足す。STATUS.md が読めない Cloud Agent はこれを入口にする。
+- 決めたこと: ユーザーと決めた方針・捨てた案は、小さな判断は `docs/decision-log.md`、大きな判断は `docs/adr/` に、それぞれの書式で残す。前回の判断は `grep -n "^## " docs/decision-log.md`・`grep -rln "<語>" docs/adr docs/rfc_*.md`・`git log --oneline --grep "<語>"` で探す。
 - 仕様: `docs/product_spec.md`。構造: `docs/architecture.md`。実装規約: `docs/coding_rules.md`。必要な関連文書だけ段階的に読む。新規文書は原則 `docs/` へ。
 
 ## Skill・別管理の境界
