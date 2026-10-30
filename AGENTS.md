@@ -30,7 +30,7 @@ Cursor Projects / Project Agent でも本書の席を崩さない。
 - Cloud Agent からこのローカルパスを読めない場合、Mac 側で当該タスクの最小限の引継ぎを用意する。共有メモ全体を Cloud に複製しない。
 - life リポ直下の Hermes `STATUS.md` は上書きしない。本リポに別の `STATUS.md` は作らない。
 - `docs/TODO.md` は機能別の残タスク、`docs/plans/`・`docs/agent/` はタスク固有の計画/検証記録。横断進捗の入口は上記1か所とする。
-- 再開時は、該当する `docs/plans/<件名>.md` の完了条件と記録欄（Generator ログ）を先に読む。区切りごとに記録欄へ「済んだこと・次の一手・判断待ち」を 1 行足す。STATUS.md が読めない Cloud Agent はこれを入口にする。
+- 再開時は、該当する `docs/plans/<件名>.md` の完了条件と記録欄（Generator ログ）を先に読む。区切りごとに記録欄へ「済んだこと・次の一手・判断待ち」を 1 行足す。計画ファイルが無いときは作らず、PR 本文に 1 行残す。STATUS.md が読めない Cloud Agent はこれを入口にする。
 - 決めたこと: ユーザーと決めた方針・捨てた案は、小さな判断は `docs/decision-log.md`、大きな判断は `docs/adr/` に、それぞれの書式で残す。前回の判断は `grep -n "^## " docs/decision-log.md`・`grep -rln "<語>" docs/adr docs/rfc_*.md`・`git log --oneline --grep "<語>"` で探す。
 - 仕様: `docs/product_spec.md`。構造: `docs/architecture.md`。実装規約: `docs/coding_rules.md`。必要な関連文書だけ段階的に読む。新規文書は原則 `docs/` へ。
 
