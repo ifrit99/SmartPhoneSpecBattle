@@ -6,13 +6,13 @@
 ## 現在の担当と流れ
 - 設計: Claude Code（Opus）が docs だけを書く。Fable はイフリトの OK が出たときだけ。
 - 実装: Cursor Cloud Agent `grok-4.6`。設計書をそのまま受け取り PR を出す。
-- 検証: 設計とは別の新しい Claude Code（Opus）セッションが、設計書と PR 差分だけを読んで指摘する（ファイルは直さない）。指摘は同じ `grok-4.6` の実装エージェントが同じ PR で直す。
+- 検証: 設計とは別の新しい Claude Code（Opus）セッションが、設計書と PR 差分だけを読んで指摘する（ファイルは直さない）。設計書は `docs/plans/<件名>.md`（無ければ PR 本文の計画）。指摘は同じ `grok-4.6` の実装エージェントが同じ PR で直す。
 - マージはイフリトだけ。エージェントはマージしない。
 - 裏取り（thermos + grok-4.6 high）は頼まれたときだけ。
 - 判断: イフリト。要求 → 設計案 → 方針判断 → grok-4.6 が実装・PR → 別の Claude Code（Opus）が検証 → grok-4.6 が同じ PR で修正 → イフリトがマージ可否を判断。
 - 途中確認: 見た目が変わる作業・区分「高」のファイルに触れる作業は、最初の一切れで止めて `.agents/skills/midway-check` の手順で見せ、答えを待ってから続ける。
 - 厳密見た目ゲートは頼まれたときだけ。
-- 課金: Claude Pro + Cursor Pro を継続。ChatGPT Plus は 2026-09-24、Open Code Go は 2026-10-09 に解約済み。Claude Pro は Cursor Other Models を補充しない。
+- 課金: Claude Pro + Cursor Pro を継続。ChatGPT Plus は 2026-09-24、Open Code Go は 2026-10-09 に解約済み。Claude Pro は Cursor Other Models を補充しない。Cursor のオンデマンド（従量課金）は使わない。枠が尽きたら止めて報告する。
 
 ## Cursor Projects（重要）
 Cursor Projects / Project Agent でも本書の席を崩さない。
@@ -34,7 +34,7 @@ Cursor Projects / Project Agent でも本書の席を崩さない。
 - リポ固有 Skill の正本は `.agents/skills/`。既存の `.claude/skills` を移す場合は差分確認後に正本へ集約し、互換入口は symlink にする。複製して更新しない。
 - ホーム側のユーザー管理 Skill は `~/.agents/skills/` を正本とする。`~/.codex/skills` の同梱 Skill は削除しない。移行記録は `docs/agent-operation.md` を参照。
 - 認証・APIキー・OAuth・browser session・権限・ツール固有の実行環境は各ツール側で別管理する。共有 Markdown / Skill に値やセッション情報を保存しない。既存の秘密を見つけたら値を出さず所在だけ指摘し、移さない。
-- 旧 agmsg / Claude ハーネスは保存するが現在は使わない。起動・タスク送信・返信待機・Claude 承認ループを自動で再開しない。履歴: `docs/agmsg_harness.md`。
+- 旧 agmsg / Claude ハーネスは保存するが現在は使わない（今の Claude Code による設計・検証とは別物）。起動・タスク送信・返信待機・Claude 承認ループを自動で再開しない。履歴: `docs/agmsg_harness.md`。
 
 ## 実装・Git の共通基準
 - 前提・完了条件・検証方法を先に明確にし、最小差分で進める。無関係なリファクタや将来用の抽象化は追加しない。
