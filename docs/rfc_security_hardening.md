@@ -1,8 +1,8 @@
 # RFC: セキュリティ強化（Firestore ルール・App Check・デプロイの供給網）
 
 Created: 2026-10-12
-Status: PLANNING（イフリトさんの判断待ち。§10 に回答が出るまで実装に着手しない）
-Scope: 設計のみ。本RFCはプロダクトコード（Dart / Flutter）、`firestore.rules`、`.github/workflows/*`、`pubspec.yaml` を変更しない。
+Status: IN_PROGRESS（R-1 は実装済み。R-2 は 2026-10-23 に A3 対応で実装。App Check / D-2 などは未着手）
+Scope: 設計正本。R-1 / R-2 のルール実装は `firestore.rules`。App Check とデプロイ供給網は未着手。
 Related: `docs/rfc_hosting_foundation.md`（S-1 / S-2 / S-6 / S-7、T1 / T2 / T8）、`docs/plans/online-ranking.md`（F6 PR-B。ルールの正本は `firestore.rules`）、`docs/phase5_brushup_spec.md` §2-4
 Implementation plan: `docs/plans/security-hardening.md`（本RFCが正本。計画は薄い順序表のみ）
 
@@ -25,8 +25,8 @@ master（`79c5697`）を点検して見つかった 3 つの弱点について�
 | ランキングの書き込みルール | 本人の uid 配下にだけ書ける。`powerRating` は 0〜278 の整数なら何でも通る。`weekId`（パスの `{weekId}`）は**どんな文字列でも**通る。`expiresAt` は timestamp 型なら**いつでも**通る | `firestore.rules:13-42` |
 | 読み取りルール | 匿名でもサインインしていれば全 entry を読める（上位 50 件・件数集計に必要） | `firestore.rules:39` |
 | クライアントが書く値 | `weekId`＝端末ローカル日付の月曜 `yyyy-MM-dd`、`expiresAt`＝端末時計＋30 日、`updatedAt`＝サーバー時刻 | `lib/domain/services/ranking_service.dart:481,511`、`lib/data/firestore_ranking_backend.dart:54-61`、`lib/domain/services/local_league_service.dart:116-120` |
-| 送信回数の抑制 | ペイロードや週が変わった時だけ送る。1 セッション 5 回まで。**ただしこれはクライアント側の行儀であり、ルールでは強制していない** | `ranking_service.dart:21,489-496` |
-| ルールのテスト | Emulator 用の 6 観点（他人 uid 拒否 / 他人 entry 削除拒否 / 自分の削除許可 / 値域外 PWR 拒否 / `expiresAt` 欠落拒否 / 未認証 read 拒否）。ローカル実行のみ、CI 外 | `test/firestore/rules.test.mjs`、`test/firestore/package.json`（lockfile なし） |
+| 送信回数の抑制 | ペイロードや週が変わった時だけ送る。1 セッション 5 回まで（クライアント）。**同一文書の update はルール R-2 で 30 秒間隔**。delete→create はこの間隔を迂回できる（受け入れた残リスク） | `ranking_service.dart` のセッション上限と `rankingMinSubmitInterval`、`firestore.rules` の update |
+| ルールのテスト | Emulator 用。R-1 の weekId / expiresAt 観点に加え、R-2 は作成直後 update 拒否・30 秒後 update 許可・delete→create 許可。ローカル実行のみ、CI 外 | `test/firestore/rules.test.mjs`、`test/firestore/package.json` |
 | Firebase の料金プラン | Spark（無料。カード紐付けなし）。Cloud Functions は Spark では使えない | `docs/rfc_hosting_foundation.md` §5、`docs/plans/online-ranking.md` 非ゴール |
 | App Check | 未導入（`pubspec.yaml` に `firebase_app_check` なし）。RFC hosting の T8 で「F6 着手時に」と予告されたまま | `pubspec.yaml:23-26`、`docs/rfc_hosting_foundation.md:77` |
 | Firebase 初期化 | 参加 ON のときだけ `Firebase.initializeApp`（遅延初期化）。未参加者は Firebase JS を読み込まない | `lib/data/firebase_bootstrap.dart` |
@@ -74,7 +74,7 @@ master（`79c5697`）を点検して見つかった 3 つの弱点について�
 - `powerRating` のズル: 値域 0〜278 の中なら自由。ただし §3-1 のとおり、**ルールでもサーバーでも「本物かどうか」は判定できない**。できるのは「アプリ外からの書き込みを難しくする」こと（課題2）と「報酬を付けない」こと（済み）。
 - `weekId` が自由: `rankings/あああ/entries/{自分}` にも書ける。ランキング表示は今週の `weekId` しか読まないので**見た目は壊れない**が、ゴミ文書が増える。
 - `expiresAt` が自由: 遠い未来にすると TTL が永久に消さない。過去にすると TTL が即消す（これは害がない）。
-- 送信頻度が自由: ルール上は 1 秒に何回でも更新できる（クライアントの 5 回/セッションは紳士協定）。
+- 送信頻度: 同一文書の `update` は R-2 で 30 秒間隔。delete→create と新規 UID（T-R4）はこの間隔を迂回できる。
 
 ### 4-2. 直し方の案
 
@@ -86,12 +86,12 @@ master（`79c5697`）を点検して見つかった 3 つの弱点について�
 | R-3 Cloud Functions で検証 | 書き込みを Functions 経由にし、`characterCode` を復号して `powerRating` を再計算 | 「コードと PWR の不一致」だけ | **本物の 278 と偽物の 278 の区別**（§3-1）、T-R3 | **Blaze 必須＝カード紐付け**。RFC hosting C-2 と衝突 | 大（Functions の TypeScript へ `CharacterCodec` を移植、サービスアカウント運用） | 無料枠方針と**合わない** |
 | R-4 Cloudflare Workers で検証 | 同上を Workers（無料 10 万 req/日）で行い、サービスアカウントで Firestore REST に書く | R-3 と同じ | R-3 と同じ。加えて Worker に**サービスアカウント鍵という本物の秘密**を持つことになる | ¥0（枠内） | 大（Dart の codec を JS に移植、ID トークン検証、鍵管理） | 枠内だが、守れるものに対して複雑すぎる |
 
-### 4-3. おすすめ: **R-1 を必ず。R-2 は任意（Q2）**
+### 4-3. おすすめ: **R-1 を必ず。R-2 は任意（Q2）** → **R-2 は 2026-10-23 に採用（A3）**
 
 理由:
 1. T-R2（ゴミ・TTL すり抜け）は R-1 で**ほぼ完全に**止まる。費用ゼロ、Dart 変更なし。
 2. T-R1（値域内ズル）はルールでもサーバーでも止められない（§3-1）。R-3 / R-4 は「大きな手間とカード紐付け（R-3）または本物の秘密の運用（R-4）」を払って、ほぼ何も増えない。**不採用**。ズルへの現実的な対策は「アプリ外からの書き込みを難しくする」課題2（App Check）と、既に決まっている「報酬なし」。
-3. R-2 は枠食いへの保険として安価だが、週替わり直後やテストで引っかかる場面が増える。最初の運用で枠が食われる兆候が出てからでも遅くない。
+3. R-2 は枠食いへの保険として安価。当初は兆候待ち（Q2 既定 No）だったが、A3（同一 UID の無制限 update で Spark 日次枠を食える）を受けて **R-2 を入れる**。delete→create は墓石なしでは止められず、参加 OFF の即時削除を壊さないために残リスクとして文書化する。新規 UID 連打（T-R4）は App Check（範囲外）側。
 
 ### 4-4. R-1 のルール案（実装 PR で `firestore.rules` に反映する）
 
@@ -147,9 +147,8 @@ service cloud.firestore {
     match /rankings/{weekId}/entries/{uid} {
       allow read: if isSignedIn();
       allow create: if isValidRankingEntry(uid, weekId);
-      allow update: if isValidRankingEntry(uid, weekId);
-      // R-2 を採る場合は update を次に差し替える:
-      //   && request.time >= resource.data.updatedAt + duration.value(30, 's')
+      allow update: if isValidRankingEntry(uid, weekId)
+        && request.time >= resource.data.updatedAt + duration.value(30, 's');
       allow delete: if isSignedIn() && request.auth.uid == resource.data.uid;
     }
 
@@ -295,8 +294,9 @@ A-1 の設計上の要点（実装 PR で守ること）:
 | 順 | ブランチ（案） | 触るもの | 内容 | 規模 | 前提 |
 |----|---|---|---|---|---|
 | PR-0 | （イフリトさんの作業。PR なし） | コンソール | §7-1 / §7-2 / §7-3 の確認。TTL ポリシー未設定なら設定。A-1 採用なら reCAPTCHA v3 サイトキーを作成し GitHub secrets `RECAPTCHA_SITE_KEY` に登録（サイトキーのドメインに pages.dev と localhost）。§7-5 の履歴点検 | — | §10 の回答 |
-| PR-S1 | `feature/firestore-rules-hardening` | `firestore.rules`、`test/firestore/rules.test.mjs`、（任意）`test/firestore/package-lock.json` | §4-4 の R-1（Q2 が Yes なら R-2 も）。既存 6 観点を残し、§9-1 の観点を追加。固定 `weekId` を「実行日の月曜」に差し替え | 小 | Q1 |
+| PR-S1 | `feature/firestore-rules-hardening` | `firestore.rules`、`test/firestore/rules.test.mjs`、（任意）`test/firestore/package-lock.json` | §4-4 の R-1。R-2 は後続（2026-10-23 A3）で追加。既存 6 観点を残し、§9-1 の観点を追加。固定 `weekId` を「実行日の月曜」に差し替え | 小 | Q1 |
 | PR-S1 後 | （イフリトさんの作業） | Firebase コンソール | 新しい `firestore.rules` を貼り付けて公開（従来どおり CI からはやらない。Q10）。pages.dev で参加 ON → 順位表示を確認 | — | PR-S1 マージ |
+| PR-S1b | `feature/firestore-r2-interval-53bc` | `firestore.rules`、ルールテスト、`ranking_service.dart`、docs | R-2（update 30 秒間隔）。delete→create は残リスクとして文書化。App Check は範囲外 | 小 | A3 |
 | PR-S2 | `feature/deploy-wrangler-pin` | `tool/deploy/package.json`、`tool/deploy/package-lock.json`、`.github/workflows/deploy.yml`、`.github/dependabot.yml` | §6-3 の D-2。`workflow_dispatch` で検証 | 小 | Q5 |
 | PR-S2 後 | （イフリトさんの作業） | Cloudflare / GitHub | §6-3 の手順でトークンを最小権限で発行し直し、旧を失効 | — | PR-S2 マージ |
 | PR-S3 | `feature/app-check-recaptcha` | `pubspec.yaml`、`lib/data/firebase_bootstrap.dart`、`.github/workflows/ci.yml` / `deploy.yml`（`--dart-define=RECAPTCHA_SITE_KEY`）、`web/_headers`、`test/` | §5-3 の A-1。監視モードで本番確認。CSP の追加分を PR-A' の前例どおり別 PR にするかは実装席の判断（キーが空なら No-op なので、どちらの順でも壊れない） | 中 | Q3 / Q4、PR-0 のサイトキー |
@@ -320,11 +320,14 @@ A-1 の設計上の要点（実装 PR で守ること）:
 | 10 | `weekId` が実在しない日（`2026-02-30`） | 拒否 |
 | 11 | `weekId` が 3 週間前の月曜 / 2 週間後の月曜 | 拒否（前週の月曜は実行曜日で結果が変わるので**テストしない**） |
 | 12 | `expiresAt` が今＋30 日 | 許可 |
-| 13 | `expiresAt` が今＋40 日 / 今より過去 / 文字列 | 拒否 |
-| 14（R-2 時） | 作成直後の同一文書 `update` | 拒否。削除→再作成は許可 |
+| 13 | `expiresAt` が今＋40 日 / 今より過去 / 文字列（各ケース前に消して **create** で確かめる） | 拒否 |
+| 13b | 前回 `updatedAt` から 31 秒空いた文書への `update` で、`expiresAt` が不正 | 拒否 |
+| 14（R-2） | 作成直後の同一文書 `update` | 拒否 |
+| 15（R-2） | 前回 `updatedAt` から 30 秒以上空いた `update` | 許可 |
+| 16（R-2） | 削除→再作成 | 許可（受け入れたギャップ。墓石なしでは create 側で直近削除を見られない） |
 
 その他:
-- Dart 変更なし。`flutter analyze` / `flutter test` は未変更で通ることを確認（実行はする）。
+- R-2 実装時はクライアントも `rankingMinSubmitInterval`（35 秒。ルールは 30 秒のまま）で同一週 update を間引き、`permission-denied` は既存の想定内処理で握りつぶす。`flutter analyze` / `flutter test` を通す。
 - `firestore.rules` のコメントに「31 日 = `rankingEntryTtlDays`(30) ＋ 1 日」と「窓 −8 日 / ＋1 日の理由」を残す。
 - 本番公開後（イフリトさん）: pages.dev で参加 ON → 「世界○位」表示 → OFF → 推定表示へ戻る。Firestore コンソールで文書が今週の `weekId` にだけある。
 
@@ -353,7 +356,7 @@ A-1 の設計上の要点（実装 PR で守ること）:
 | # | 質問 | 既定 | 影響 |
 |---|---|---|---|
 | Q1 | 課題1 を R-1（`weekId` 形式・今週限定、`expiresAt` 31 日以内）で締めてよいか | **Yes** | PR-S1 の内容。費用ゼロ・Dart 変更なし |
-| Q2 | R-2（同一文書の更新は 30 秒空ける）も入れるか | **No**（枠食いの兆候が出てから） | ルール 1 行＋テスト 2 観点 |
+| Q2 | R-2（同一文書の更新は 30 秒空ける）も入れるか | **Yes（2026-10-23 A3 で実装）**。delete→create は残リスクとして文書化。App Check は範囲外 | ルール 1 行＋テスト 3 観点＋クライアント間隔 |
 | Q3 | App Check を今入れるか、PR-C（ランキング UI）で参加者が付くまで待つか。入れる場合、参加トグル付近に「参加中は Google reCAPTCHA を使う」の一文を出すか | **今入れる（監視モード）。強制は指標を見てから。一文は出す** | PR-S3 の有無と内容。未参加者には影響なし |
 | Q4 | reCAPTCHA は従来型 v3 を使う。作れない／無料枠が月 1 万回未満だった場合は Enterprise にせず**一旦見送る**でよいか | **Yes（見送り）** | ¥0 方針の維持 |
 | Q5 | wrangler の固定は D-2（`tool/deploy/` に lockfile）でよいか。置き場所はリポ直下ではなく `tool/deploy/` | **Yes** | PR-S2。Dependabot の `npm` 追加 |

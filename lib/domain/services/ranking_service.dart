@@ -20,6 +20,10 @@ const int rankingMaxTitleLength = 32;
 /// 1 セッションあたりの送信上限。
 const int rankingSubmitSessionCap = 5;
 
+/// Firestore R-2 のルール下限は 30 秒。クライアントは端末時計で測るため、
+/// 通信遅延の差でサーバー側が 29.x 秒になると拒否される。余裕を見て 35 秒。
+const Duration rankingMinSubmitInterval = Duration(seconds: 35);
+
 const int rankingEntryTtlDays = 30;
 
 /// ランキング一覧の1行。
@@ -302,6 +306,7 @@ class FirestoreRankingService implements RankingService {
   final int _maxSubmitsPerSession;
 
   int _sessionSubmitCount = 0;
+  DateTime? _lastSubmitAt;
   String? _cachedWeekId;
   int? _cachedPowerRating;
   RankingSnapshot? _cachedLeaderboard;
@@ -344,6 +349,12 @@ class FirestoreRankingService implements RankingService {
     await _storage.setRankingOptedIn(true);
     if (local != null) {
       try {
+        // force: 参加 ON はクライアント間隔を通さない。
+        // 通常は初回 create、または OFF→ON の delete 後 create。
+        // 例外: 送信キャッシュだけ消えて今週の文書が残っていると update になり、
+        // 前回 updatedAt から 30 秒以内ならルールが拒否する。
+        // permission-denied は想定内なので握りつぶし、キャッシュは更新しない
+        // （次回ロードで再送する）。
         await _submit(
           local: local,
           characterCode: characterCode,
@@ -381,6 +392,7 @@ class FirestoreRankingService implements RankingService {
     await _backend.signOut();
     await _storage.clearRankingSendCache();
     await _storage.setRankingOptedIn(false);
+    _lastSubmitAt = null;
     _clearLeaderboardCache();
     await _analytics.logEvent('ranking_opt_in', params: {'enabled': false});
   }
@@ -491,6 +503,13 @@ class FirestoreRankingService implements RankingService {
     if (!force && !weekChanged && !payloadChanged) {
       return;
     }
+    // 同一週の非 force update だけ、ルール R-2（30 秒）より長い 35 秒で間引く。
+    // force（参加 ON）は通さない。理由は _optIn 側。週替わりは別文書の create。
+    if (!force && !weekChanged && _lastSubmitAt != null) {
+      if (_clock().difference(_lastSubmitAt!) < rankingMinSubmitInterval) {
+        return;
+      }
+    }
     if (!force && _sessionSubmitCount >= _maxSubmitsPerSession) {
       return;
     }
@@ -513,6 +532,7 @@ class FirestoreRankingService implements RankingService {
     await _storage.setRankingLastSentWeekId(weekId);
     await _storage.setRankingLastSentPayloadHash(hash);
     _sessionSubmitCount++;
+    _lastSubmitAt = _clock();
     _clearLeaderboardCache();
   }
 
