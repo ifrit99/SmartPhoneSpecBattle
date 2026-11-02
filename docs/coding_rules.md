@@ -32,4 +32,5 @@
 - 想定外の動作をしたら、そのパターンを1行で追記して同じミスを防ぐ。
 - 同じ指摘が2つの PR で出たら、REVIEW.md か本書に1行足す。
 - ランキング参加の CSP: flutterfire は `initializeApp` 時に core / auth / firestore のインラインスクリプトを書く。`web/_headers` の `script-src` にその SHA-256 が無いと本番で「参加に失敗しました」になる。firebase 系（とくに `firebase_core_web` / firebasejs）を上げたら `test/data/firebase_csp_headers_test.dart` が落ちるので、ソースからハッシュを再計算して `_headers` を更新する（`'unsafe-inline'` は使わない）。
-- firebase 系のサービス（Storage など）を pubspec に足したら、`test/data/firebase_csp_headers_test.dart` の `_firebaseInlineServices` にも足し、`web/_headers` のハッシュを更新する。
+- Safari / iPhone は動的に足したインラインの CSP ハッシュを Chrome と同じに扱わないことがある。参加 ON では `web/firebase_js_preload.js` から gstatic を順に `import` して `window.firebase_*` を先に置き、flutterfire のインライン注入を飛ばす。版は `lib/data/firebase_js_sdk_version.dart` を `firebase_core_web` に合わせる。
+- firebase 系のサービス（Storage など）を pubspec に足したら、`test/data/firebase_csp_headers_test.dart` の `_firebaseInlineServices` にも足し、`web/_headers` のハッシュを更新する。先読み JS の import 対象も同じサービスに合わせる。

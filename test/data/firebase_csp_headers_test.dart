@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:spec_battle_game/data/firebase_js_sdk_version.dart';
 
 /// flutterfire が Web で注入するインラインスクリプト（core / auth / firestore）。
 /// URL は `firebase_core_web` の `injectService` と同じ規則。
@@ -87,6 +88,41 @@ void main() {
             'firebase 系を上げたならハッシュを再計算して足す',
       );
     }
+  });
+
+  test('参加時先読みが firebase JS を順に import し版がパッケージと一致する', () {
+    final coreWebRoot = _packageRoot('firebase_core_web');
+    final sdkVersionSource = File.fromUri(
+      coreWebRoot.resolve('lib/src/firebase_sdk_version.dart'),
+    ).readAsStringSync();
+    final version = RegExp(
+      r"supportedFirebaseJsSdkVersion = '([^']+)'",
+    ).firstMatch(sdkVersionSource)?.group(1);
+    expect(version, isNotNull);
+    expect(
+      firebaseJsSdkVersion,
+      version,
+      reason: 'lib/data/firebase_js_sdk_version.dart を '
+          'firebase_core_web の supportedFirebaseJsSdkVersion に合わせる',
+    );
+
+    final preload = File('web/$firebaseJsPreloadScript');
+    expect(preload.existsSync(), isTrue, reason: 'web/$firebaseJsPreloadScript が無い');
+    final source = preload.readAsStringSync();
+    expect(source.contains('await import(base + \'/firebase-app.js\')'), isTrue);
+    expect(source.contains('await import(base + \'/firebase-auth.js\')'), isTrue);
+    expect(
+      source.contains('firebase-firestore-pipelines.js'),
+      isTrue,
+    );
+    expect(source.contains('window.firebase_core'), isTrue);
+    expect(source.contains('window.firebase_auth'), isTrue);
+    expect(source.contains('window.firebase_firestore'), isTrue);
+    expect(
+      source.contains("createElement('script')"),
+      isFalse,
+      reason: '先読みはインライン script.text を使わない',
+    );
   });
 }
 
