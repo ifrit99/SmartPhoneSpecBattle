@@ -25,7 +25,7 @@ PR-S1 / PR-S2 / PR-S3 のマージ後にイフリトさんが行う作業（ル�
 ## 完了条件（RFC §9 の写し）
 - [ ] PR-S1: ルールテスト 13 観点（R-2 時 14）がローカル Emulator で全パス。結果を PR 本文に貼る。`flutter analyze` / `flutter test` は未変更で通る
 - [ ] PR-S1 後: Firebase コンソールのルールがリポと同一。pages.dev で参加 ON → 順位表示 → OFF → 推定へ戻る
-- [ ] PR-S2: `workflow_dispatch` のログで `wrangler --version` が lockfile と一致し、`pages deploy` 成功。Dependabot が `/tool/deploy` を対象にしている
+- [x] PR-S2: `tool/deploy/package.json` + `package-lock.json` で wrangler 4.152.0 を固定、`deploy.yml` は `npm ci --ignore-scripts --prefix tool/deploy` → `npx --prefix tool/deploy wrangler`、Dependabot が `/tool/deploy` を対象。`workflow_dispatch` での `pages deploy` 成功確認はマージ後（イフリトさん）
 - [ ] PR-S2 後: Pages: Edit のみの新トークンで配置成功。旧トークン失効
 - [ ] PR-S3: `flutter analyze` エラー 0 / `flutter test` 全パス。`main.dart.js` サイズ差分を記録。参加 OFF で reCAPTCHA / App Check への通信 0 件。参加 ON で CSP violation なし・順位表示。App Check 指標の「検証済み」がほぼ 100%
 - [ ] PR-S3 後: Firestore を強制に切替後もアプリが動き、蹴られた場合は推定表示に戻る。Sentry に新規イベントが増えない
@@ -33,8 +33,8 @@ PR-S1 / PR-S2 / PR-S3 のマージ後にイフリトさんが行う作業（ル�
 
 ---
 ## Generator ログ
-（実装時に追記）
+- 2026-10-23 grok-4.6: PR-S2 実装。起点は PR #79 `cursor/cf-production-env-a5c3`。`tool/deploy/package.json` に wrangler `4.152.0`（完全版）と `package-lock.json` を追加。`deploy.yml` は `npx --yes wrangler@…` をやめ、`npm ci --ignore-scripts --prefix tool/deploy` のあと `npx --prefix tool/deploy wrangler` に変更（トークンは Direct Upload ステップのみ）。`actions/setup-node` を SHA 固定（v7.1.0）。`.github/dependabot.yml` に `npm`（`/tool/deploy`）を追加。`workflow_dispatch` の本番配置確認はマージ後。
 
 ---
 ## 評価
-（検証結果を追記）
+- 2026-10-23 grok-4.6: ローカルで `npm ci --ignore-scripts --prefix tool/deploy` と `npx --prefix tool/deploy wrangler --version` が lockfile の 4.152.0 と一致することを確認。`npx --yes wrangler@` が `deploy.yml` に残っていないこと、Dependabot が `/tool/deploy` を対象にしていることを確認。`actionlint` v1.7.7 で workflow YAML を確認（指摘なし）。`pages deploy` は Environment `production` が必要なため未実施。
