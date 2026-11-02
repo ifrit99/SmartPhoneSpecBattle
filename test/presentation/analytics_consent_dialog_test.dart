@@ -51,6 +51,15 @@ void main() {
     await tester.tap(find.text('Start'));
     await tester.pumpAndSettle();
     expect(find.text('プレイデータ送信へのご協力'), findsOneWidget);
+    expect(
+      find.textContaining('匿名のプレイデータ（バトル回数など）の送信にご協力ください'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('不具合を見つけるためのエラー情報は、同意に関係なく送信されます'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('プレイデータとエラー情報の送信にご協力'), findsNothing);
 
     await tester.tap(find.text('協力する'));
     await tester.pumpAndSettle();
@@ -98,6 +107,15 @@ void main() {
     );
 
     expect(find.text('送信しない'), findsOneWidget);
+    expect(
+      find.textContaining('利用状況を、ゲーム改善のために送信します'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('不具合を見つけるためのエラー情報は、この設定に関係なく送信されます'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('利用状況とエラー情報を'), findsNothing);
 
     await tester.tap(find.byType(SwitchListTile));
     await tester.pumpAndSettle();

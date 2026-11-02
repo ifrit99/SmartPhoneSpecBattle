@@ -6,6 +6,7 @@ import 'analytics_service.dart';
 import 'character_codec.dart';
 import 'local_league_service.dart';
 import 'power_rating_service.dart';
+import 'serial_executor.dart';
 
 /// Q4: CharacterGenerator の Lv1 基礎値上限（HP 202 / ATK·DEF·SPD 27）の
 /// [PowerRatingService.powerScore] = 252 に +10%。`ceil(252 * 1.1) = 278`。
@@ -301,10 +302,17 @@ class FirestoreRankingService implements RankingService {
   final DateTime Function() _clock;
   final int _maxSubmitsPerSession;
 
+  final SerialExecutor _serial = SerialExecutor();
   int _sessionSubmitCount = 0;
   String? _cachedWeekId;
   int? _cachedPowerRating;
   RankingSnapshot? _cachedLeaderboard;
+
+  /// 参加 OFF の途中。保存フラグがまだ true でも送信を止める。
+  bool _optOutInProgress = false;
+
+  /// 送信してよい参加状態か。OFF 操作中は保存フラグが残っていても不可。
+  bool get _isParticipating => isOptedIn && !_optOutInProgress;
 
   static Future<bool> _skipInitialize() async => false;
 
@@ -320,15 +328,17 @@ class FirestoreRankingService implements RankingService {
     String characterCode = '',
     String title = '',
   }) async {
-    if (enabled) {
-      await _optIn(
-        local: local,
-        characterCode: characterCode,
-        title: title,
-      );
-      return;
-    }
-    await _optOut();
+    return _serial.run(() async {
+      if (enabled) {
+        await _optIn(
+          local: local,
+          characterCode: characterCode,
+          title: title,
+        );
+        return;
+      }
+      await _optOut();
+    });
   }
 
   Future<void> _optIn({
@@ -341,6 +351,7 @@ class FirestoreRankingService implements RankingService {
       return;
     }
     await _backend.signInAnonymously();
+    _optOutInProgress = false;
     await _storage.setRankingOptedIn(true);
     if (local != null) {
       try {
@@ -363,26 +374,34 @@ class FirestoreRankingService implements RankingService {
     if (!isOptedIn) {
       return;
     }
-    final initialized = await _ensureInitialized();
-    if (!initialized) {
-      throw FirebaseException(
-        plugin: 'cloud_firestore',
-        code: 'unavailable',
-        message: 'Firebase 未初期化のため参加解除できません',
-      );
-    }
-    await _backend.signInAnonymously();
+    // 進行中の送信が、削除後に entry を作り直さないよう先に止める。
+    _optOutInProgress = true;
     try {
-      await _backend.deleteAllOwnEntries();
-    } catch (error) {
-      // 削除が途中失敗したらフラグは OFF にしない。
+      final initialized = await _ensureInitialized();
+      if (!initialized) {
+        throw FirebaseException(
+          plugin: 'cloud_firestore',
+          code: 'unavailable',
+          message: 'Firebase 未初期化のため参加解除できません',
+        );
+      }
+      await _backend.signInAnonymously();
+      try {
+        await _backend.deleteAllOwnEntries();
+      } catch (error) {
+        // 削除が途中失敗したらフラグは OFF にしない。
+        rethrow;
+      }
+      await _backend.signOut();
+      await _storage.clearRankingSendCache();
+      await _storage.setRankingOptedIn(false);
+      _clearLeaderboardCache();
+      await _analytics.logEvent('ranking_opt_in', params: {'enabled': false});
+    } catch (_) {
+      _optOutInProgress = false;
       rethrow;
     }
-    await _backend.signOut();
-    await _storage.clearRankingSendCache();
-    await _storage.setRankingOptedIn(false);
-    _clearLeaderboardCache();
-    await _analytics.logEvent('ranking_opt_in', params: {'enabled': false});
+    _optOutInProgress = false;
   }
 
   @override
@@ -438,18 +457,23 @@ class FirestoreRankingService implements RankingService {
     String characterCode = '',
     String title = '',
   }) async {
-    if (!isOptedIn) {
+    if (!_isParticipating) {
       return;
     }
     try {
       if (!await _prepareSession()) {
         return;
       }
-      await _submit(
-        local: local,
-        characterCode: characterCode,
-        title: title,
-        force: false,
+      if (!_isParticipating) {
+        return;
+      }
+      await _serial.run(
+        () => _submit(
+          local: local,
+          characterCode: characterCode,
+          title: title,
+          force: false,
+        ),
       );
     } catch (error) {
       if (isExpectedRankingFailure(error)) {
@@ -462,6 +486,9 @@ class FirestoreRankingService implements RankingService {
   Future<bool> _prepareSession() async {
     final initialized = await _ensureInitialized();
     if (!initialized) {
+      return false;
+    }
+    if (!_isParticipating) {
       return false;
     }
     await _backend.signInAnonymously();
@@ -501,6 +528,11 @@ class FirestoreRankingService implements RankingService {
     final clippedTitle = title.length > rankingMaxTitleLength
         ? title.substring(0, rankingMaxTitleLength)
         : title;
+
+    // 書き込み直前に参加中かを確かめ直す。OFF 操作中の作り直しを防ぐ。
+    if (!_isParticipating) {
+      return;
+    }
 
     await _backend.submitEntry(
       weekId: weekId,
