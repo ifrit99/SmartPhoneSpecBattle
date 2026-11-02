@@ -1,6 +1,6 @@
 # REVIEW.md — SmartPhoneSpecBattle のレビュー基準
 
-レビューする AI（GitHub のレビューボット、thermos、受入テスト）向けの正本。担当や流れは [AGENTS.md](AGENTS.md)、書き方の規約は [docs/coding_rules.md](docs/coding_rules.md) を見る。ここには「このリポで何が壊れると困るか」だけを書く。
+レビューする AI（検証役の Claude Code（Opus）、GitHub のレビューボット、頼まれたときだけの thermos）向けの正本。担当や流れは [AGENTS.md](AGENTS.md)、書き方の規約は [docs/coding_rules.md](docs/coding_rules.md) を見る。ここには「このリポで何が壊れると困るか」だけを書く。
 
 ## 返し方
 - 最初の1行は件数にする。例:「重大 1 / 軽微 2 / 前からある 1」。直すところが無ければ「直すところなし」とだけ書く。

@@ -4,25 +4,21 @@
 正リポは `/Users/kanaihideaki/Documents/SmartPhoneSpecBattle`（trusted）。`CodexProject/SmartPhoneSpecBattle_codex` は変更しない。
 
 ## 現在の担当と流れ
-- 設計: Cursor Cloud Agent `claude-fable-5-1`（docs のみ）。Fable が使えないとき、かつ Other Models に残枠がある場合だけ、Cloud Agent `claude-opus-5-5`（docs のみ）が代行する。Other Models が枯渇したら Fable / Opus とも起動せず報告のみ。設計フォールバックに Mac Codex GPT 6 Astra は使わない。
-- 実装・修正・テスト・PR作成: Cursor Cloud Agent `grok-4.6`。Codex に実装を寄せない。
-- レビュー: ChatGPT Plus が使えるときは Codex。指摘は Grok に戻す。Plus が無いときは thermos + grok-4.6 high。厳密見た目ゲートは頼まれたときだけ（Plus 復帰時は Mac Codex + Playwright MCP、headless、`--mute-audio`）。
-- Dual Review の役割分担:
-  - 設計・アーキ妥当性 → Fable 5.1（docsのみ）。Fable 不可かつ Other Models 残枠ありなら Opus 5.5（docsのみ）
-  - 完了報告・差分の事実監査（引用・矛盾・必要ならテスト）→ Plus 復帰時は Mac Codex GPT 6 Astra。それ以外は thermos + grok-4.6 high
-- Dual Review は毎回しない。高リスクまたはユーザー依頼時のみ dual。
-- Dual Review でも実装は grok-4.6 のまま（既存どおり）。
-- 画像: Plus 復帰時は Codex `gpt-image-2` を候補にする。生成アセットは `assets/` へ。Plus 無しのときは Codex 画像生成を前提にしない。
-- 判断: ユーザー。要求 → 設計案 → ユーザーの方針判断 → Grok が実装・検証・PR → レビュー（Plus 時 Codex / それ以外は thermos + grok-4.6 high）→ Grok 修正 → ユーザーがマージ可否を判断。
+- 設計: Claude Code（Opus）が docs だけを書く。Fable はイフリトの OK が出たときだけ。
+- 実装: Cursor Cloud Agent `grok-4.6`。設計書をそのまま受け取り PR を出す。
+- 検証: 設計とは別の新しい Claude Code（Opus）セッションが、設計書と PR 差分だけを読んで指摘する（ファイルは直さない）。設計書は `docs/plans/<件名>.md`（無ければ PR 本文の計画）。指摘は同じ `grok-4.6` の実装エージェントが同じ PR で直す。
+- マージはイフリトだけ。エージェントはマージしない。
+- 裏取り（thermos + grok-4.6 high）は頼まれたときだけ。
+- 判断: イフリト。要求 → 設計案 → 方針判断 → grok-4.6 が実装・PR → 別の Claude Code（Opus）が検証 → grok-4.6 が同じ PR で修正 → イフリトがマージ可否を判断。
 - 途中確認: 見た目が変わる作業・区分「高」のファイルに触れる作業は、最初の一切れで止めて `.agents/skills/midway-check` の手順で見せ、答えを待ってから続ける。
-- 課金: Claude Pro + Cursor Pro + Open Code Go（Hermes）を継続。ChatGPT Plus は解約済み。Claude Pro は Cursor Other Models を補充しない。Claude Code は使わない。Grok Bot の共有PCには Codex / Claude Code を入れない。
+- 厳密見た目ゲートは頼まれたときだけ。
+- 課金: Claude Pro + Cursor Pro を継続。ChatGPT Plus は 2026-09-24、Open Code Go は 2026-10-09 に解約済み。Claude Pro は Cursor Other Models を補充しない。Cursor のオンデマンド（従量課金）は使わない。枠が尽きたら止めて報告する。
 
 ## Cursor Projects（重要）
 Cursor Projects / Project Agent でも本書の席を崩さない。
 - **製品コード**（Dart / Flutter / アセット配線 / PR）は **実装席 → Cloud Agent `grok-4.6` のみ**。
-- **Fable（`claude-fable-5-1`）は docs のみ**。設計〜実装〜PR〜レビューを一人で名乗らない・やらない。
-- **マージは人**。エージェントはマージしない。
-- Other Models 枠が尽きているときは Fable / Opus とも起動せず、報告のみ。オンデマンドは触らない。Astra は設計フォールバックに使わない。
+- **設計は Claude Code（Opus）が docs のみ**。Fable はイフリトの OK が出たときだけ。設計〜実装〜PR〜レビューを一人で名乗らない・やらない。
+- **マージはイフリト**。エージェントはマージしない。
 - 迷ったら Grok Bot の参謀ルート（外環→内環）に寄せる。Projects で席をバイパスしない。
 
 ## 進捗・参照先
@@ -38,7 +34,7 @@ Cursor Projects / Project Agent でも本書の席を崩さない。
 - リポ固有 Skill の正本は `.agents/skills/`。既存の `.claude/skills` を移す場合は差分確認後に正本へ集約し、互換入口は symlink にする。複製して更新しない。
 - ホーム側のユーザー管理 Skill は `~/.agents/skills/` を正本とする。`~/.codex/skills` の同梱 Skill は削除しない。移行記録は `docs/agent-operation.md` を参照。
 - 認証・APIキー・OAuth・browser session・権限・ツール固有の実行環境は各ツール側で別管理する。共有 Markdown / Skill に値やセッション情報を保存しない。既存の秘密を見つけたら値を出さず所在だけ指摘し、移さない。
-- 旧 agmsg / Claude ハーネスは保存するが現在は使わない。起動・タスク送信・返信待機・Claude 承認ループを自動で再開しない。履歴: `docs/agmsg_harness.md`。
+- 旧 agmsg / Claude ハーネスは保存するが現在は使わない（今の Claude Code による設計・検証とは別物）。起動・タスク送信・返信待機・Claude 承認ループを自動で再開しない。履歴: `docs/agmsg_harness.md`。
 
 ## 実装・Git の共通基準
 - 前提・完了条件・検証方法を先に明確にし、最小差分で進める。無関係なリファクタや将来用の抽象化は追加しない。
@@ -46,7 +42,7 @@ Cursor Projects / Project Agent でも本書の席を崩さない。
 - コードの同時編集者は1人。`master` から `feature/` ブランチを作り、直接 `master` にコミットしない。コミット要約は日本語。
 - GitHub の `master` 保護は **PR 必須・直接 push 禁止・承認 0・bypass なし**（案A）。ruleset は人が Settings で作る。エージェントはマージしない。承認 1 以上 + bypass なしにはしない（Cloud Agent の PR 作者がリポオーナーと同じになり、承認する人がいなくなるため）。
 - コード変更は `flutter analyze` / `flutter test` を通し、変更に応じた検証結果を添える。未検証は理由を明記する。文書のみなら差分・参照整合性を確認する。
-- Grok が検証後にコミット・push・PRを作成し、レビュー指摘（Plus 時 Codex / それ以外は thermos + grok-4.6 high）を修正する。マージはユーザー判断に従う。
+- Grok が検証後にコミット・push・PRを作成し、検証（別の Claude Code Opus セッション）の指摘を同じ PR で直す。マージはイフリトの判断に従う。
 
 ## UI / 見た目
 - Avoid unnecessary secondary labels and descriptions. Let the layout do the explaining.
