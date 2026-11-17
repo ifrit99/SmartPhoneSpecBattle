@@ -17,6 +17,13 @@
 
 ---
 
+## 2026-11-17: 内側ループと検証の共通ルールは life を読む
+
+- **Context**: life #17（設計）と #18（`dev/rules/verification.md` ほか）がマージされた。SSB 側に共通文をコピーすると二重管理になる。SSB #90 は `Verified:` 行の数え方を記録用に書いており、観察ゲートは後回し。
+- **Decision**: 共通の内側ループ・検証は ifrit99/life の `dev/rules/` を読む。このリポの `AGENTS.md` 等には SSB 固有の例外だけを置く。共通ゲートの置き場はこのリポの CI。`Verified:` 行が無いことだけで PR を落とさない。#90 の数え方は記録用のまま残す。
+- **Why**: 写すと life 側の更新が追いつかない。CI に置くのはエージェントごとの hook 差を避けるため（#18）。enforce 前に止めると誤検知で本線が止まる。
+- **Consequence**: エージェントは life が読めること。AI 指示ファイルの変更はイフリトがマージする。観察ジョブ自体は区分「高」なので、この切り替え PR では足さない。
+
 ## 2026-03頃: AndroidリリースからWeb版MVPへ方針転換
 
 - **Context**: 当初はAndroid版MVPリリースを目指していたが、MacBookのディスク容量不足で `flutter build appbundle --release` が困難、VPS（960MB RAM）ではGradle/Kotlinビルドがメモリ不足、Android実機も確保困難。

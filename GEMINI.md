@@ -3,7 +3,7 @@
 各種仕様やルールについては、コンテキスト情報の重複・肥大化を防ぐため「Less is More & Progressive Disclosure」の原則に基づき、以下の分割されたドキュメントを必要に応じて段階的に参照してください。
 
 ## 🤖 AI向け：最初に読むべきファイル (絶対ルール)
-- 判断基準・担当の正本は **`AGENTS.md`**。作業開始前に **`AGENTS.md`** と **`docs/TODO.md`** を読むこと。`CONTEXT.md` は補助であり、Git 権限は `AGENTS.md` が優先する。
+- 共通の内側ループ・検証は ifrit99/life の `dev/rules/` を読む（写さない）。このリポの例外は **`AGENTS.md`**。作業開始前に **`AGENTS.md`** と **`docs/TODO.md`** を読むこと。`CONTEXT.md` は補助であり、Git 権限は `AGENTS.md` が優先する。
 - **【重要】コンテナ開発の徹底**: 以降のFlutterに関するすべてのコマンド実行（`flutter analyze`, `flutter test`, `git add`, `git commit`, `git push` など）は、必ず提供されているDockerコンテナ内（`docker compose exec flutter-dev bash -c "..."`）で行うこと。ホストOS（Mac/VPSのローカル）での直接実行や権限要求は禁止する。
 
 ## 📚 ドキュメント構成
@@ -16,7 +16,7 @@
 **※注意:** 新規ドキュメントを作成する場合は `docs/` ディレクトリ内に配置し、このファイルから適宜リンクを追加してください。
 
 ## 🌲 Git Operation Rules
-判断基準の正本は `AGENTS.md`。
+判断基準の正本は life `dev/rules/` と、このリポの例外 `AGENTS.md`。
 
 ### 1. 共通ブランチ戦略
 - 全ての開発作業は `master` ブランチから分岐した `feature/` ブランチで行うこと。

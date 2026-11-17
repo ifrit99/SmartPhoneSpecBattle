@@ -1,6 +1,8 @@
 # REVIEW.md — SmartPhoneSpecBattle のレビュー基準
 
-レビューする AI（GitHub のレビューボット、thermos、受入テスト）向けの正本。担当や流れは [AGENTS.md](AGENTS.md)、書き方の規約は [docs/coding_rules.md](docs/coding_rules.md) を見る。ここには「このリポで何が壊れると困るか」だけを書く。
+レビューする AI（GitHub のレビューボット、thermos、受入テスト）向け。担当や流れは [AGENTS.md](AGENTS.md)、書き方の規約は [docs/coding_rules.md](docs/coding_rules.md) を見る。
+
+往復の上限、基準は base から読むこと、報告に見た SHA を書くことは life の共通ルール（[`dev/rules/inner-loop.md`](https://github.com/ifrit99/life/blob/main/dev/rules/inner-loop.md)・[`dev/rules/verification.md`](https://github.com/ifrit99/life/blob/main/dev/rules/verification.md)）。ここに写さない。ここには「このリポで何が壊れると困るか」だけを書く。
 
 ## 返し方
 - 最初の1行は件数にする。例:「重大 1 / 軽微 2 / 前からある 1」。直すところが無ければ「直すところなし」とだけ書く。
@@ -12,11 +14,12 @@
 - 状態・フラグの管理、空状態とスキップの分岐漏れ、テスト不足を見る。
 
 ## 往復のルール
+共通の 3 回上限は life。このリポでの足し:
 - 1回目は全体を見る。2回目以降は前回からの差分だけを見る。
 - 前に出した指摘をくり返さない。答えが付いた指摘は蒸し返さない。
-- 3往復しても重大が残るなら、それ以上直させない。「やり方を見直す」と書いて止め、参謀に返す。
 - 指摘はすべて「直した（コミット）」か「直さない理由」のどちらかで答えが付くまでマージしない。
 - エージェントにできない確認（実機、本番コンソール、GitHub の設定）は往復に数えない。指摘のまま止めず、PR 本文の「イフリトさんがやること」に移して閉じる。
+- `Verified:` 行の有無だけで重大にしない。無いことは記録（#90 の数え方）であり、CI を落とす理由にしない。
 
 ## 危なさの区分（変更内容で決める。作者では決めない）
 PR 本文の区分が低すぎないかを必ず見る。1ファイルでも上の区分に当たれば、PR 全体がその区分になる。
