@@ -5,20 +5,19 @@
 - 内側ループ: https://github.com/ifrit99/life/blob/main/dev/rules/inner-loop.md
 - 検証: https://github.com/ifrit99/life/blob/main/dev/rules/verification.md
 
-life の default branch は `main`（GitHub の `master` パスも同じファイルを指す）。共通と食い違うときは、このファイルか [REVIEW.md](REVIEW.md) に理由を書く。過去の役割分担より、life の共通ルールと本書の例外を優先する。
+life の default branch は `main`。共通と食い違うときは、このファイルか [REVIEW.md](REVIEW.md) に理由を書く。過去の役割分担より、life の共通ルールと本書の例外を優先する。
 
 正リポは `/Users/kanaihideaki/Documents/SmartPhoneSpecBattle`（trusted）。`CodexProject/SmartPhoneSpecBattle_codex` は変更しない。
 
 ## このリポの例外
 
-- **製品コード**（Dart / Flutter / アセット配線 / PR）は **実装席 → Cloud Agent `grok-4.6` のみ**。Codex に実装を寄せない。
-- **Fable は使わない。** 設計・検証は life どおり Cursor 枠の Opus。枠切れでオンデマンドが要るときは別モデルに落とさず、参謀の Claude Pro に回す。Astra は設計フォールバックに使わない。
-- Dual Review は毎回しない。高リスクまたはユーザー依頼時のみ。設計・アーキ妥当性は Opus（docs のみ）。完了報告・差分の事実監査は、ChatGPT Plus が無いので thermos + grok-4.6 high（Plus 復帰時は Mac Codex GPT 6 Astra）。実装は grok-4.6 のまま。
-- レビューの既定も Plus 無しなので thermos + grok-4.6 high。指摘は Grok に戻す。厳密見た目ゲートは頼まれたときだけ（Plus 復帰時は Mac Codex + Playwright MCP、headless、`--mute-audio`）。
-- 画像: Plus 無しのときは Codex 画像生成を前提にしない。Plus 復帰時は Codex `gpt-image-2` を候補にし、生成アセットは `assets/` へ。
+役割・モデル・マージ・往復の上限・レビュー役は life。古い席（製品コードは実装席の Cloud Agent だけ、Dual Review、レビュー既定を thermos + grok-4.6 high にする）は例外にしない。
+
+- **Fable** は自動では使わない。イフリトが毎回 OK したときだけ。
 - **途中確認**: 見た目が変わる作業・区分「高」のファイルに触れる作業は、最初の一切れで止めて `.agents/skills/midway-check` の手順で見せ、答えを待ってから続ける。
-- 課金: Claude Pro + Cursor Pro + Open Code Go（Hermes）を継続。ChatGPT Plus は解約済み。Claude Pro は Cursor Other Models を補充しない。Claude Code は使わない。Grok Bot の共有PCには Codex / Claude Code を入れない。オンデマンド課金は使わない。
-- Cursor Projects / Project Agent でも席を崩さない。マージは人。エージェントはマージしない。迷ったら Grok Bot の参謀ルート（外環→内環）に寄せる。
+- ChatGPT Plus は解約済み。Codex 画像生成と Playwright の厳密見た目ゲートは Plus 復帰まで前提にしない。Astra は設計フォールバックに使わない。
+- オンデマンド課金は使わない。Claude Pro は Cursor Other Models を補充しない。枠切れの設計・検証は life どおり参謀の Claude Pro（箱の Claude Code）へ回す。
+- エージェントはマージしない。迷ったら Grok Bot の参謀ルート（外環→内環）に寄せる。
 
 ## 進捗・参照先
 
@@ -44,9 +43,9 @@ life の default branch は `main`（GitHub の `master` パスも同じファ�
 - コードの同時編集者は1人。`master` から `feature/` ブランチを作り、直接 `master` にコミットしない。コミット要約は日本語。
 - GitHub の `master` 保護は **PR 必須・直接 push 禁止・承認 0・bypass なし**（案A）。ruleset は人が Settings で作る。エージェントはマージしない。承認 1 以上 + bypass なしにはしない（Cloud Agent の PR 作者がリポオーナーと同じになり、承認する人がいなくなるため）。
 - コード変更は `flutter analyze` / `flutter test` を通し、変更に応じた検証結果を添える。未検証は理由を明記する。文書のみなら差分・参照整合性を確認する。
-- `Verified:` 行は記録用。語は `analyze` `test` `verify-ssb` `tlc` `none`（`verify-ssb` は [#90](https://github.com/ifrit99/SmartPhoneSpecBattle/pull/90) の設計。スキルが来るまでは `analyze` / `test` / `none`）。検証しなかったときも `Verified: none (理由)` と書く。
-- **共通の観察ゲートの置き場はこのリポの CI**（life `dev/rules/verification.md`）。`Verified:` 行が無いことだけで PR を落としてはいけない。観察はログに出すだけ。enforce はイフリトが決めるまでやらない。数え方は #90 の記録用のまま（本文の `Verified:` 行。trailer 解析は使わない）。
-- Grok が検証後にコミット・push・PRを作成し、レビュー指摘を修正する。マージはユーザー判断に従う。
+- `Verified:` は **コミット末尾の trailer**（life `dev/rules/verification.md`）。語は `analyze` `test` `verify-ssb` `tlc` `none`（`verify-ssb` は [#90](https://github.com/ifrit99/SmartPhoneSpecBattle/pull/90) の設計。スキルが来るまでは `analyze` / `test` / `none`）。検証しなかったときも `Verified: none (理由)` と書く。
+- **共通の観察ゲートの置き場はこのリポの CI**。数え方は life どおり `git log` の trailer。`Verified:` が無いことだけで PR を落としてはいけない。観察はログに出すだけ。enforce はイフリトが決めるまでやらない。入れる PR は [decision-log](docs/decision-log.md)（#90 の `Verified:` 運用が回ったあとの別 PR）。
+- 実装役が検証後にコミット・push・PRを作成し、検証役の指摘を同じ PR で直す。マージはユーザー判断に従う。
 
 ## UI / 見た目
 

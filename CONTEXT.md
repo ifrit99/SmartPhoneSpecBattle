@@ -12,4 +12,4 @@
 共通の確かめ方は life の [`dev/rules/verification.md`](https://github.com/ifrit99/life/blob/main/dev/rules/verification.md)。このリポの安い確認は次の 2 つ。コードの追加や変更を行った後、タスクを「完了」とする前にエラーゼロであること。
 - **静的解析**: `flutter analyze`
 - **ユニットテスト**: `flutter test`
-`Verified:` 行は記録用（`none` も）。この行が無いことだけで完了や CI を落とさない。
+`Verified:` はコミット末尾の trailer（`none` も）。この行が無いことだけで完了や CI を落とさない。

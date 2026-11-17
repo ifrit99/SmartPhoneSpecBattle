@@ -19,10 +19,10 @@
 
 ## 2026-11-17: 内側ループと検証の共通ルールは life を読む
 
-- **Context**: life #17（設計）と #18（`dev/rules/verification.md` ほか）がマージされた。SSB 側に共通文をコピーすると二重管理になる。SSB #90 は `Verified:` 行の数え方を記録用に書いており、観察ゲートは後回し。
-- **Decision**: 共通の内側ループ・検証は ifrit99/life の `dev/rules/` を読む。このリポの `AGENTS.md` 等には SSB 固有の例外だけを置く。共通ゲートの置き場はこのリポの CI。`Verified:` 行が無いことだけで PR を落とさない。#90 の数え方は記録用のまま残す。
-- **Why**: 写すと life 側の更新が追いつかない。CI に置くのはエージェントごとの hook 差を避けるため（#18）。enforce 前に止めると誤検知で本線が止まる。
-- **Consequence**: エージェントは life が読めること。AI 指示ファイルの変更はイフリトがマージする。観察ジョブ自体は区分「高」なので、この切り替え PR では足さない。
+- **Context**: life #17（設計）と #18（`dev/rules/verification.md` ほか）がマージされた。SSB 側に共通文をコピーすると二重管理になる。SSB #90 は squash 後も残るよう本文の行で数える案だったが、共通ゲートは PR の `git log` trailer で数える。
+- **Decision**: 共通の内側ループ・検証は ifrit99/life の `dev/rules/` を読む。このリポの `AGENTS.md` 等には SSB 固有の例外だけを置く。古い席（実装席だけが製品コード、Dual Review、レビュー既定 thermos+grok）は例外にしない。`Verified:` はコミット末尾の trailer。無いことだけで PR を落とさない。
+- **Why**: 写すと life 側の更新が追いつかない。観察ゲートを trailer 以外で数えると、あとで CI に置いたとき全部「Verified なし」になる。CI に置くのはエージェントごとの hook 差を避けるため（#18）。
+- **Consequence**: エージェントは life が読めること。AI 指示ファイルの変更はイフリトがマージする。観察ジョブは区分「高」なので [#91](https://github.com/ifrit99/SmartPhoneSpecBattle/pull/91) では足さない。**入れる PR**: #90 の `Verified:` 運用（PR-1）がマージされ、その約束がおよそ 10 PR 回ったあとの別 PR で `.github/workflows/ci.yml` に observe ステップを足す。
 
 ## 2026-03頃: AndroidリリースからWeb版MVPへ方針転換
 
