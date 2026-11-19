@@ -46,6 +46,8 @@ Cursor Projects / Project Agent でも本書の席を崩さない。
 - コードの同時編集者は1人。`master` から `feature/` ブランチを作り、直接 `master` にコミットしない。コミット要約は日本語。
 - GitHub の `master` 保護は **PR 必須・直接 push 禁止・承認 0・bypass なし**（案A）。ruleset は人が Settings で作る。エージェントはマージしない。承認 1 以上 + bypass なしにはしない（Cloud Agent の PR 作者がリポオーナーと同じになり、承認する人がいなくなるため）。
 - コード変更は `flutter analyze` / `flutter test` を通し、変更に応じた検証結果を添える。未検証は理由を明記する。文書のみなら差分・参照整合性を確認する。
+- `lib/**` `web/**` `assets/**` `pubspec.yaml` を変えたら、PR の前に `verify-ssb`（`.agents/skills/verify-ssb/`）を通す。
+- コミットの最後の段落に `Verified:` 行を書く（検証しなかったときも `none`）。使える語は `analyze` `test` `verify-ssb` `tlc` `none`。ゲートにはしない。
 - Grok が検証後にコミット・push・PRを作成し、レビュー指摘（Plus 時 Codex / それ以外は thermos + grok-4.6 high）を修正する。マージはユーザー判断に従う。
 
 ## UI / 見た目
