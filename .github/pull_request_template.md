@@ -9,6 +9,7 @@
 
 ## テスト
 - 実行したコマンドと結果。見たコミット（短い SHA）
+- `Verified:` はコミット末尾の trailer（`none` も可）。この行が無いことだけで CI を落としてはいけない。観察ゲートは `git log` の trailer で数える（life `dev/rules/verification.md`）
 - 高: 修正前に落ちたテスト、専用チェックの結果
 - 見た目が変わるならスクショ
 

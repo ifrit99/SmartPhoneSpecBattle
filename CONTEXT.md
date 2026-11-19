@@ -1,7 +1,7 @@
 # SmartPhoneSpecBattle - CONTEXT
 
 ## 開発体制
-判断基準・担当の正本は [`AGENTS.md`](AGENTS.md)。
+共通の内側ループ・検証は ifrit99/life の `dev/rules/` を読む（写さない）。このリポの例外は [`AGENTS.md`](AGENTS.md)。
 エージェントは `feature/` ブランチへの push まで。`master` への push・PR のマージ・本番デプロイは人が行う。
 
 ## 作業フロー
@@ -9,7 +9,7 @@
 2. **作業終了時**: 計画ファイルの記録欄へ「済んだこと・次の一手・判断待ち」を 1 行足す。計画ファイルが無いときは作らず、PR 本文に 1 行残す。ローカルで STATUS.md が読めるときだけ当該タスクを更新する。`docs/TODO.md` への毎回更新はやめる。
 
 ## 検証手段（完了条件）
-コードの追加や変更を行った後、タスクを「完了」とする前に、以下のコマンドを実行しエラーゼロであることを確認すること。
+共通の確かめ方は life の [`dev/rules/verification.md`](https://github.com/ifrit99/life/blob/main/dev/rules/verification.md)。このリポの安い確認は次の 2 つ。コードの追加や変更を行った後、タスクを「完了」とする前にエラーゼロであること。
 - **静的解析**: `flutter analyze`
 - **ユニットテスト**: `flutter test`
-両方を通過して初めて、機能実装完了とみなすこと。
+`Verified:` はコミット末尾の trailer（`none` も）。この行が無いことだけで完了や CI を落とさない。

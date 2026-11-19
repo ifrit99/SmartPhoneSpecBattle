@@ -17,6 +17,13 @@
 
 ---
 
+## 2026-11-17: 内側ループと検証の共通ルールは life を読む
+
+- **Context**: life #17（設計）と #18（`dev/rules/verification.md` ほか）がマージされた。SSB 側に共通文をコピーすると二重管理になる。SSB #90 は squash 後も残るよう本文の行で数える案だったが、共通ゲートは PR の `git log` trailer で数える。
+- **Decision**: 共通の内側ループ・検証は ifrit99/life の `dev/rules/` を読む。このリポの `AGENTS.md` 等には SSB 固有の例外だけを置く。古い席（実装席だけが製品コード、Dual Review、レビュー既定 thermos+grok）は例外にしない。`Verified:` はコミット末尾の trailer。無いことだけで PR を落とさない。
+- **Why**: 写すと life 側の更新が追いつかない。観察ゲートを trailer 以外で数えると、あとで CI に置いたとき全部「Verified なし」になる。CI に置くのはエージェントごとの hook 差を避けるため（#18）。
+- **Consequence**: エージェントは life が読めること。AI 指示ファイルの変更はイフリトがマージする。観察ジョブは区分「高」なので [#91](https://github.com/ifrit99/SmartPhoneSpecBattle/pull/91) では足さない。**入れる PR**: #90 の `Verified:` 運用（PR-1）がマージされ、その約束がおよそ 10 PR 回ったあとの別 PR で `.github/workflows/ci.yml` に observe ステップを足す。
+
 ## 2026-03頃: AndroidリリースからWeb版MVPへ方針転換
 
 - **Context**: 当初はAndroid版MVPリリースを目指していたが、MacBookのディスク容量不足で `flutter build appbundle --release` が困難、VPS（960MB RAM）ではGradle/Kotlinビルドがメモリ不足、Android実機も確保困難。
