@@ -20,7 +20,7 @@ class AnalyticsConsentDialog extends StatelessWidget {
         style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
       ),
       content: const Text(
-        'ゲーム改善のため、匿名のプレイデータとエラー情報の送信にご協力ください。個人を特定する情報は送信しません。拒否してもすべての機能を遊べます。設定はPrivacyからいつでも変更できます。',
+        'ゲーム改善のため、匿名のプレイデータ（バトル回数など）の送信にご協力ください。個人を特定する情報は送信しません。拒否してもすべての機能を遊べます。設定はPrivacyからいつでも変更できます。\n\n※不具合を見つけるためのエラー情報は、同意に関係なく送信されます。',
         style: TextStyle(color: Colors.white70, height: 1.5),
       ),
       actions: [

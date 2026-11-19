@@ -55,7 +55,7 @@ SentryEvent scrubEvent(SentryEvent event) {
 /// DSN 未設定時は Sentry を初期化せず [appRunner] をそのまま実行する（no-op）。
 /// DSN 設定時は `SentryFlutter.init` で `FlutterError.onError` と Zone 例外を
 /// 捕捉する（両者は init が内蔵捕捉するため runZonedGuarded の手書きは不要）。
-/// エラー送信は分析同意とは独立（技術的必須。同意ダイアログが明示済み）。
+/// エラー送信は分析同意とは独立（技術的必須。同意ダイアログとPrivacy画面が明示する）。
 Future<void> runWithErrorMonitoring(AppRunner appRunner) async {
   if (!SentryOptionsConfig.hasDsn) {
     await appRunner();

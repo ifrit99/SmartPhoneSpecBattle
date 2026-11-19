@@ -63,7 +63,7 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'バトル、ガチャ、共有、バックアップなどの利用状況とエラー情報を、ゲーム改善のために送信します。個人を特定する情報は送信しません。',
+                    'バトル、ガチャ、共有、バックアップなどの利用状況を、ゲーム改善のために送信します。個人を特定する情報は送信しません。\n\n※不具合を見つけるためのエラー情報は、この設定に関係なく送信されます。',
                     style: TextStyle(color: Colors.white60, height: 1.5),
                   ),
                   const SizedBox(height: 16),
