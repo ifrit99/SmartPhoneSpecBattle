@@ -174,6 +174,8 @@ PR-B（`cursor/ranking-firestore-cf92`）実装時の記録（grok-4.6、2026-09
   - expiresAt 欠落拒否
   - 未認証の read 拒否
 
+#82 マージ後（2026-11-02）: 本番 CSP に 6 ハッシュは載った。匿名 Auth と Firestore 読み取りは生きている。iPhone Safari の参加失敗は flutterfire の動的インライン注入側。参加 ON で `web/firebase_js_preload.js` から gstatic を順に import して `window.firebase_*` を先に置く。
+
 ---
 ## 評価
 （検証結果を追記）

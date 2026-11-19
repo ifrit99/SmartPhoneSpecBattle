@@ -1,6 +1,8 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
+import 'firebase_js_preload_stub.dart'
+    if (dart.library.js_interop) 'firebase_js_preload_web.dart';
 import 'firebase_options.dart';
 
 bool _initialized = false;
@@ -45,6 +47,12 @@ Future<bool> ensureFirebaseInitialized() async {
   if (initialize != null) {
     await initialize(FirebaseOptionsConfig.options);
   } else {
+    try {
+      await preloadFirebaseJsSdks();
+    } catch (error) {
+      // Safari 向け先読みが失敗しても、Chrome は CSP ハッシュのインライン注入で進める。
+      debugPrint('Firebase JS preload failed: $error');
+    }
     await Firebase.initializeApp(options: FirebaseOptionsConfig.options);
   }
   _initialized = true;

@@ -41,7 +41,7 @@ PR 本文の区分が低すぎないかを必ず見る。1ファイルでも上�
 
 ### 起動と本番（高）
 - **黒画面**: 設定があるときに Firebase を起動時に初期化して黒画面になった（#58 で直してからマージ）。Firebase はランキング参加を ON にするまで初期化しない。`main` や `ServiceLocator.init` から呼んでいないかを見る。
-- **CSP で動かない**: Firebase が書くインラインスクリプトを CSP が止め、本番でランキング参加が失敗した（#58 のあと見つかり #82）。`script-src` に `'unsafe-inline'` は足さない。ハッシュで許す。firebase の版やサービスを変えたら `web/_headers` のハッシュとテストも変わっているか。
+- **CSP で動かない**: Firebase が書くインラインスクリプトを CSP が止め、本番でランキング参加が失敗した（#58 のあと見つかり #82）。`script-src` に `'unsafe-inline'` は足さない。ハッシュで許す。Safari は動的に足したインラインのハッシュを Chrome と同じに扱わないことがある（#82 後も iPhone で参加失敗）。参加 ON では `web/firebase_js_preload.js` から gstatic を `import` して `window.firebase_*` を先に置く。firebase の版やサービスを変えたら `web/_headers` のハッシュと先読み JS とテストも変わっているか。
 - Firestore ルールはマージしても本番に効かない（コンソールで人が公開する）。PR に「マージ後にやること」があるか。
 
 ### 秘密（高）
