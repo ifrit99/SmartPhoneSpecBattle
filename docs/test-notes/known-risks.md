@@ -20,6 +20,12 @@
 - ステータス生成で `DeviceSpecs` のいずれかが0/空のとき、`hashCode` の分布が偏り同じキャラが量産される可能性（仮置き）。
 - バトル報酬はCPU対戦のみ付与。ゲスト対戦（QR/URL）でも誤って加算しないよう、経路分岐を壊さない。
 
+## 消した不安定テスト
+
+不安定なテストを消したときの理由を書く（life [`dev/rules/verification.md`](https://github.com/ifrit99/life/blob/main/dev/rules/verification.md)）。
+
+（まだ無し）
+
 ## 仕様変更時に壊れやすそうな箇所
 - `CharacterCodec` のバイナリフォーマットを拡張すると、既存URLが無効化される可能性。v3 以降を入れる場合は後方互換の戦略を先に決める。
 - `ElementType` / `EffectType` の enum に値を追加した場合、既存のエンコード済みデータと `switch` 網羅のミスマッチが起きやすい。
