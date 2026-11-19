@@ -55,5 +55,5 @@ life の default branch は `main`。共通と食い違うときは、このフ�
 
 ## レビュー
 
-- このリポで何が壊れるかは [REVIEW.md](REVIEW.md)。往復の上限・基準の読み方・見た SHA は life の共通ルール。
+- このリポで何が壊れるかは [REVIEW.md](REVIEW.md)。読むのは PR の base（`git show origin/<base>:REVIEW.md`）。往復の上限、古い head へのレビューは無効、3 回で止まること、不安定なテストの扱いは life の共通ルール。
 - レビューは日本語で返す。

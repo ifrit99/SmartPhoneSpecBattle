@@ -320,6 +320,9 @@ git log --no-merges --format='%H%n%B%x00' origin/master      # 本文から ^Ver
 ## Generator ログ
 （実装スレッドが区切りごとに 1 行足す: 済んだこと・次の一手・判断待ち）
 
+- 2026-11-19: PR-3 着手。REVIEW.md にチェック対象・base の run.sh・フレーク理由の行き先を足す。判断待ちなし。
+- 2026-11-19: PR-3 文書のリンク先（life `dev/rules/`）と既存パスを確認。verify-ssb と通貨プロパティテストは PR-1/PR-2 待ち。次は PR。マージはイフリト。
+
 ---
 ## 評価
 （検証スレッドが結果を足す）
