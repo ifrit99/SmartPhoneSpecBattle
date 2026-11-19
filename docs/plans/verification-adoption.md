@@ -40,7 +40,7 @@ Claude Code チームの検証の記事と、pstack の検証スキル 4 つを 
 - 参謀は 1 回だけ、箱のモデルとリポの `.claude/skills/currency-ledger-verify/` を `diff -r` で比べる。
   - 違いがあれば、`maintain-formal-verification-skill` の手順でリポ側に PR を出して入れるか、捨てる。
   - そのあと箱には `tlc` と、リポのチェックアウトだけを置く。
-- 回し方: 参謀の箱で PR の head をチェックアウトし、`bash .claude/skills/currency-ledger-verify/run.sh` を回す。PR が通貨のコードとモデルの両方を変えるときは、head の一式で先に回し、そのあと base の `.claude/skills/currency-ledger-verify/` 一式（`run.sh`・`.tla`・`.cfg`）を作業ツリーに置いて回し、終わったら `git checkout HEAD -- .claude/skills/currency-ledger-verify` で戻す。`run.sh` はスクリプトのあるディレクトリからモデルを読む（`HERE` は `dirname "$0"` を `cd` した絶対パス）。例: `bash .claude/skills/currency-ledger-verify/run.sh; git checkout origin/<base> -- .claude/skills/currency-ledger-verify && bash .claude/skills/currency-ledger-verify/run.sh; git checkout --no-overlay HEAD -- .claude/skills/currency-ledger-verify`。
+- 回し方: 参謀の箱で PR の head をチェックアウトし、`bash .claude/skills/currency-ledger-verify/run.sh` を回す。PR が通貨のコードとモデルの両方を変えるときは、head の一式で先に回し、head の `run.sh` が失敗しても base の `.claude/skills/currency-ledger-verify/` 一式（`run.sh`・`.tla`・`.cfg`）を作業ツリーに置いて回し、成否にかかわらず必ず `git checkout --no-overlay HEAD -- .claude/skills/currency-ledger-verify` で戻す。`run.sh` はスクリプトのあるディレクトリからモデルを読む（`HERE` は `dirname "$0"` を `cd` した絶対パス）。例: `bash .claude/skills/currency-ledger-verify/run.sh; git checkout origin/<base> -- .claude/skills/currency-ledger-verify && bash .claude/skills/currency-ledger-verify/run.sh; git checkout --no-overlay HEAD -- .claude/skills/currency-ledger-verify`。
 - 結果は head の SHA を付けて Project に返す。実装席がそれを PR 本文に貼り、コミットの `Verified:` 行に `tlc(PASS <sha>)` を書く。
 - 箱で使うのは Claude Pro 枠の Claude Code。pstack は `.claude/settings.json` で有効なので、`maintain-formal-verification-skill` もそこで回せる。
 
