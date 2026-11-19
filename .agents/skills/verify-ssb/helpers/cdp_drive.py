@@ -459,6 +459,8 @@ def drive(url: str, evidence_dir: Path, timeout: float, pid_file: Path | None) -
     semantics_texts: list[str] = []
     semantics_ok: dict[str, bool] | None = None
     screenshot_path = evidence_dir / "title.png"
+    screenshot_error = ""
+    notes: list[str] = []
     started = time.monotonic()
 
     try:
@@ -532,10 +534,16 @@ window.addEventListener('securitypolicyviolation', (e) => {
                     timeout=15,
                 ) or {}
                 png = shot.get("data")
-                if png:
-                    screenshot_path.write_bytes(base64.b64decode(png))
-            except CdpError:
-                pass
+                if not png:
+                    screenshot_error = "empty screenshot data"
+                else:
+                    raw = base64.b64decode(png)
+                    if len(raw) < 32 or not raw.startswith(b"\x89PNG"):
+                        screenshot_error = "screenshot is not a PNG"
+                    else:
+                        screenshot_path.write_bytes(raw)
+            except CdpError as exc:
+                screenshot_error = str(exc)
         cdp.pump_until(0.2)
         page_host, page_port = origin_of(url)
         fail = first_failure(
@@ -551,10 +559,20 @@ window.addEventListener('securitypolicyviolation', (e) => {
             verdict = "FAIL"
             rule = "制限時間内に cold_to_title が出ない"
             first_hit = rule
+        elif not screenshot_path.is_file() or screenshot_path.stat().st_size < 32:
+            verdict = "FAIL"
+            rule = "スクリーンショットが無い"
+            first_hit = screenshot_error or "title.png missing"
         else:
             verdict = "PASS"
             rule = ""
             first_hit = ""
+            if semantics_ok is not None:
+                missed = [name for name, ok in semantics_ok.items() if not ok]
+                if missed:
+                    notes.append("semantics missed: " + ", ".join(missed))
+            elif semantics_how != "placeholder" and semantics_how != "aria-button":
+                notes.append(f"semantics not confirmed ({semantics_how})")
     except SystemExit:
         raise
     except Exception as exc:  # noqa: BLE001 — harness must turn crashes into FAIL
@@ -592,6 +610,8 @@ window.addEventListener('securitypolicyviolation', (e) => {
 
     elapsed_ms = int((time.monotonic() - started) * 1000)
     judgment = "PASS" if verdict == "PASS" else f"FAIL: {rule} ({first_hit})"
+    if notes and verdict == "PASS":
+        judgment = judgment + "; " + "; ".join(notes)
     payload = {
         "url": url,
         "verdict": verdict,

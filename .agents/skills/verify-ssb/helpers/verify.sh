@@ -108,6 +108,33 @@ kill_pid() {
   fi
 }
 
+pid_cmdline_has() {
+  local pid="${1:-}" needle="${2:-}"
+  [[ -n "$pid" && -n "$needle" ]] || return 1
+  python3 - "$pid" "$needle" <<'PY'
+import pathlib, sys
+pid, needle = sys.argv[1], sys.argv[2]
+path = pathlib.Path(f"/proc/{pid}/cmdline")
+if not path.is_file():
+    raise SystemExit(1)
+cmdline = path.read_bytes().replace(b"\x00", b" ").decode("utf-8", "replace")
+raise SystemExit(0 if needle in cmdline else 1)
+PY
+}
+
+kill_owned_pid() {
+  local pid="${1:-}" needle="${2:-}"
+  [[ -n "$pid" ]] || return 0
+  if ! pid_alive "$pid"; then
+    return 0
+  fi
+  if ! pid_cmdline_has "$pid" "$needle"; then
+    echo "cleanup skip pid=$pid (cmdline has no ${needle})" >&2
+    return 0
+  fi
+  kill_pid "$pid"
+}
+
 cmd_cleanup() {
   local run_id="" server_pid="" port="" url="" evidence_dir=""
   if [[ -f "$STATE_FILE" ]]; then
@@ -121,9 +148,9 @@ cmd_cleanup() {
       evidence_dir="$(printf '%s\n' "$state" | sed -n '5p')"
     fi
   fi
-  kill_pid "$server_pid"
+  kill_owned_pid "$server_pid" "serve_with_headers.py"
   if [[ -f "$CHROME_PID_FILE" ]]; then
-    kill_pid "$(cat "$CHROME_PID_FILE")"
+    kill_owned_pid "$(tr -d '[:space:]' < "$CHROME_PID_FILE")" "verify-ssb-chrome"
     rm -f "$CHROME_PID_FILE"
   fi
   rm -f "$STATE_FILE" "$PORT_FILE"
@@ -189,7 +216,7 @@ cmd_launch() {
   [[ -n "$port" ]] || fail_env "ポートを取得できない"
   local url="http://127.0.0.1:${port}/"
   wait_http_ready "$url" || {
-    kill_pid "$server_pid"
+    kill_owned_pid "$server_pid" "serve_with_headers.py"
     fail_env "/ が 200 と <title>SPEC BATTLE</title> を返さない"
   }
   local run_id
@@ -250,7 +277,7 @@ cmd_drive() {
     --pid-file "$CHROME_PID_FILE"
   local status=$?
   if [[ -f "$CHROME_PID_FILE" ]]; then
-    kill_pid "$(cat "$CHROME_PID_FILE")"
+    kill_owned_pid "$(tr -d '[:space:]' < "$CHROME_PID_FILE")" "verify-ssb-chrome"
     rm -f "$CHROME_PID_FILE"
   fi
   return "$status"

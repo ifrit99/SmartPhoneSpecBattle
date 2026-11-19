@@ -93,7 +93,7 @@ bash .agents/skills/verify-ssb/helpers/verify.sh drive boot-title
 
 手順と観測は `features/boot-title.md`。地図の他ファイルは未証明で、`drive cpu-battle` などは FAIL にする。
 
-合図のあとセマンティクスを有効にし、`SPEC BATTLE` と `TAP TO START` を探す（文言は `test/presentation/title_screen_test.dart`）。掴めないときは製品の FAIL にせず、合図とスクリーンショットで判定する。理由は `features/boot-title.md` の Gotchas。
+合図のあとセマンティクスを有効にし、`SPEC BATTLE` と `TAP TO START` を探す（文言は `test/presentation/title_screen_test.dart`）。掴めないときは製品の FAIL にせず、合図と `title.png` で判定し、`judgment.txt` に注意を書く。`title.png` が無い・空なら FAIL。理由は `features/boot-title.md` の Gotchas。
 
 ## 判定
 
@@ -101,6 +101,9 @@ bash .agents/skills/verify-ssb/helpers/verify.sh drive boot-title
 
 - 制限時間内に `[UxTiming] cold_to_title` が出た
 - 下の表の「失敗に数える」に当たる行が 0 件
+- `title.png` がある（無い・空・PNG でないは FAIL。スクリーンショット取得の失敗を黙って飛ばさない）
+
+セマンティクスでラベルを掴めなければ FAIL にはしない。`judgment.txt` に `semantics missed:` または `semantics not confirmed` を残す。
 
 それ以外は **FAIL**（exit 1）。最初に当たった行とその規則名を出す。
 
@@ -123,11 +126,11 @@ bash .agents/skills/verify-ssb/helpers/verify.sh drive boot-title
 
 - `title.png` — タイトルのスクリーンショット 1 枚
 - `events.json` — 拾ったイベントと判定材料
-- `judgment.txt` — 判定の 1 行（`PASS` または `FAIL: <規則名> (<最初の行>)`）
+- `judgment.txt` — 判定の 1 行（`PASS` または `FAIL: <規則名> (<最初の行>)`。セマンティクスを掴めなければ `PASS; semantics missed: ...`）
 
 ## Cleanup
 
-自分が起こしたサーバーと Chrome だけを止める（PID。名前では止めない）。証拠は消さない。片付けのあとに証拠が残っていることを確かめる。
+自分が起こしたサーバーと Chrome だけを止める。PID が生きていても、cmdline に `serve_with_headers.py`（サーバー）または `verify-ssb-chrome`（Chrome の一時プロファイル）が無ければ止めない。名前では止めない。証拠は消さない。片付けのあとに証拠が残っていることを確かめる。
 
 ```bash
 bash .agents/skills/verify-ssb/helpers/verify.sh cleanup
@@ -158,6 +161,12 @@ python3 .agents/skills/verify-ssb/helpers/cdp_drive.py \
   --url http://127.0.0.1:<port>/ \
   --evidence .local/verify-ssb/evidence/<run-id> \
   --timeout 60
+```
+
+判定の規則だけを回す:
+
+```bash
+python3 .agents/skills/verify-ssb/helpers/test_rules.py
 ```
 
 標準ライブラリだけ。新しい依存は足さない。

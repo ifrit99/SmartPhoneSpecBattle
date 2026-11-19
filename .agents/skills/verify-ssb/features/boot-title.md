@@ -27,13 +27,13 @@ Preconditions:
 - **Wait for paint.** コンソールに `[UxTiming] cold_to_title` が出るまで待つ。既定 60 秒（`VERIFY_TIMEOUT`）。
 - **Read labels.** 合図のあとセマンティクスを有効にし、`SPEC BATTLE` と `TAP TO START` を探す。
 - **Capture.** タイトルのスクリーンショット 1 枚とイベント JSON、判定 1 行を `.local/verify-ssb/evidence/<run-id>/` に残す。
-- **Proof.** 判定は SKILL.md の表。合図があり、失敗に数える行が 0 件なら PASS。
+- **Proof.** 判定は SKILL.md の表。合図があり、失敗に数える行が 0 件で、`title.png` があるとき PASS。セマンティクスを掴めなければ `judgment.txt` に注意を残す。
 - **Command.** `bash .agents/skills/verify-ssb/helpers/verify.sh drive boot-title`
 
 ## Gotchas
 
 - Web では最初のタップは AudioContext の解除だけで、ホームへは行かない。PR-1 はタップしない。
 - `TAP TO START` の点滅は cold_to_title より約 1.4 秒遅い。合図の直後だと Opacity 0 でセマンティクスから外れることがある。ドライブは約 1.6 秒待ってからセマンティクスを掴む。
-- Flutter Web は canvas。セマンティクス placeholder（`Enable accessibility`）が無い・不安定なときは、その旨を証拠の `semantics.how` に残し、合図とスクリーンショットだけで判定する。PASS にするためにラベル検査を外して黙らない。
+- Flutter Web は canvas。セマンティクス placeholder（`Enable accessibility`）が無い・不安定なときは、合図と `title.png` で判定し、`judgment.txt` に注意を書く。`title.png` が無いときは FAIL。ラベル検査を外して黙らない。
 - ダミーの Firebase キーでも `ServiceLocator.init` は `FirestoreRankingService` を組む。初期化自体は参加 ON まで呼ばない。呼ばれたら「起動時の Firebase」で FAIL。
 - profile 以外のビルドでは `[UxTiming]` が出ない。release で回して通したことにしない。
