@@ -20,7 +20,7 @@
 - 指摘はすべて「直した（コミット）」か「直さない理由」のどちらかで答えが付くまでマージしない。
 - エージェントにできない確認（実機、本番コンソール、GitHub の設定）は往復に数えない。指摘のまま止めず、PR 本文の「イフリトさんがやること」に移して閉じる。
 - `Verified:` trailer の有無だけで重大にしない。無いことは記録であり、CI を落とす理由にしない。数え方は life どおりコミット trailer。
-- このリポでチェックに当たるファイル: `REVIEW.md`、`AGENTS.md`、`.agents/skills/verify-ssb/**`、`.claude/skills/currency-ledger-verify/**`、`test/domain/currency_property_test.dart`、`test/domain/support/fault_injecting_storage.dart`、`.cursor/hooks.json`、`.cursor/hooks/**`、`.github/workflows/ci.yml`。PR がこれらを変えるときは変更前の版で判断する。マージは life どおり（指示ファイルはイフリト、テストだけなら自動）。
+- このリポで判定の基準に当たるファイル（life verification.md の『判定の基準』）: `REVIEW.md`、`AGENTS.md`、`.agents/skills/verify-ssb/**`（PR-1 で入る。まだ無い）、`.claude/skills/currency-ledger-verify/**`、`test/domain/currency_property_test.dart`、`test/domain/support/fault_injecting_storage.dart`、`.cursor/hooks.json`、`.cursor/hooks/**`、`.github/workflows/ci.yml`。PR がこれらを変えるときは base の版を基準に判断する。マージは life どおり（指示ファイルはイフリト、テストだけなら自動）。
 - 不安定なテストを消すときの理由は [`docs/test-notes/known-risks.md`](docs/test-notes/known-risks.md) に書く。
 
 ## 危なさの区分（変更内容で決める。作者では決めない）
@@ -42,7 +42,7 @@ PR 本文の区分が低すぎないかを必ず見る。1ファイルでも上�
 - **増える**: 同時に受け取ると二重に付く（#69）。受取済みの確認と付与の間に別の処理が割り込めないかを見る。
 - **消える・上書きされる**: 2つの加算が重なり片方の残高が消えた（#72）。保存失敗で残高だけ変わった（#75）。付与が失敗して報酬が消えた・コインだけ入ってジェムが付かない（#77）。通貨の読み書きは `CurrencyService` の直列化を通っているか、失敗時に呼び出し前へ戻るかを見る。
 - ガチャで通貨を減らしたあとキャラ保存が失敗すると、通貨だけ減る（#77）。ガチャを触る PR はここを必ず見る。
-- 通貨まわりを変えたら `bash .claude/skills/currency-ledger-verify/run.sh` の結果が PR にあるか。モデルが実装とずれていないか（#76 #78 で直した種類）。同じ PR が通貨のコードと `currency-ledger-verify` のモデルか `run.sh` の両方を変えたら、base の `.claude/skills/currency-ledger-verify/` 一式（`run.sh`・`.tla`・`.cfg`）を head のチェックアウトに置いて回した結果も求める（`run.sh` は `HERE=$(dirname $0)` からモデルを読むため、`run.sh` だけ差し替えてはいけない）。例: `git checkout origin/<base> -- .claude/skills/currency-ledger-verify && bash .claude/skills/currency-ledger-verify/run.sh`。
+- 通貨まわりを変えたら `bash .claude/skills/currency-ledger-verify/run.sh` の結果が PR にあるか。モデルが実装とずれていないか（#76 #78 で直した種類）。同じ PR が通貨のコードと `currency-ledger-verify` のモデルか `run.sh` の両方を変えたら、head の一式で先に回し、そのあと base の `.claude/skills/currency-ledger-verify/` 一式（`run.sh`・`.tla`・`.cfg`）を作業ツリーに置いて回し、終わったら `git checkout HEAD -- .claude/skills/currency-ledger-verify` で戻す。`run.sh` はスクリプトのあるディレクトリからモデルを読む（`HERE` は `dirname "$0"` を `cd` した絶対パス）。`run.sh` だけ差し替えてはいけない。例: `bash .claude/skills/currency-ledger-verify/run.sh && git checkout origin/<base> -- .claude/skills/currency-ledger-verify && bash .claude/skills/currency-ledger-verify/run.sh && git checkout HEAD -- .claude/skills/currency-ledger-verify`。
 
 ### 起動と本番（高）
 - **黒画面**: 設定があるときに Firebase を起動時に初期化して黒画面になった（#58 で直してからマージ）。Firebase はランキング参加を ON にするまで初期化しない。`main` や `ServiceLocator.init` から呼んでいないかを見る。
