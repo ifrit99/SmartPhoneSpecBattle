@@ -43,7 +43,8 @@ life の default branch は `main`。共通と食い違うときは、このフ�
 - コードの同時編集者は1人。`master` から `feature/` ブランチを作り、直接 `master` にコミットしない。コミット要約は日本語。
 - GitHub の `master` 保護は **PR 必須・直接 push 禁止・承認 0・bypass なし**（案A）。ruleset は人が Settings で作る。エージェントはマージしない。承認 1 以上 + bypass なしにはしない（Cloud Agent の PR 作者がリポオーナーと同じになり、承認する人がいなくなるため）。
 - コード変更は `flutter analyze` / `flutter test` を通し、変更に応じた検証結果を添える。未検証は理由を明記する。文書のみなら差分・参照整合性を確認する。
-- `Verified:` は **コミット末尾の trailer**（life `dev/rules/verification.md`）。語は `analyze` `test` `verify-ssb` `tlc` `none`（`verify-ssb` は [#90](https://github.com/ifrit99/SmartPhoneSpecBattle/pull/90) の設計。スキルが来るまでは `analyze` / `test` / `none`）。検証しなかったときも `Verified: none (理由)` と書く。
+- `lib/**` `web/**` `assets/**` `pubspec.yaml` を変えたら、PR の前に `verify-ssb`（`.agents/skills/verify-ssb/`）を通す。
+- `Verified:` は **コミット末尾の trailer**（life `dev/rules/verification.md`）。語は `analyze` `test` `verify-ssb` `tlc` `none`（`verify-ssb` は `.agents/skills/verify-ssb/`）。検証しなかったときも `Verified: none (理由)` と書く。
 - **共通の観察ゲートの置き場はこのリポの CI**。数え方は life どおり `git log` の trailer。`Verified:` が無いことだけで PR を落としてはいけない。観察はログに出すだけ。enforce はイフリトが決めるまでやらない。入れる PR は [decision-log](docs/decision-log.md)（#90 の `Verified:` 運用が回ったあとの別 PR）。
 - 実装役が検証後にコミット・push・PRを作成し、検証役の指摘を同じ PR で直す。マージはユーザー判断に従う。
 
