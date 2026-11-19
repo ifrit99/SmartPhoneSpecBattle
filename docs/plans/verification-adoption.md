@@ -40,7 +40,7 @@ Claude Code チームの検証の記事と、pstack の検証スキル 4 つを 
 - 参謀は 1 回だけ、箱のモデルとリポの `.claude/skills/currency-ledger-verify/` を `diff -r` で比べる。
   - 違いがあれば、`maintain-formal-verification-skill` の手順でリポ側に PR を出して入れるか、捨てる。
   - そのあと箱には `tlc` と、リポのチェックアウトだけを置く。
-- 回し方: 参謀の箱で PR の head をチェックアウトし、`bash .claude/skills/currency-ledger-verify/run.sh` を回す。PR が通貨のコードとモデルの両方を変えるときは、base の `run.sh` も PR の head のコードで回す。
+- 回し方: 参謀の箱で PR の head をチェックアウトし、`bash .claude/skills/currency-ledger-verify/run.sh` を回す。PR が通貨のコードとモデルの両方を変えるときは、base の `.claude/skills/currency-ledger-verify/` 一式（`run.sh`・`.tla`・`.cfg`）を head のチェックアウトに置いて回す。例: `git checkout origin/<base> -- .claude/skills/currency-ledger-verify && bash .claude/skills/currency-ledger-verify/run.sh`。
 - 結果は head の SHA を付けて Project に返す。実装席がそれを PR 本文に貼り、コミットの `Verified:` 行に `tlc(PASS <sha>)` を書く。
 - 箱で使うのは Claude Pro 枠の Claude Code。pstack は `.claude/settings.json` で有効なので、`maintain-formal-verification-skill` もそこで回せる。
 
@@ -55,7 +55,7 @@ Claude Code チームの検証の記事と、pstack の検証スキル 4 つを 
 | SSB の「チェック」に当たるファイルを決める | PR-3。`REVIEW.md` に 1 行足す | 共通ルール側の「変更は自分を裁くチェックを書き換えない」を SSB に当てはめるため |
 | 通貨のコードとモデルを同じ PR で変えたとき | PR-3。`REVIEW.md` の「通貨・報酬」に 1 行足す | SSB にしかない形 |
 
-PR-3 で SSB の「チェック」として名指しするファイル: `REVIEW.md`、`AGENTS.md`、`.agents/skills/verify-ssb/**`、`.claude/skills/currency-ledger-verify/**`、`test/domain/currency_property_test.dart`、`test/domain/support/fault_injecting_storage.dart`、`.cursor/hooks/**`、`.github/workflows/ci.yml`。
+PR-3 で SSB の「チェック」として名指しするファイル: `REVIEW.md`、`AGENTS.md`、`.agents/skills/verify-ssb/**`、`.claude/skills/currency-ledger-verify/**`、`test/domain/currency_property_test.dart`、`test/domain/support/fault_injecting_storage.dart`、`.cursor/hooks.json`、`.cursor/hooks/**`、`.github/workflows/ci.yml`。
 
 ### 共通ルール側に任せる（ここには書かない）
 次は life の共通ルールで決まるものとして扱う。SSB は決まったものに従う。
@@ -286,7 +286,7 @@ git log --no-merges --format='%H%n%B%x00' origin/master      # 本文から ^Ver
 
 ### PR-3: SSB 固有の文書（区分 **中**）
 - `REVIEW.md` の「往復のルール」に 1 行足す。SSB でチェックに当たるファイルは「今やる」の表の下の一覧。PR がそれらを変えるときは、変更前の版で判断する。マージの扱いは「決まったこと」のとおり（指示ファイルはイフリト、テストだけなら自動）。
-- `REVIEW.md` の「通貨・報酬」に 1 行足す。同じ PR が通貨のコードと `currency-ledger-verify` のモデルか `run.sh` の両方を変えたら、base の `run.sh` を PR の head のコードで回した結果も求める。
+- `REVIEW.md` の「通貨・報酬」に 1 行足す。同じ PR が通貨のコードと `currency-ledger-verify` のモデルか `run.sh` の両方を変えたら、base の `.claude/skills/currency-ledger-verify/` 一式を head のチェックアウトに置いて回した結果も求める。
 - 共通ルール（life）が決まったら、そこを指す 1 行だけにする。ここの文は写さない。
 - 証明: 文書だけなので、リンク先とパスが存在すること、`REVIEW.md` の既存の規則（3 往復・差分だけ・区分）と矛盾しないことを差分で確かめる。
 
@@ -322,6 +322,7 @@ git log --no-merges --format='%H%n%B%x00' origin/master      # 本文から ^Ver
 
 - 2026-11-19: PR-3 着手。REVIEW.md にチェック対象・base の run.sh・フレーク理由の行き先を足す。判断待ちなし。
 - 2026-11-19: PR-3 文書のリンク先（life `dev/rules/`）と既存パスを確認。verify-ssb と通貨プロパティテストは PR-1/PR-2 待ち。次は PR。マージはイフリト。
+- 2026-11-19: #92 指摘。base の verify 一式で回す、hooks.json を一覧へ、AGENTS.md を戻し REVIEW.md は life リンクだけ。マージはイフリト。
 
 ---
 ## 評価

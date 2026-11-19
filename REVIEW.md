@@ -2,7 +2,7 @@
 
 レビューする AI（GitHub のレビューボット、thermos、受入テスト）向け。担当や流れは [AGENTS.md](AGENTS.md)、書き方の規約は [docs/coding_rules.md](docs/coding_rules.md) を見る。
 
-往復の上限、基準は base から読むこと、古い head へのレビューは無効、3 回で止まること、不安定なテストの扱い、報告に見た SHA を書くことは life の共通ルール（[`dev/rules/inner-loop.md`](https://github.com/ifrit99/life/blob/main/dev/rules/inner-loop.md)・[`dev/rules/verification.md`](https://github.com/ifrit99/life/blob/main/dev/rules/verification.md)）。ここに写さない。このリポの基準は `git show origin/<base>:REVIEW.md` で読む。ここには「このリポで何が壊れると困るか」だけを書く。
+往復の上限、基準は base から読むこと、報告に見た SHA を書くことは life の共通ルール（[`dev/rules/inner-loop.md`](https://github.com/ifrit99/life/blob/main/dev/rules/inner-loop.md)・[`dev/rules/verification.md`](https://github.com/ifrit99/life/blob/main/dev/rules/verification.md)）。ここに写さない。ここには「このリポで何が壊れると困るか」だけを書く。
 
 ## 返し方
 - 最初の1行は件数にする。例:「重大 1 / 軽微 2 / 前からある 1」。直すところが無ければ「直すところなし」とだけ書く。
@@ -20,7 +20,7 @@
 - 指摘はすべて「直した（コミット）」か「直さない理由」のどちらかで答えが付くまでマージしない。
 - エージェントにできない確認（実機、本番コンソール、GitHub の設定）は往復に数えない。指摘のまま止めず、PR 本文の「イフリトさんがやること」に移して閉じる。
 - `Verified:` trailer の有無だけで重大にしない。無いことは記録であり、CI を落とす理由にしない。数え方は life どおりコミット trailer。
-- このリポでチェックに当たるファイル: `REVIEW.md`、`AGENTS.md`、`.agents/skills/verify-ssb/**`、`.claude/skills/currency-ledger-verify/**`、`test/domain/currency_property_test.dart`、`test/domain/support/fault_injecting_storage.dart`、`.cursor/hooks/**`、`.github/workflows/ci.yml`。PR がこれらを変えるときは変更前の版で判断する。マージは life どおり（指示ファイルはイフリト、テストだけなら自動）。
+- このリポでチェックに当たるファイル: `REVIEW.md`、`AGENTS.md`、`.agents/skills/verify-ssb/**`、`.claude/skills/currency-ledger-verify/**`、`test/domain/currency_property_test.dart`、`test/domain/support/fault_injecting_storage.dart`、`.cursor/hooks.json`、`.cursor/hooks/**`、`.github/workflows/ci.yml`。PR がこれらを変えるときは変更前の版で判断する。マージは life どおり（指示ファイルはイフリト、テストだけなら自動）。
 - 不安定なテストを消すときの理由は [`docs/test-notes/known-risks.md`](docs/test-notes/known-risks.md) に書く。
 
 ## 危なさの区分（変更内容で決める。作者では決めない）
@@ -42,7 +42,7 @@ PR 本文の区分が低すぎないかを必ず見る。1ファイルでも上�
 - **増える**: 同時に受け取ると二重に付く（#69）。受取済みの確認と付与の間に別の処理が割り込めないかを見る。
 - **消える・上書きされる**: 2つの加算が重なり片方の残高が消えた（#72）。保存失敗で残高だけ変わった（#75）。付与が失敗して報酬が消えた・コインだけ入ってジェムが付かない（#77）。通貨の読み書きは `CurrencyService` の直列化を通っているか、失敗時に呼び出し前へ戻るかを見る。
 - ガチャで通貨を減らしたあとキャラ保存が失敗すると、通貨だけ減る（#77）。ガチャを触る PR はここを必ず見る。
-- 通貨まわりを変えたら `bash .claude/skills/currency-ledger-verify/run.sh` の結果が PR にあるか。モデルが実装とずれていないか（#76 #78 で直した種類）。同じ PR が通貨のコードと `currency-ledger-verify` のモデルか `run.sh` の両方を変えたら、base の `run.sh` を PR の head のコードで回した結果も求める。
+- 通貨まわりを変えたら `bash .claude/skills/currency-ledger-verify/run.sh` の結果が PR にあるか。モデルが実装とずれていないか（#76 #78 で直した種類）。同じ PR が通貨のコードと `currency-ledger-verify` のモデルか `run.sh` の両方を変えたら、base の `.claude/skills/currency-ledger-verify/` 一式（`run.sh`・`.tla`・`.cfg`）を head のチェックアウトに置いて回した結果も求める（`run.sh` は `HERE=$(dirname $0)` からモデルを読むため、`run.sh` だけ差し替えてはいけない）。例: `git checkout origin/<base> -- .claude/skills/currency-ledger-verify && bash .claude/skills/currency-ledger-verify/run.sh`。
 
 ### 起動と本番（高）
 - **黒画面**: 設定があるときに Firebase を起動時に初期化して黒画面になった（#58 で直してからマージ）。Firebase はランキング参加を ON にするまで初期化しない。`main` や `ServiceLocator.init` から呼んでいないかを見る。
