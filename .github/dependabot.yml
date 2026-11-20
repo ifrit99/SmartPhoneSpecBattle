@@ -3,6 +3,7 @@
 # Dependabot version updates 設定（schema v2）
 # - 全 ecosystem とも weekly。auto-merge はしない（マージは手動）。
 # - minor / patch は ecosystem ごとに 1 PR へまとめる。major はグループ対象外 = 個別 PR。
+#   例外: pub の firebase（firebase_* / cloud_firestore）は major も含めて 1 PR。
 # - gradle(/android) は対象外: CI で Android ビルドを検証しておらず、AGP/Kotlin 更新は
 #   Flutter 本体との互換が必要でノイズになりやすいため。Android 対応時に再検討する。
 # - docker-compose は対象外: docker-compose.yml はローカル Dockerfile を build するだけで、
@@ -24,6 +25,13 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     groups:
+      # firebase 系は major も 1 本（core / auth / firestore が世代で縛り合うため）。
+      # Dependabot は最初に当たったグループに入れるので、pub-minor-patch より前に置く。
+      firebase:
+        applies-to: version-updates
+        patterns:
+          - "firebase_*"
+          - "cloud_firestore"
       pub-minor-patch:
         applies-to: version-updates
         patterns:
