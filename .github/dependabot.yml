@@ -63,4 +63,6 @@ updates:
     directory: /
     schedule:
       interval: weekly
-    open-pull-requests-limit: 2
+    # イメージは1つなので上限は 1（現状 :stable のため PR は出ない）
+    open-pull-requests-limit: 1
+
