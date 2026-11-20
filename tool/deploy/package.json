@@ -1,0 +1,8 @@
+{
+  "name": "smartphone-spec-battle-deploy",
+  "private": true,
+  "description": "Pinned wrangler for Cloudflare Pages Direct Upload (RFC D-2 / PR-S2)",
+  "devDependencies": {
+    "wrangler": "4.152.0"
+  }
+}
