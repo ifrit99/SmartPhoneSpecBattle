@@ -1,7 +1,58 @@
 # RFC S-6: GitHub Actions の SHA ピンを週次で追従する
+#
+# Dependabot version updates 設定（schema v2）
+# - 全 ecosystem とも weekly。auto-merge はしない（マージは手動）。
+# - minor / patch は ecosystem ごとに 1 PR へまとめる。major はグループ対象外 = 個別 PR。
+# - gradle(/android) は対象外: CI で Android ビルドを検証しておらず、AGP/Kotlin 更新は
+#   Flutter 本体との互換が必要でノイズになりやすいため。Android 対応時に再検討する。
+# - docker-compose は対象外: docker-compose.yml はローカル Dockerfile を build するだけで、
+#   外部 image のピンが無いため。
+# - security updates / alerts はリポジトリ設定（GitHub UI）で別途管理する。
 version: 2
 updates:
+  # 既存（RFC S-6）: 変更しない
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+
+  # Flutter / Dart 依存（pubspec.yaml / pubspec.lock）
+  # CI（flutter pub get / analyze / test / web build）で検証される。
+  - package-ecosystem: pub
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      pub-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  # Firestore セキュリティルールのテスト用（test/firestore/package.json）
+  # 注意: この npm テストは CI で実行されない。マージ前に手動で npm test を回す。
+  - package-ecosystem: npm
+    directory: /test/firestore
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      firestore-test-minor-patch:
+        applies-to: version-updates
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  # 開発用コンテナのベースイメージ（Dockerfile の FROM）
+  # 注意: 現状の FROM は ghcr.io/cirruslabs/flutter:stable（版番号でないタグ）のため、
+  # バージョン番号タグか digest に固定するまで更新 PR は出ない。Docker build は CI で検証されない。
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 2
